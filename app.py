@@ -610,6 +610,21 @@ if(af)af.addEventListener('click',function(){{
 }});
 </script>{SEARCH_JS}</body></html>"""
 
+def eta_badge(s):
+    """Top-right ETA badge for the sub detail page: expected return window, or
+    ship date + tracking once shipped."""
+    if s["status"] == "Shipped" and s["shipped"]:
+        note = (f'<span class="estnote">{html.escape(s["carrier"])} {html.escape(s["tracking"])}</span>'
+                if s["carrier"] and s["tracking"] else "")
+        return f'<div class="synced">SHIPPED<b>{html.escape(s["shipped"])}</b>{note}</div>'
+    if s["est_start"]:
+        val = html.escape(s["est_start"])
+        if s["est_end"]:
+            val += f' — {html.escape(s["est_end"])}'
+        note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
+        return f'<div class="synced">PSA ETA<b>{val}</b>{note}</div>'
+    return '<div class="synced">PSA ETA<b>Estimate pending</b></div>'
+
 def detail_page(a, sub):
     num = sub["sub_number"]
     archived = num in archived_set(a)
@@ -632,8 +647,9 @@ def detail_page(a, sub):
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" href="/">← All submissions</a><span class="footacts">{act}</span></div>
-<h1 style="margin-top:14px">#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'].upper())} · {sub['card_count']} CARDS · {html.escape(sub['status'].upper())}{tag}</div>
+<div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
+<div class="sub">{html.escape(sub['service'].upper())} · {sub['card_count']} CARDS · {html.escape(sub['status'].upper())}{tag}</div></div>
+{eta_badge(sub)}</div>
 <div class="card" style="margin-top:18px">{timeline_html(sub['status'])}</div>
 {body}
 </div>{OWNER_JS}{ARCH_JS}</body></html>"""
