@@ -60,6 +60,34 @@ def stage_index(status):
     except ValueError:
         return 0
 
+# PSA is inconsistent about card-name casing: some specDescriptions arrive ALL
+# CAPS, most arrive mixed. Tame the shouty ones at render time; leave mixed-case
+# names (PSA's canonical form) untouched.
+_ACRONYMS = {"TCG", "PSA", "CCG", "EN", "JP", "GX", "EX", "VMAX", "VSTAR",
+             "SM", "SV", "XY", "BW", "DP", "SWSH"}
+_SMALL_WORDS = {"a", "an", "and", "at", "for", "in", "of", "on", "the", "to", "with"}
+
+def _title_seg(p):
+    """One hyphen-segment: keep set/card codes (digits) as-is, keep acronyms
+    upper, capitalize the rest."""
+    if any(ch.isdigit() for ch in p):
+        return p
+    if p.upper() in _ACRONYMS:
+        return p.upper()
+    return p[:1].upper() + p[1:].lower()
+
+def smart_title(name):
+    letters = [c for c in name if c.isalpha()]
+    if not letters or sum(c.isupper() for c in letters) / len(letters) < 0.9:
+        return name  # already conventional
+    out = []
+    for i, w in enumerate(name.split()):
+        if w.lower() in _SMALL_WORDS and i > 0:
+            out.append(w.lower())
+        else:
+            out.append("-".join(_title_seg(p) for p in w.split("-")))
+    return " ".join(out)
+
 # ---------- accounts ----------
 
 DEFAULT_PRICES = [("regular", 109.0), ("max", 89.99), ("bulk", 34.99), ("value", 45.99)]
@@ -271,7 +299,7 @@ def suggest(a, q, limit_names=8, limit_cards=12):
                             str(c.get("cert_id") or ""))).lower()
             if ql in hay:
                 card_hits.append({
-                    "name": c["name"] or "",
+                    "name": smart_title(c["name"] or ""),
                     "cert": "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or ""),
                     "sub": c["sub_number"],
                     "owner": owners.get(str(c["cert_id"]), ""),
@@ -557,7 +585,7 @@ document.querySelectorAll('.own').forEach(function(i){
 def card_tile(c, owners, show_sub=False, archived=False, service=""):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
-    name = html.escape(c["name"] or "")
+    name = html.escape(smart_title(c["name"] or ""))
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
     grade = f'<div class="gr">PSA {html.escape(c["grade"])}</div>' if c.get("grade") else ""
     if is_prelim:
