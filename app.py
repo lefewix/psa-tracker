@@ -288,13 +288,16 @@ def set_owner(a, cert_id, owner):
 
 def suggest(a, q, owner=None, limit_names=8, limit_cards=12):
     """Live search backing the unified search box. People (priority) + cards.
-    With owner set (person page), cards are limited to that person's; the People
-    section stays global so the box still works as a person switcher."""
+    With owner set (person page), results are ONLY that person's cards - no
+    People section; switching person means going back to all submissions."""
     ql = (q or "").strip().lower()
     owners = owners_map(a)
     want = (owner or "").strip().lower()
-    names = sorted({v for v in owners.values() if v})
-    name_hits = [n for n in names if ql in n.lower()][:limit_names]
+    if want:
+        name_hits = []
+    else:
+        names = sorted({v for v in owners.values() if v})
+        name_hits = [n for n in names if ql in n.lower()][:limit_names]
     card_hits = []
     if ql:
         for c in load_all_cards(a):
