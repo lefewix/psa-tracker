@@ -286,7 +286,7 @@ def set_owner(a, cert_id, owner):
               (cert_id, owner.strip(), time.strftime("%Y-%m-%dT%H:%M")))
     c.commit(); c.close()
 
-def suggest(a, q, owner=None, limit_names=8, limit_cards=12):
+def suggest(a, q, owner=None, limit_names=5, limit_cards=5):
     """Live search backing the unified search box. People (priority) + cards.
     With owner set (person page), results are ONLY that person's cards - no
     People section; switching person means going back to all submissions."""
@@ -349,7 +349,7 @@ body::after{background:
  50%{opacity:1}
  100%{transform:translate3d(-6%,-5%,0) scale(1);opacity:.95}}
 @media(prefers-reduced-motion:reduce){body::before,body::after,.node.now .dot{animation:none}}
-.wrap{max-width:760px;margin:0 auto}
+.wrap{max-width:820px;margin:0 auto}
 h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#5a5866;margin-top:6px}
@@ -361,7 +361,8 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .synced .lbl2{display:block;margin-top:8px}
 .toolbar{display:flex;gap:10px;margin:22px 0 4px;flex-wrap:wrap;align-items:stretch}
 .searchwrap{position:relative;flex:1;min-width:220px}
-.searchbar{width:100%;margin:0;text-align:left;padding:10px 13px;font-size:13px;font-weight:600}
+.searchwrap .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#6c6a7d;pointer-events:none}
+.searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:600}
 .preview{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:#111116;
  border:1px solid #262530;border-radius:12px;padding:6px;display:none;max-height:64vh;overflow:auto;
  box-shadow:0 14px 44px rgba(0,0,0,.55)}
@@ -380,43 +381,43 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .f:hover{border-color:#3a3849;color:#c3c0d0}
 .f.on{background:#7c5cff;border-color:#7c5cff;color:#fff}
 .f.farch.on{background:#4d4b59;border-color:#4d4b59;color:#fff}
-/* glass cards over the aurora */
-.card{background:rgba(17,17,22,.62);border:1px solid rgba(46,44,60,.75);border-radius:14px;
- padding:18px 22px;margin-bottom:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+/* glass cards over the aurora: translucent purple gradient + faint hairline */
+.card{background:linear-gradient(180deg,rgba(38,24,56,.72),rgba(24,15,34,.72));
+ border:1px solid rgba(255,255,255,.06);border-radius:18px;
+ padding:26px 30px;margin-bottom:20px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
-.card:hover{transform:translateY(-2px);border-color:#3f3a58}
+.card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.num{font-size:16px;font-weight:800;letter-spacing:-.01em}
-.meta{font-size:11.5px;font-weight:600;color:#77748a;margin-top:3px}
-.pill{font-size:9.5px;font-weight:800;letter-spacing:.1em;padding:5px 11px;border-radius:99px;white-space:nowrap;
- color:#c9beff;background:#221b45;border:1px solid #382c72}
-.pill.done{color:#9d9aab;background:#1a1a20;border-color:#2b2a34}
-.pill.hold{color:#ffc9c9;background:#3a1b1b;border-color:#6d2c2c}
-.pill.arch{color:#9d9aab;background:#1a1a20;border-color:#2b2a34}
+.num{font-size:21px;font-weight:800;letter-spacing:-.01em}
+.meta{font-size:14px;font-weight:600;color:#9b93b3;margin-top:3px}
+.pill{font-size:11px;font-weight:800;letter-spacing:.09em;padding:8px 15px;border-radius:99px;white-space:nowrap;
+ text-transform:uppercase;color:#c9b8ff;background:rgba(139,92,246,.16);border:1px solid rgba(167,139,250,.32)}
+.pill.done{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
+.pill.hold{color:#ffc9c9;background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.35)}
+.pill.arch{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
 .pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
 /* gradient progress timeline */
-.tl{position:relative;height:42px;margin:20px 0 12px}
-.track{position:absolute;top:4px;left:5%;right:5%;height:3px;background:#26252f;border-radius:3px}
-.fill{position:absolute;top:4px;left:5%;height:3px;border-radius:3px;transition:width .4s;
- background:linear-gradient(90deg,#5b46ff,#8b5cff 45%,#c95cff 78%,#ff5ccb);
- box-shadow:0 0 10px rgba(150,92,255,.55)}
+.tl{position:relative;height:46px;margin:22px 0 12px}
+.track{position:absolute;top:5px;left:5%;right:5%;height:2px;background:rgba(255,255,255,.09);border-radius:2px}
+.fill{position:absolute;top:5px;left:5%;height:2px;border-radius:2px;transition:width .4s;
+ background:linear-gradient(90deg,#7c3aed,#d94ff2);
+ box-shadow:0 0 9px rgba(217,79,242,.45)}
 .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
-.dot{width:9px;height:9px;border-radius:50%;background:#15141b;border:1.5px solid #2e2d38;margin:0 auto 9px}
-.node.done .dot{background:linear-gradient(135deg,#7c5cff,#b45cff);border-color:transparent}
-.node.now .dot{width:12px;height:12px;border-color:transparent;margin-bottom:7px;
- background:linear-gradient(135deg,#9b6bff,#ff5ccb);
- box-shadow:0 0 0 4px rgba(150,92,255,.22),0 0 12px rgba(220,92,230,.6);
+.dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.16);border:0;margin:2px auto 10px}
+.node.done .dot{background:#9d5bf0}
+.node.now .dot{width:13px;height:13px;margin:0 auto 8px;background:#d94ff2;
+ box-shadow:0 0 0 4px rgba(217,79,242,.18),0 0 12px rgba(217,79,242,.6);
  animation:nowpulse 2.6s ease-in-out infinite}
-@keyframes nowpulse{50%{box-shadow:0 0 0 7px rgba(150,92,255,.08),0 0 16px rgba(220,92,230,.85)}}
-.lbl{font-size:8px;font-weight:700;letter-spacing:.06em;color:#4d4b59;display:block;line-height:1.2}
-.node.done .lbl{color:#6c6a7d}
-.node.now .lbl{color:#ecebf0;font-weight:800}
-.foot{border-top:1px solid #1c1b23;padding-top:11px;display:flex;justify-content:space-between;
+@keyframes nowpulse{50%{box-shadow:0 0 0 7px rgba(217,79,242,.08),0 0 16px rgba(217,79,242,.85)}}
+.lbl{font-size:9px;font-weight:700;letter-spacing:.06em;color:#55516a;display:block;line-height:1.2;text-transform:uppercase}
+.node.done .lbl{color:#a79fc0}
+.node.now .lbl{color:#fff;font-weight:800}
+.foot{border-top:1px solid rgba(255,255,255,.06);padding-top:13px;display:flex;justify-content:space-between;
  align-items:center;gap:10px;flex-wrap:wrap}
 .footacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
-.est{font-size:10.5px;font-weight:600;color:#5f5d6e}
-.view{font-size:10.5px;font-weight:700;color:#9b8cff;text-decoration:none}
-.view:hover{color:#b9aeff}
+.est{font-size:13px;font-weight:600;color:#8d87a0}
+.view{font-size:13px;font-weight:600;color:#a78bfa;text-decoration:none}
+.view:hover{color:#c4b0ff}
 .archbtn{font-size:10.5px;font-weight:700;color:#8d8a9a;background:transparent;border:0;padding:0;cursor:pointer;
  font-family:inherit;letter-spacing:.02em}
 .archbtn:hover{color:#c3c0d0}
@@ -425,10 +426,11 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .hd{display:flex;gap:13px;align-items:flex-start;flex:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:24px}
 .grid img{width:100%;border-radius:8px;border:1px solid #26252f;background:#17171c;aspect-ratio:1.72/2.4;object-fit:cover;display:block}
-.gc{background:rgba(17,17,22,.62);border:1px solid rgba(46,44,60,.75);border-radius:12px;padding:10px;
+.gc{background:linear-gradient(180deg,rgba(38,24,56,.72),rgba(24,15,34,.72));
+ border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:11px;
  display:flex;flex-direction:column;gap:2px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
-.gc:hover{transform:translateY(-2px);border-color:#3f3a58}
+.gc:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed #2b2a34;background:#141419;display:flex;align-items:center;justify-content:center;color:#3f3d4a;font-size:10px;font-weight:700;letter-spacing:.1em}
 .gc .cn{font-size:14px;font-weight:800;color:#ecebf0;margin-top:9px;letter-spacing:-.01em}
 .cn.pre{color:#8d8a9a;font-size:11px;letter-spacing:.14em}
@@ -459,7 +461,8 @@ button{width:100%;margin-top:10px;background:#7c5cff;border:0;border-radius:10px
  font-size:12px;font-weight:800;letter-spacing:.1em;padding:12px;cursor:pointer;font-family:inherit}
 button:hover{background:#8f73ff}
 .err{color:#ff8b8b;font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
-@media(max-width:640px){.lbl{font-size:0}.lbl:first-letter{font-size:8px}}
+@media(max-width:640px){.lbl{font-size:0}.lbl:first-letter{font-size:9px}
+.card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}}
 """
 
 HEAD_HTML = """<link rel="preconnect" href="https://fonts.googleapis.com">
@@ -529,7 +532,10 @@ def search_box(value="", owner=""):
     """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
     With owner set, card results are scoped to that person (SEARCH_JS reads data-owner)."""
     ph = f"Search {owner}'s cards…" if owner else "Search names or cards…"
-    return (f'<div class="searchwrap"><input class="searchbar" id="q" type="search" '
+    icon = ('<svg class="sicon" width="14" height="14" viewBox="0 0 24 24" fill="none" '
+            'stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'
+            '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>')
+    return (f'<div class="searchwrap">{icon}<input class="searchbar" id="q" type="search" '
             f'autocomplete="off" spellcheck="false" placeholder="{html.escape(ph)}" '
             f'data-owner="{html.escape(owner)}" '
             f'value="{html.escape(value)}"><div class="preview" id="preview"></div></div>')
