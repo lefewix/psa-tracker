@@ -468,7 +468,8 @@ button{width:100%;margin-top:10px;background:#7c5cff;border:0;border-radius:10px
 button:hover{background:#8f73ff}
 .err{color:#ff8b8b;font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
 @media(max-width:640px){.lbl{font-size:0}.lbl:first-letter{font-size:9px}
-.card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}}
+.card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}
+.hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
 HEAD_HTML = """<link rel="preconnect" href="https://fonts.googleapis.com">
