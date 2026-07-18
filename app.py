@@ -431,18 +431,22 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 /* spotlight border: the card edge lights up under the cursor (JS sets --mx/--my) */
 .card,.gc{position:relative}
 .card::before,.gc::before{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;
- background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(167,139,250,.55),transparent 70%);
+ background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),rgba(167,139,250,.75),rgba(167,139,250,.2) 45%,transparent 80%);
  padding:2px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
-/* soft outer bloom: a wider masked band just outside the edge, so the lit ring
-   appears to cast light. kept faint (9%) - any brighter reads as AI-glow */
-.card::after,.gc::after{content:"";position:absolute;inset:-16px;border-radius:inherit;pointer-events:none;
- background:radial-gradient(340px circle at calc(var(--mx,50%) + 16px) calc(var(--my,50%) + 16px),rgba(139,92,246,.09),transparent 70%);
- padding:16px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+@media(hover:hover){.card:hover::before,.gc:hover::before{opacity:1}
+.card:hover .bloom,.gc:hover .bloom{opacity:1}}
+/* bloom: a blurred copy of the lit ring (element injected by FX_JS). blurring
+   the real ring makes the glow cursor-local, fade outward, and hug the corner
+   radius exactly - the three things the masked band and box-shadow each missed */
+.bloom{position:absolute;inset:-3px;border-radius:inherit;pointer-events:none;z-index:-1;
+ filter:blur(22px);opacity:0;transition:opacity .25s}
+.bloom::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:3px;
+ background:radial-gradient(circle 340px at calc(var(--mx,50%) + 3px) calc(var(--my,50%) + 3px),rgba(139,92,246,.7),transparent 70%);
+ -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
-@media(hover:hover){.card:hover::before,.gc:hover::before,.card:hover::after,.gc:hover::after{opacity:1}}
+ -webkit-mask-composite:xor;mask-composite:exclude}
 /* staggered entry: cards rise in with slight delays instead of mounting all at once */
 @media(prefers-reduced-motion:no-preference){
  .card,.gc{animation:rise .38s cubic-bezier(.2,.7,.3,1) both}
@@ -753,6 +757,7 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
   else{m.addEventListener('load',done);m.addEventListener('error',done);}
 });
 document.querySelectorAll('.card,.gc').forEach(function(c){
+  var b=document.createElement('div');b.className='bloom';c.appendChild(b);
   c.addEventListener('pointermove',function(e){
     var r=c.getBoundingClientRect();
     c.style.setProperty('--mx',(e.clientX-r.left)+'px');
