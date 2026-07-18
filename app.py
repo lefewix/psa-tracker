@@ -55,9 +55,15 @@ THEME = "light" if os.environ.get("PSA_THEME", "dark").strip().lower() == "light
 # Optional store logo: drop a file at PSA_LOGO (svg/png/jpg) and it appears
 # above the site title on the gate and dashboard, served at /logo.
 LOGO_PATH = os.environ.get("PSA_LOGO", "/opt/psa-tracker/logo.svg")
+# PSA_LOGO_CHIP=1: render the logo on a white rounded backing in dark mode -
+# for marks that are dark-on-light or have a baked-in white box.
+LOGO_CHIP = os.environ.get("PSA_LOGO_CHIP", "").strip().lower() in ("1", "true", "yes")
 
 def logo_tag():
-    return '<img class="logo" src="/logo" alt="">' if os.path.exists(LOGO_PATH) else ""
+    if not os.path.exists(LOGO_PATH):
+        return ""
+    cls = "logo chip" if LOGO_CHIP else "logo"
+    return f'<img class="{cls}" src="/logo" alt="">'
 
 # Accent-derived shades flip direction per theme (lighter on dark, deeper on light)
 _AC_MIX_L = {"--ac-hot": "85%,black", "--ac-soft": "80%,black",
@@ -76,7 +82,7 @@ _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#171
  "hair": "rgba(255,255,255,.08)", "hairh": "rgba(255,255,255,.14)",
  "hair2": "rgba(255,255,255,.06)", "track": "rgba(255,255,255,.09)",
  "chipbg": "rgba(255,255,255,.05)", "chipline": "rgba(255,255,255,.12)",
- "logoblend": "normal",
+ "logoblend": "normal", "chipfill": "#ffffff", "chippad": "6px 8px",
  "dots": "color-mix(in srgb,var(--ac-pale) 6%,transparent)",
  "glow1": "color-mix(in srgb,var(--ac) 9%,transparent)",
  "glow2": "color-mix(in srgb,var(--ac) 6%,transparent)",
@@ -101,7 +107,7 @@ _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
  "hair": "rgba(22,22,45,.09)", "hairh": "rgba(22,22,45,.18)",
  "hair2": "rgba(22,22,45,.07)", "track": "rgba(22,22,45,.12)",
  "chipbg": "rgba(22,22,45,.05)", "chipline": "rgba(22,22,45,.16)",
- "logoblend": "multiply",
+ "logoblend": "multiply", "chipfill": "transparent", "chippad": "0",
  "dots": "color-mix(in srgb,var(--ac) 27%,transparent)",
  "glow1": "color-mix(in srgb,var(--ac) 23%,transparent)",
  "glow2": "color-mix(in srgb,var(--ac) 15%,transparent)",
@@ -520,6 +526,7 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 .wrap{max-width:820px;margin:0 auto}
 .logo{display:block;height:52px;width:auto;margin:0 0 10px;mix-blend-mode:var(--logoblend,normal)}
+.logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
 .gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
