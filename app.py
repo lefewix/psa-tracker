@@ -316,7 +316,8 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .synced{text-align:right;flex-shrink:0;font-size:8.5px;font-weight:700;letter-spacing:.13em;
  color:#6c6a7d;line-height:1.5;padding-top:5px;white-space:nowrap}
 .synced b{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;color:#b9aeff;margin-top:2px}
-.synced .estnote{display:block;font-size:7.5px;font-weight:700;letter-spacing:.08em;color:#4d4b59;margin-top:3px}
+.synced .estnote{display:block;font-size:7.5px;font-weight:700;letter-spacing:.08em;color:#4d4b59;margin-top:3px;line-height:1.6}
+.synced .lbl2{display:block;margin-top:8px}
 .toolbar{display:flex;gap:10px;margin:22px 0 4px;flex-wrap:wrap;align-items:stretch}
 .searchwrap{position:relative;flex:1;min-width:220px}
 .searchbar{width:100%;margin:0;text-align:left;padding:10px 13px;font-size:13px;font-weight:600}
@@ -651,14 +652,25 @@ def people_page(a, owner):
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
     total = 0.0
     unpriced = 0
+    covered = 0.0
+    uncovered = 0
     for c in cards:
         p = service_price(a, svc_map.get(c["sub_number"], ""))
         if p is None:
             unpriced += 1
         else:
             total += p
+        dv = c.get("declared_value")
+        if dv is None:
+            uncovered += 1
+        else:
+            covered += dv
+    ins = (f'<span class="lbl2">INSURED COVERAGE</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
+           if covered or uncovered else "")
     est = (f'<div class="synced">EST. GRADING COST<b>${total:,.2f}'
-           f'{"+" if unpriced else ""}</b><span class="estnote">base per-card fees · pending PSA upcharges</span></div>') if cards else ""
+           f'{"+" if unpriced else ""}</b>{ins}'
+           f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
+           f'coverage = declared value on file with PSA</span></div>') if cards else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(owner)}'s cards</title>
 {HEAD_HTML}

@@ -73,6 +73,7 @@ CREATE TABLE IF NOT EXISTS cards (
   front_thumb TEXT,
   back_thumb  TEXT,
   grade       TEXT,
+  declared_value REAL,
   updated_at  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cards_sub ON cards(sub_number);
@@ -85,6 +86,11 @@ def db():
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
+    try:  # migration for DBs created before declared_value existed
+        conn.execute("ALTER TABLE cards ADD COLUMN declared_value REAL")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass
     return conn
 
 def fetch(url):
@@ -256,9 +262,13 @@ def parse_completed_lines(body):
         spec = ln.get("specId")
         if spec is None:
             continue
+        qty = int(ln.get("quantity") or 1)
+        # declaredValue is the LINE total (per-card value × quantity) — store per card
+        line_dv = ln.get("declaredValue")
+        unit_dv = (float(line_dv) / max(1, qty)) if line_dv is not None else None
         out.append({"line_number": ln.get("lineNumber") or 0, "spec_id": int(spec),
                     "name": ln.get("specDescription") or "",
-                    "quantity": int(ln.get("quantity") or 1)})
+                    "quantity": qty, "dv": unit_dv})
     return out
 
 def parse_spec_images(body):
@@ -287,7 +297,7 @@ def fetch_spec_lines(sub_number):
     for l in lines:
         pi = imgs.get(str(l["spec_id"]), {})
         out.append({"line_number": l["line_number"], "spec_id": l["spec_id"],
-                    "name": l["name"], "quantity": l["quantity"],
+                    "name": l["name"], "quantity": l["quantity"], "dv": l.get("dv"),
                     "front": pi.get("front", ""), "back": pi.get("back", "")})
     return out
 
@@ -311,6 +321,7 @@ def prelim_cards(sub_number, spec_lines):
                 "sub_number": sub_number, "cert_id": cid,
                 "cert_no": "", "name": l["name"], "line_number": l["line_number"],
                 "front_thumb": l["front"], "back_thumb": l["back"], "grade": "",
+                "declared_value": l.get("dv"),
             })
     cards.sort(key=lambda c: c["line_number"] or 0)
     return cards
@@ -332,6 +343,40 @@ def backfill_images(cards, spec_lines):
             c["name"] = l["name"]
         filled = True
     return filled
+
+def assign_dv(cards, spec_lines):
+    """Attach per-card declared values from the submission form lines to cert cards.
+
+    Cert cards can't be line-matched naively: quantity>1 form lines expand into
+    that many sequential cert lines, and old graded subs have line_number=0 on
+    every card (no spec review data). Strategy, safest first:
+      1. uniform — every card on the form is declared at the same value: assign it
+         to all cards (covers old line-0 subs too).
+      2. positional — expanded form positions == card count: map in submission
+         order (cards sorted by line_number, cert_id).
+      3. identity — fall back to direct line_number match.
+    """
+    units = []
+    for l in sorted(spec_lines, key=lambda l: l["line_number"] or 0):
+        units.extend([l.get("dv")] * max(1, l["quantity"]))
+    known = {u for u in units if u is not None}
+    if not known:
+        return
+    if len(known) == 1 and None not in units:
+        u = units[0]
+        for c in cards:
+            if c.get("declared_value") is None:
+                c["declared_value"] = u
+    elif len(units) == len(cards):
+        ordered = sorted(cards, key=lambda c: (c["line_number"] or 0, str(c["cert_id"])))
+        for c, u in zip(ordered, units):
+            if c.get("declared_value") is None and u is not None:
+                c["declared_value"] = u
+    else:
+        by_line = {l["line_number"]: l.get("dv") for l in spec_lines}
+        for c in cards:
+            if c.get("declared_value") is None:
+                c["declared_value"] = by_line.get(c["line_number"])
 
 def carryover_owners(sub_number, old_rows, new_cards):
     """When prelim (spec:) cards are replaced by real cert cards, move owner tags
@@ -366,10 +411,10 @@ def upsert_cards(conn, sub_number, cards):
     conn.execute("DELETE FROM cards WHERE sub_number=?", (sub_number,))
     for c in cards:
         conn.execute("""INSERT OR REPLACE INTO cards
-            (cert_id, sub_number, cert_no, name, line_number, front_thumb, back_thumb, grade, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?)""",
+            (cert_id, sub_number, cert_no, name, line_number, front_thumb, back_thumb, grade, declared_value, updated_at)
+            VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (c["cert_id"], c["sub_number"], c["cert_no"], c["name"], c["line_number"],
-             c["front_thumb"], c["back_thumb"], c["grade"], now))
+             c["front_thumb"], c["back_thumb"], c["grade"], c.get("declared_value"), now))
     conn.commit()
 
 def refresh_cards(conn, subs, prev=None, full=False):
@@ -381,11 +426,12 @@ def refresh_cards(conn, subs, prev=None, full=False):
         has_certs = bool(json.loads(s["cert_ids"] or "[]"))
         # A sub that was ALREADY Shipped before this scan is frozen — PSA won't
         # change its cards/images. Skip its detail fetch unless something is
-        # missing or --full was passed. Cuts PSA API calls roughly in half.
+        # missing (image or declared value) or --full was passed. Cuts PSA API
+        # calls roughly in half once every sub is fully populated.
         if not full and s["status"] == "Shipped" and prev.get(sub) == "Shipped":
-            row = conn.execute("SELECT count(*), sum(front_thumb!='') FROM cards WHERE sub_number=?",
-                               (sub,)).fetchone()
-            if row[0] and row[0] == (row[1] or 0):
+            row = conn.execute("""SELECT count(*), sum(front_thumb!=''),
+                sum(declared_value IS NULL) FROM cards WHERE sub_number=?""", (sub,)).fetchone()
+            if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0):
                 skipped += 1
                 continue
         try:
@@ -393,15 +439,27 @@ def refresh_cards(conn, subs, prev=None, full=False):
             if has_certs:
                 _, body = fetch(detail_url(sub))
                 cards = parse_detail(sub, body)
+                # orders.get knows nothing about declared values — carry the ones we
+                # already learned forward by line number so we don't re-hit the spec
+                # endpoint every scan for active subs
+                if cards and any(c.get("declared_value") is None for c in cards):
+                    prior = dict(conn.execute("""SELECT line_number, declared_value FROM cards
+                        WHERE sub_number=? AND declared_value IS NOT NULL""", (sub,)))
+                    for c in cards:
+                        if c.get("declared_value") is None:
+                            c["declared_value"] = prior.get(c["line_number"])
             # Double-check images regardless of stage: a sub can have cert_ids but
             # orders.get still returns no images (e.g. Order Prep). Whenever a card
-            # is missing an image — or the sub has no cards at all yet — fall back to
-            # the submission 'complete' page (spec images + prelim names).
-            if not cards or any(not c["front_thumb"] for c in cards):
+            # is missing an image or a declared value — or the sub has no cards at
+            # all yet — fall back to the submission 'complete' page (spec images,
+            # prelim names, per-card declared values).
+            if not cards or any(not c["front_thumb"] or c.get("declared_value") is None
+                                for c in cards):
                 spec_lines = fetch_spec_lines(sub)
                 if spec_lines:
                     if cards:
                         backfill_images(cards, spec_lines)
+                        assign_dv(cards, spec_lines)
                     else:
                         cards = prelim_cards(sub, spec_lines)
             if cards:

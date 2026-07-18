@@ -93,6 +93,10 @@ Per-account (`account.env`): `LABEL`, `SITE_PASSWORD`, `PSA_LOGIN_EMAIL`,
 (`"regular:109,max:89.99,bulk:34.99,value:45.99"`, matched most-specific-first)
 used for the per-person estimated-cost badge.
 
+Each person's page also shows **INSURED COVERAGE** — the sum of the real
+per-card declared values PSA has on file (captured automatically from the
+submission data; no configuration needed).
+
 ## Operations
 
 ```bash
