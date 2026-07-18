@@ -430,12 +430,19 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
 /* spotlight border: the card edge lights up under the cursor (JS sets --mx/--my) */
 .card,.gc{position:relative}
-.card::before,.gc::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
- background:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),rgba(167,139,250,.4),transparent 70%);
- padding:1px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+.card::before,.gc::before{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;
+ background:radial-gradient(300px circle at var(--mx,50%) var(--my,50%),rgba(167,139,250,.55),transparent 70%);
+ padding:2px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
-@media(hover:hover){.card:hover::before,.gc:hover::before{opacity:1}}
+/* soft outer bloom: a wider masked band just outside the edge, so the lit ring
+   appears to cast light. kept faint (9%) - any brighter reads as AI-glow */
+.card::after,.gc::after{content:"";position:absolute;inset:-16px;border-radius:inherit;pointer-events:none;
+ background:radial-gradient(340px circle at calc(var(--mx,50%) + 16px) calc(var(--my,50%) + 16px),rgba(139,92,246,.09),transparent 70%);
+ padding:16px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
+@media(hover:hover){.card:hover::before,.gc:hover::before,.card:hover::after,.gc:hover::after{opacity:1}}
 /* staggered entry: cards rise in with slight delays instead of mounting all at once */
 @media(prefers-reduced-motion:no-preference){
  .card,.gc{animation:rise .38s cubic-bezier(.2,.7,.3,1) both}
