@@ -769,6 +769,15 @@ THEME_JS = f"""<script>
     render();
   }});
   document.body.appendChild(b);render();
+  var lg=document.querySelector('.logo.chip');
+  if(lg){{
+    var al=function(){{
+      var r=lg.getBoundingClientRect();
+      var x=(r.left+window.scrollX)%26, y=(r.top+window.scrollY)%26;
+      lg.style.backgroundPosition=(-x)+'px '+(-y)+'px';
+    }};
+    al();window.addEventListener('resize',al);
+  }}
 }})();
 </script>"""
 
