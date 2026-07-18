@@ -52,6 +52,13 @@ ACCENT = _hexcolor("PSA_ACCENT", "#8b5cf6")
 ACCENT_2 = _hexcolor("PSA_ACCENT_2", "#6366f1")
 THEME = "light" if os.environ.get("PSA_THEME", "dark").strip().lower() == "light" else "dark"
 
+# Optional store logo: drop a file at PSA_LOGO (svg/png/jpg) and it appears
+# above the site title on the gate and dashboard, served at /logo.
+LOGO_PATH = os.environ.get("PSA_LOGO", "/opt/psa-tracker/logo.svg")
+
+def logo_tag():
+    return '<img class="logo" src="/logo" alt="">' if os.path.exists(LOGO_PATH) else ""
+
 # Accent-derived shades flip direction per theme (lighter on dark, deeper on light)
 _AC_MIX = ({"--ac-hot": "85%,black", "--ac-soft": "80%,black",
             "--ac-pale": "68%,black", "--ac-ice": "45%,black"} if THEME == "light" else
@@ -69,6 +76,10 @@ _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#171
  "hair": "rgba(255,255,255,.08)", "hairh": "rgba(255,255,255,.14)",
  "hair2": "rgba(255,255,255,.06)", "track": "rgba(255,255,255,.09)",
  "chipbg": "rgba(255,255,255,.05)", "chipline": "rgba(255,255,255,.12)",
+ "dots": "color-mix(in srgb,var(--ac-pale) 6%,transparent)",
+ "glow1": "color-mix(in srgb,var(--ac) 9%,transparent)",
+ "glow2": "color-mix(in srgb,var(--ac) 6%,transparent)",
+ "glow3": "color-mix(in srgb,var(--ac2) 5%,transparent)",
  "dot0": "#423a4f", "shc": "rgba(8,5,20,.45)", "shc2": "rgba(8,5,20,.7)",
  "shc3": "rgba(8,5,20,.6)", "frost": "rgba(19,18,26,.7)",
  "sh1": "#15141a", "sh2": "#1d1c24", "err": "#ff8b8b", "holdtx": "#ffc9c9"}
@@ -89,6 +100,10 @@ _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
  "hair": "rgba(22,22,45,.09)", "hairh": "rgba(22,22,45,.18)",
  "hair2": "rgba(22,22,45,.07)", "track": "rgba(22,22,45,.12)",
  "chipbg": "rgba(22,22,45,.05)", "chipline": "rgba(22,22,45,.16)",
+ "dots": "color-mix(in srgb,var(--ac) 14%,transparent)",
+ "glow1": "color-mix(in srgb,var(--ac) 16%,transparent)",
+ "glow2": "color-mix(in srgb,var(--ac) 10%,transparent)",
+ "glow3": "color-mix(in srgb,var(--ac2) 13%,transparent)",
  "dot0": "#d7d7e0", "shc": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.12))",
  "shc2": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.14))",
  "shc3": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.12))",
@@ -477,11 +492,11 @@ html{scroll-behavior:smooth}
 @view-transition{navigation:auto}
 body{background-color:var(--bg);min-height:100vh;position:relative;
  background-image:
-  radial-gradient(color-mix(in srgb,var(--ac-pale) 6%,transparent) 1px, transparent 1.4px),
-  radial-gradient(1100px 540px at 50% -140px, color-mix(in srgb,var(--ac) 9%,transparent), transparent 62%),
-  radial-gradient(720px 900px at -6% 520px, color-mix(in srgb,var(--ac) 6%,transparent), transparent 60%),
-  radial-gradient(720px 900px at 106% 880px, color-mix(in srgb,var(--ac2) 5%,transparent), transparent 60%),
-  radial-gradient(800px 560px at 88% 104%, color-mix(in srgb,var(--ac2) 5%,transparent), transparent 62%),
+  radial-gradient(var(--dots) 1px, transparent 1.4px),
+  radial-gradient(1100px 540px at 50% -140px, var(--glow1), transparent 62%),
+  radial-gradient(720px 900px at -6% 520px, var(--glow2), transparent 60%),
+  radial-gradient(720px 900px at 106% 880px, var(--glow3), transparent 60%),
+  radial-gradient(800px 560px at 88% 104%, var(--glow3), transparent 62%),
   linear-gradient(180deg,var(--bgtop) 0%,var(--bg) 460px);
  background-size:26px 26px,auto,auto,auto,auto,auto;
  background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
@@ -495,6 +510,8 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
 @media(prefers-reduced-motion:reduce){.node.now .dot,.grid img,.cover{animation:none}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 .wrap{max-width:820px;margin:0 auto}
+.logo{display:block;height:52px;width:auto;margin:0 0 10px}
+.gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .sub{font-size:12px;font-weight:400;letter-spacing:.01em;color:var(--m4);margin-top:6px}
@@ -722,7 +739,7 @@ def gate_page(error=""):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
-<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
+{logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="Password or email" autofocus autocomplete="current-password">
 <button type="submit">Enter</button></form>
@@ -969,7 +986,7 @@ def dash_page(a, subs):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
-<div class="hrow"><div><h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
+<div class="hrow"><div>{logo_tag()}<h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
 <div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
 {toolbar}
@@ -1302,9 +1319,25 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def serve_logo(self):
+        if not os.path.exists(LOGO_PATH):
+            return self.send(404, "no logo", "text/plain")
+        ext = LOGO_PATH.rsplit(".", 1)[-1].lower()
+        ctype = {"svg": "image/svg+xml", "png": "image/png",
+                 "jpg": "image/jpeg", "jpeg": "image/jpeg"}.get(ext, "application/octet-stream")
+        data = open(LOGO_PATH, "rb").read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=3600")
+        self.end_headers()
+        self.wfile.write(data)
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        if path == "/logo":
+            return self.serve_logo()
         got = self.authed()
         if not got:
             return self.send(200, gate_page())
