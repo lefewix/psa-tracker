@@ -548,11 +548,9 @@ button{width:100%;margin-top:10px;background:#8b5cf6;border:0;border-radius:10px
 button:hover{background:#9d74f8}
 button:active{transform:translateY(1px)}
 .err{color:#ff8b8b;font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
-/* mobile: collapse stage labels to first letter, but show the CURRENT stage in
-   full (avoids the ambiguous two-'A' problem of Arrived vs Assembly) */
-@media(max-width:640px){.lbl{font-size:0}.lbl:first-letter{font-size:9px}
-.node.now .lbl{font-size:8.5px;white-space:nowrap;position:relative;z-index:2;
- background:#17161c;padding:0 4px;border-radius:4px}
+/* mobile: hide stage labels entirely; only the CURRENT stage is named */
+@media(max-width:640px){.lbl{font-size:0}
+.node.now .lbl{font-size:8.5px;white-space:nowrap}
 .card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
