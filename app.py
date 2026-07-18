@@ -371,10 +371,14 @@ CSS = """
 html{scroll-behavior:smooth}
 body{background-color:#101014;min-height:100vh;position:relative;
  background-image:
+  radial-gradient(rgba(198,190,240,.055) 1px, transparent 1.4px),
   radial-gradient(1100px 540px at 50% -140px, rgba(139,92,246,.09), transparent 62%),
+  radial-gradient(720px 900px at -6% 520px, rgba(139,92,246,.055), transparent 60%),
+  radial-gradient(720px 900px at 106% 880px, rgba(99,102,241,.05), transparent 60%),
   radial-gradient(800px 560px at 88% 104%, rgba(99,102,241,.05), transparent 62%),
   linear-gradient(180deg,#13121a 0%,#101014 460px);
- background-repeat:no-repeat;
+ background-size:26px 26px,auto,auto,auto,auto,auto;
+ background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
  color:#ecebf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
  -webkit-font-smoothing:antialiased;padding:44px 20px 80px;font-variant-numeric:tabular-nums}
 /* faint grain so large dark surfaces don't read as flat vector fill */
