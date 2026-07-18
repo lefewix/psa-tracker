@@ -338,7 +338,9 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
         name_hits = []
     else:
         names = sorted({v for v in owners.values() if v})
-        name_hits = [n for n in names if ql in n.lower()][:limit_names]
+        matches = [n for n in names if ql in n.lower()]
+        # empty focus = browse mode: list EVERY person, scrollable directory
+        name_hits = matches if not ql else matches[:limit_names]
     card_hits = []
     if ql or want:
         pool = load_all_cards(a)
