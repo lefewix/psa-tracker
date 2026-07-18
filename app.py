@@ -338,7 +338,7 @@ body::before{background:
  filter:blur(36px);animation:drift1 26s ease-in-out infinite alternate}
 body::after{background:
  radial-gradient(40% 40% at 66% 24%, rgba(92,72,255,.54), transparent 62%),
- radial-gradient(46% 46% at 24% 74%, rgba(180,84,224,.40), transparent 62%);
+ radial-gradient(46% 46% at 24% 74%, rgba(52,168,255,.32), transparent 62%);
  filter:blur(46px);animation:drift2 35s ease-in-out infinite alternate}
 @keyframes drift1{
  0%{transform:translate3d(-5%,-4%,0) scale(1);opacity:.85}
