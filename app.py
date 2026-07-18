@@ -87,7 +87,7 @@ _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#171
  "hair": "rgba(255,255,255,.08)", "hairh": "rgba(255,255,255,.14)",
  "hair2": "rgba(255,255,255,.06)", "track": "rgba(255,255,255,.09)",
  "chipbg": "rgba(255,255,255,.05)", "chipline": "rgba(255,255,255,.12)",
- "logoblend": "normal", "chipfill": "#ffffff", "chippad": "6px 8px", "logofx": "brightness(0) invert(1)",
+ "logoblend": "normal", "chipfill": "#ffffff", "chippad": "6px 8px", "chipdots": "color-mix(in srgb,var(--ac) 20%,transparent)", "logofx": "brightness(0) invert(1)",
  "dots": "color-mix(in srgb,var(--ac-pale) 6%,transparent)",
  "glow1": "color-mix(in srgb,var(--ac) 9%,transparent)",
  "glow2": "color-mix(in srgb,var(--ac) 6%,transparent)",
@@ -112,7 +112,7 @@ _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
  "hair": "rgba(22,22,45,.09)", "hairh": "rgba(22,22,45,.18)",
  "hair2": "rgba(22,22,45,.07)", "track": "rgba(22,22,45,.12)",
  "chipbg": "rgba(22,22,45,.05)", "chipline": "rgba(22,22,45,.16)",
- "logoblend": "multiply", "chipfill": "transparent", "chippad": "0", "logofx": "none",
+ "logoblend": "multiply", "chipfill": "transparent", "chippad": "0", "chipdots": "transparent", "logofx": "none",
  "dots": "color-mix(in srgb,var(--ac) 27%,transparent)",
  "glow1": "color-mix(in srgb,var(--ac) 23%,transparent)",
  "glow2": "color-mix(in srgb,var(--ac) 15%,transparent)",
@@ -531,7 +531,7 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 .wrap{max-width:820px;margin:0 auto}
 .logo{display:block;height:52px;width:auto;margin:0 0 10px;mix-blend-mode:var(--logoblend,normal)}
-.logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
+.logo.chip{background:radial-gradient(var(--chipdots) 1px,transparent 1.3px) 0 0/11px 11px,var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
 .logo.sil{filter:var(--logofx,none)}
 .gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
