@@ -299,23 +299,28 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=12):
         names = sorted({v for v in owners.values() if v})
         name_hits = [n for n in names if ql in n.lower()][:limit_names]
     card_hits = []
-    if ql:
-        for c in load_all_cards(a):
-            if want and owners.get(str(c["cert_id"]), "").lower() != want:
-                continue
-            hay = " ".join((c.get("name") or "", str(c.get("cert_no") or ""),
-                            str(c.get("cert_id") or ""))).lower()
-            if ql in hay:
-                card_hits.append({
-                    "name": smart_title(c["name"] or ""),
-                    "cert": "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or ""),
-                    "sub": c["sub_number"],
-                    "owner": owners.get(str(c["cert_id"]), ""),
-                    "img": ("/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small")))
-                           if c.get("front_thumb") else "",
-                })
-                if len(card_hits) >= limit_cards:
-                    break
+    if ql or want:
+        pool = load_all_cards(a)
+        if want:
+            pool = [c for c in pool if owners.get(str(c["cert_id"]), "").lower() == want]
+            if not ql:  # empty focus on a person page: browse their cards A-Z
+                pool.sort(key=lambda c: smart_title(c.get("name") or "").lower())
+        for c in pool:
+            if ql:
+                hay = " ".join((c.get("name") or "", str(c.get("cert_no") or ""),
+                                str(c.get("cert_id") or ""))).lower()
+                if ql not in hay:
+                    continue
+            card_hits.append({
+                "name": smart_title(c["name"] or ""),
+                "cert": "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or ""),
+                "sub": c["sub_number"],
+                "owner": owners.get(str(c["cert_id"]), ""),
+                "img": ("/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small")))
+                       if c.get("front_thumb") else "",
+            })
+            if len(card_hits) >= limit_cards:
+                break
     return {"names": name_hits, "cards": card_hits}
 
 # ---------- rendering ----------
