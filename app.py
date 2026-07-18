@@ -29,7 +29,9 @@ Per-account account.env (written by add_account.sh, chmod 600):
 """
 import hashlib, hmac, html, json, os, re, shlex, sqlite3, threading, time
 import urllib.parse, urllib.request
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from zoneinfo import ZoneInfo
 
 SECRET = os.environ.get("PSA_SECRET", "").encode()
 BIND = os.environ.get("PSA_BIND", "0.0.0.0")
@@ -59,6 +61,30 @@ def stage_index(status):
         return STAGES.index(status)
     except ValueError:
         return 0
+
+# Timestamps are stored UTC; render them in the audience's timezone.
+try:
+    DISPLAY_TZ = ZoneInfo(os.environ.get("PSA_DISPLAY_TZ", "America/Toronto"))
+except Exception:
+    DISPLAY_TZ = timezone.utc
+
+def fmt_local(iso):
+    """UTC ISO timestamp -> 'Jul 18, 1:06 AM ET' (or raw slice if unparseable)."""
+    try:
+        dt = datetime.fromisoformat(iso)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        loc = dt.astimezone(DISPLAY_TZ)
+        return f"{loc.strftime('%b %d')}, {loc.strftime('%I:%M %p').lstrip('0')} {loc.strftime('%Z')}"
+    except (ValueError, TypeError):
+        return iso[:16].replace("T", " ")
+
+def short_date(iso):
+    """'2026-09-25' -> 'SEP 25' for compact pill display."""
+    try:
+        return datetime.fromisoformat(iso[:10]).strftime("%b %d").upper()
+    except (ValueError, TypeError):
+        return iso
 
 # PSA is inconsistent about card-name casing: some specDescriptions arrive ALL
 # CAPS, most arrive mixed. Tame the shouty ones at render time; leave mixed-case
@@ -354,10 +380,10 @@ h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#5a5866;margin-top:6px}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
-.synced{text-align:right;flex-shrink:0;font-size:8.5px;font-weight:700;letter-spacing:.13em;
+.synced{text-align:right;flex-shrink:0;font-size:9px;font-weight:700;letter-spacing:.13em;
  color:#6c6a7d;line-height:1.5;padding-top:5px;white-space:nowrap}
-.synced b{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;color:#b9aeff;margin-top:2px}
-.synced .estnote{display:block;font-size:7.5px;font-weight:700;letter-spacing:.08em;color:#4d4b59;margin-top:3px;line-height:1.6}
+.synced b{display:block;font-size:11.5px;font-weight:800;letter-spacing:.04em;color:#b9aeff;margin-top:2px}
+.synced .estnote{display:block;font-size:8.5px;font-weight:700;letter-spacing:.08em;color:#55516a;margin-top:3px;line-height:1.6}
 .synced .lbl2{display:block;margin-top:8px}
 .toolbar{display:flex;gap:10px;margin:22px 0 4px;flex-wrap:wrap;align-items:stretch}
 .searchwrap{position:relative;flex:1;min-width:220px}
@@ -397,6 +423,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .pill.done{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
 .pill.hold{color:#ffc9c9;background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.35)}
 .pill.arch{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
+.pill .pic{vertical-align:-1px;margin-right:5px}
 .pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
 /* gradient progress timeline */
 .tl{position:relative;height:46px;margin:22px 0 12px}
@@ -450,7 +477,14 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .sublink{display:block;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.05em;color:#c9beff;
  background:#1a1533;border:1px solid #322863;border-radius:99px;padding:6px 10px;text-decoration:none;margin-top:8px}
 .sublink:hover{background:#241b45;color:#e6e0ff}
-.svc{text-align:center;font-size:9px;font-weight:700;letter-spacing:.09em;color:#77748a;margin-top:6px;text-transform:uppercase}
+.svc{text-align:center;font-size:9.5px;font-weight:700;letter-spacing:.09em;color:#77748a;margin-top:6px;text-transform:uppercase}
+/* lightbox for card scans */
+.lb{position:fixed;inset:0;z-index:50;background:rgba(7,7,10,.84);display:none;
+ align-items:center;justify-content:center;cursor:zoom-out;
+ backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.lb.open{display:flex}
+.lb img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 20px 80px rgba(0,0,0,.6)}
+.grid a{cursor:zoom-in}
 /* archived grey-out */
 .card.arch,.gc.arch{opacity:.42;filter:grayscale(.72)}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
@@ -472,8 +506,27 @@ button:hover{background:#8f73ff}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
-HEAD_HTML = """<link rel="preconnect" href="https://fonts.googleapis.com">
+# favicon: purple-gradient card mark, inline SVG so it needs no asset file
+FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+           "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
+           "<stop offset='0' stop-color='%237c3aed'/><stop offset='1' stop-color='%23d94ff2'/>"
+           "</linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/>"
+           "<rect x='20' y='14' width='24' height='36' rx='4' fill='none' stroke='white' stroke-width='4'/>"
+           "<circle cx='32' cy='32' r='3.5' fill='white'/></svg>")
+
+HEAD_HTML = f"""<link rel="icon" type="image/svg+xml" href="{FAVICON}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&display=swap" rel="stylesheet">"""
+
+def _pic(paths):
+    """Tiny inline pill icon (stroke = currentColor so it inherits pill color)."""
+    return (f'<svg class="pic" width="10" height="10" viewBox="0 0 24 24" fill="none" '
+            f'stroke="currentColor" stroke-width="2.6" stroke-linecap="round" '
+            f'stroke-linejoin="round">{paths}</svg>')
+
+ICON_CLOCK = _pic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
+ICON_HOLD = _pic('<path d="M9 5v14M15 5v14"/>')
 
 def gate_page(error=""):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -502,12 +555,16 @@ def timeline_html(status):
             f'<div class="fill" style="width:{pct:.1f}%"></div>{"".join(nodes)}</div>')
 
 def card_html(s, archived=False):
+    # The stepper already highlights the current stage, so the pill carries the
+    # NEXT most useful fact instead: when the cards come back.
     if s["on_hold"]:
-        pill = '<span class="pill hold">ON HOLD</span>'
+        pill = f'<span class="pill hold">{ICON_HOLD}ON HOLD</span>'
     elif s["status"] == "Shipped":
-        pill = '<span class="pill done">SHIPPED</span>'
+        pill = f'<span class="pill done">{ICON_CHECK}SHIPPED</span>'
+    elif s["est_start"]:
+        pill = f'<span class="pill">{ICON_CLOCK}BACK ~{html.escape(short_date(s["est_start"]))}</span>'
     else:
-        pill = f'<span class="pill">{html.escape(s["status"].upper())}</span>'
+        pill = f'<span class="pill done">{ICON_CLOCK}ETA PENDING</span>'
 
     if s["status"] == "Shipped" and s["shipped"]:
         foot = f'Shipped {html.escape(s["shipped"])}'
@@ -601,6 +658,26 @@ document.querySelectorAll('.archbtn').forEach(function(b){
 });
 </script>"""
 
+LIGHTBOX_JS = """<script>
+(function(){
+  var links=document.querySelectorAll('.grid a[href^="/img"]');
+  if(!links.length) return;
+  var lb=document.createElement('div'); lb.className='lb'; lb.innerHTML='<img alt="">';
+  document.body.appendChild(lb);
+  var im=lb.querySelector('img');
+  links.forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      im.src=a.getAttribute('href');
+      lb.classList.add('open');
+    });
+  });
+  function close(){ lb.classList.remove('open'); im.src=''; }
+  lb.addEventListener('click', close);
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+})();
+</script>"""
+
 OWNER_JS = """
 <script>
 document.querySelectorAll('.own').forEach(function(i){
@@ -626,7 +703,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service=""):
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
-        img = f'<a href="{big}" target="_blank"><img loading="lazy" src="{src}" alt=""></a>'
+        img = f'<a href="{big}"><img loading="lazy" src="{src}" alt=""></a>'  # opens in lightbox
     else:
         img = '<div class="ph">NO IMAGE YET</div>'
     sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))} →</a>'
@@ -644,7 +721,7 @@ def dash_page(a, subs):
     body = ("".join(card_html(s) for s in active) + "".join(card_html(s, archived=True) for s in gone)
             or '<div class="empty">No submissions yet.</div>')
     updated = max((s["updated_at"] or "" for s in subs), default="")
-    stamp = (updated[:16].replace('T', ' ') + " UTC") if updated else "n/a"
+    stamp = fmt_local(updated) if updated else "n/a"
     toolbar = f'<div class="toolbar">{search_box()}</div>'
     filters = (f'<div class="filters"><span class="f farch" id="archtoggle">ARCHIVED · {len(gone)}</span></div>'
                if gone else "")
@@ -711,7 +788,7 @@ def detail_page(a, sub):
 {eta_badge(sub)}</div>
 <div class="card" style="margin-top:18px">{timeline_html(sub['status'])}</div>
 {body}
-</div>{OWNER_JS}{ARCH_JS}</body></html>"""
+</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}</body></html>"""
 
 def people_page(a, owner):
     owners = owners_map(a)
@@ -755,7 +832,7 @@ def people_page(a, owner):
 <div class="sub">{len(cards)} CARDS WITH {html.escape(a['label'].upper())}</div></div>{est}</div>
 <div class="toolbar">{search_box(owner=owner)}</div>
 {grid}
-</div>{SEARCH_JS}{OWNER_JS}</body></html>"""
+</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}</body></html>"""
 
 def search_page(a, q, owner=""):
     ql = (q or "").strip().lower()
@@ -798,7 +875,7 @@ def search_page(a, q, owner=""):
 <div class="sub">{count}</div>
 <div class="toolbar">{search_box(q or '', owner=owner)}</div>
 {grid}
-</div>{SEARCH_JS}{OWNER_JS}</body></html>"""
+</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}</body></html>"""
 
 # ---------- server ----------
 

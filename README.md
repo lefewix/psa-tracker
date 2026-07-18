@@ -84,7 +84,7 @@ tick (or `systemctl start psa-scan.service`).
 ## Configuration
 
 Global (`/etc/psa-tracker.env`): `PSA_SECRET` (required), `PSA_BIND`,
-`PSA_PORT`, `SITE_TITLE`, `SITE_TAGLINE`, `PSA_COOKIE_SECURE`, `PSA_LOCALE` /
+`PSA_PORT`, `SITE_TITLE`, `SITE_TAGLINE`, `PSA_COOKIE_SECURE`, `PSA_DISPLAY_TZ` (IANA name for displayed times, default America/Toronto), `PSA_LOCALE` /
 `PSA_LOCATION` (US accounts: `en-US` / `US`), `DISCORD_WEBHOOK` (optional
 status-change pings).
 
