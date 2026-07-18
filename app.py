@@ -40,6 +40,17 @@ COOKIE_DAYS = int(os.environ.get("COOKIE_DAYS", "30"))
 COOKIE_SECURE = os.environ.get("PSA_COOKIE_SECURE", "1") not in ("0", "false", "no")
 SITE_TITLE = os.environ.get("SITE_TITLE", "Submissions")
 SITE_TAGLINE = os.environ.get("SITE_TAGLINE", "PSA GRADING TRACKER")
+
+def _hexcolor(env, default):
+    """Env-supplied brand color, validated so env can't inject CSS."""
+    v = os.environ.get(env, "").strip()
+    return v if re.fullmatch(r"#[0-9a-fA-F]{6}", v) else default
+
+# Per-store branding: one primary accent + one ambient secondary; every other
+# shade is derived in CSS via color-mix, so stores only pick two colors.
+ACCENT = _hexcolor("PSA_ACCENT", "#8b5cf6")
+ACCENT_2 = _hexcolor("PSA_ACCENT_2", "#6366f1")
+THEME_VARS = f":root{{--ac:{ACCENT};--ac2:{ACCENT_2}}}"
 ACCOUNTS_DIR = os.environ.get("PSA_ACCOUNTS_DIR", "/opt/psa-tracker/accounts")
 
 # Image proxy: PSA card images live on this public CloudFront host. We fetch +
@@ -412,16 +423,20 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
 # ---------- rendering ----------
 
 CSS = """
+:root{--ac-hot:color-mix(in srgb,var(--ac) 82%,white);
+ --ac-soft:color-mix(in srgb,var(--ac) 72%,white);
+ --ac-pale:color-mix(in srgb,var(--ac) 45%,white);
+ --ac-ice:color-mix(in srgb,var(--ac) 15%,white)}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 @view-transition{navigation:auto}
 body{background-color:#101014;min-height:100vh;position:relative;
  background-image:
-  radial-gradient(rgba(198,190,240,.055) 1px, transparent 1.4px),
-  radial-gradient(1100px 540px at 50% -140px, rgba(139,92,246,.09), transparent 62%),
-  radial-gradient(720px 900px at -6% 520px, rgba(139,92,246,.055), transparent 60%),
-  radial-gradient(720px 900px at 106% 880px, rgba(99,102,241,.05), transparent 60%),
-  radial-gradient(800px 560px at 88% 104%, rgba(99,102,241,.05), transparent 62%),
+  radial-gradient(color-mix(in srgb,var(--ac-pale) 6%,transparent) 1px, transparent 1.4px),
+  radial-gradient(1100px 540px at 50% -140px, color-mix(in srgb,var(--ac) 9%,transparent), transparent 62%),
+  radial-gradient(720px 900px at -6% 520px, color-mix(in srgb,var(--ac) 6%,transparent), transparent 60%),
+  radial-gradient(720px 900px at 106% 880px, color-mix(in srgb,var(--ac2) 5%,transparent), transparent 60%),
+  radial-gradient(800px 560px at 88% 104%, color-mix(in srgb,var(--ac2) 5%,transparent), transparent 62%),
   linear-gradient(180deg,#13121a 0%,#101014 460px);
  background-size:26px 26px,auto,auto,auto,auto,auto;
  background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
@@ -430,7 +445,7 @@ body{background-color:#101014;min-height:100vh;position:relative;
 /* faint grain so large dark surfaces don't read as flat vector fill */
 body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;background:
  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E") repeat}
-:focus-visible{outline:2px solid #8b5cf6;outline-offset:2px}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 @media(prefers-reduced-motion:reduce){.node.now .dot,.grid img,.cover{animation:none}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
@@ -441,18 +456,18 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .synced{text-align:right;flex-shrink:0;font-size:11px;font-weight:400;letter-spacing:.01em;
  color:#85829a;line-height:1.5;padding-top:5px;white-space:nowrap}
-.synced b{display:block;font-size:12.5px;font-weight:600;letter-spacing:0;color:#b9aeff;margin-top:2px}
+.synced b{display:block;font-size:12.5px;font-weight:600;letter-spacing:0;color:var(--ac-pale);margin-top:2px}
 .synced .estnote{display:block;font-size:10px;font-weight:400;letter-spacing:.01em;color:#7d7a90;margin-top:3px;line-height:1.6}
 .synced .lbl2{display:block;margin-top:8px}
 .lgout{color:#85829a;display:inline-flex;padding:6px 0 0 2px;transition:color .15s}
-.lgout:hover{color:#c4b0ff}
+.lgout:hover{color:var(--ac-pale)}
 .lgout:active{transform:translateY(1px)}
 .hint{display:flex;align-items:center;gap:10px;margin:18px 0 2px;padding:11px 15px;font-size:13px;font-weight:400;
- color:#cdb8ff;background:rgba(139,92,246,.10);
- border:1px solid rgba(167,139,250,.28);border-radius:12px}
+ color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 10%,transparent);
+ border:1px solid color-mix(in srgb,var(--ac-soft) 28%,transparent);border-radius:12px}
 .hintx{width:auto;margin:0 0 0 auto;padding:0 4px;background:transparent;border:0;color:#8d87a0;
  font-size:13px;cursor:pointer;letter-spacing:0}
-.hintx:hover{color:#e6e0ff}
+.hintx:hover{color:var(--ac-ice)}
 .toolbar{display:flex;gap:10px;margin:22px -14px 4px;flex-wrap:wrap;align-items:stretch;position:sticky;top:0;z-index:20;padding:12px 14px;border-radius:12px;
  background:rgba(19,18,26,.7);
  backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);
@@ -468,7 +483,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  color:#ecebf0;font-size:12.5px;font-weight:500}
 .pvrow:hover{background:#1a1922}
 .pvrow small{display:block;color:#8a879d;font-size:10.5px;font-weight:400;margin-top:1px;letter-spacing:.01em}
-.pvtag{font-size:9px;font-weight:500;letter-spacing:.02em;color:#c9beff;background:#221b45;border:1px solid #382c72;
+.pvtag{font-size:9px;font-weight:500;letter-spacing:.02em;color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 19%,#101014);border:1px solid color-mix(in srgb,var(--ac) 37%,#101014);
  border-radius:6px;padding:3px 7px;flex-shrink:0}
 .pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #26252f;flex-shrink:0;background:#17171c}
 .pvempty{padding:14px 10px;color:#817e92;font-size:12px}
@@ -476,7 +491,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .f{font-size:11.5px;font-weight:500;letter-spacing:.01em;color:#8d8a9a;background:#17171c;
  border:1px solid #24232c;padding:6px 13px;border-radius:7px;cursor:pointer;transition:.15s}
 .f:hover{border-color:#3a3849;color:#c3c0d0}
-.f.on{background:#8b5cf6;border-color:#8b5cf6;color:#fff}
+.f.on{background:var(--ac);border-color:var(--ac);color:#fff}
 .f.farch.on{background:#4d4b59;border-color:#4d4b59;color:#fff}
 /* flat cards: solid surface + faint hairline */
 .card{background:#17161c;
@@ -488,7 +503,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 /* spotlight border: the card edge lights up under the cursor (JS sets --mx/--my) */
 .card,.gc{position:relative}
 .card::before,.gc::before{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;
- background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),rgba(167,139,250,.75),rgba(167,139,250,.2) 45%,transparent 80%);
+ background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--ac-soft) 75%,transparent),color-mix(in srgb,var(--ac-soft) 20%,transparent) 45%,transparent 80%);
  padding:2px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
@@ -500,7 +515,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .bloom{position:absolute;inset:-3px;border-radius:inherit;pointer-events:none;z-index:-1;
  filter:blur(22px);opacity:0;transition:opacity .25s}
 .bloom::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:3px;
- background:radial-gradient(circle 340px at calc(var(--mx,50%) + 3px) calc(var(--my,50%) + 3px),rgba(139,92,246,.7),transparent 70%);
+ background:radial-gradient(circle 340px at calc(var(--mx,50%) + 3px) calc(var(--my,50%) + 3px),color-mix(in srgb,var(--ac) 70%,transparent),transparent 70%);
  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
  -webkit-mask-composite:xor;mask-composite:exclude}
@@ -520,7 +535,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .meta{font-size:14px;font-weight:400;color:#9b93b3;margin-top:3px}
 .pill{font-size:12px;font-weight:500;letter-spacing:.01em;padding:7px 13px;border-radius:7px;white-space:nowrap;
- color:#c9b8ff;background:rgba(139,92,246,.16);border:1px solid rgba(167,139,250,.32)}
+ color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 16%,transparent);border:1px solid color-mix(in srgb,var(--ac-soft) 32%,transparent)}
 .pill.done{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
 .pill.hold{color:#ffc9c9;background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.35)}
 .pill.arch{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
@@ -532,15 +547,15 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
    (10px dot at y=2..12, 14px active dot at y=0..14, labels all start y=21) */
 .track{position:absolute;top:6px;left:5%;right:5%;height:2px;background:rgba(255,255,255,.09);border-radius:2px}
 .fill{position:absolute;top:6px;left:5%;height:2px;border-radius:2px;transition:width .4s;
- background:#8b5cf6}
+ background:var(--ac)}
 .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
 /* dots are OPAQUE so the line disappears behind them instead of showing through */
 .dot{width:10px;height:10px;border-radius:50%;background:#423a4f;border:0;margin:2px auto 9px}
-.node.done .dot{background:#8b5cf6}
-.node.now .dot{width:14px;height:14px;margin:0 auto 7px;background:#8b5cf6;
- box-shadow:0 0 0 4px rgba(139,92,246,.18);
+.node.done .dot{background:var(--ac)}
+.node.now .dot{width:14px;height:14px;margin:0 auto 7px;background:var(--ac);
+ box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 18%,transparent);
  animation:nowpulse 2.6s ease-in-out infinite}
-@keyframes nowpulse{50%{box-shadow:0 0 0 7px rgba(139,92,246,.08)}}
+@keyframes nowpulse{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--ac) 8%,transparent)}}
 .lbl{font-size:9px;font-weight:500;letter-spacing:.06em;color:#7d7a90;display:block;line-height:1.2;text-transform:uppercase}
 .node.done .lbl{color:#a79fc0}
 .node.now .lbl{color:#fff;font-weight:600}
@@ -548,8 +563,8 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  align-items:center;gap:10px;flex-wrap:wrap}
 .footacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
 .est{font-size:13px;font-weight:400;color:#8d87a0}
-.view{font-size:13px;font-weight:500;color:#a78bfa;text-decoration:none;transition:color .15s}
-.view:hover{color:#c4b0ff}
+.view{font-size:13px;font-weight:500;color:var(--ac-soft);text-decoration:none;transition:color .15s}
+.view:hover{color:var(--ac-pale)}
 .archbtn{font-size:11.5px;font-weight:500;color:#8d8a9a;background:transparent;border:0;padding:0;cursor:pointer;
  width:auto;margin:0;font-family:inherit;letter-spacing:.01em;transition:color .15s}
 .f:active,.archbtn:active,.hintx:active{transform:translateY(1px)}
@@ -577,13 +592,13 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
 .own{margin-top:auto;background:#0c0c10;border:1px solid #24232c;border-radius:7px;color:#ecebf0;font:inherit;font-size:11.5px;font-weight:400;padding:7px 9px;width:100%;outline:none;transition:border-color .15s}
 .own::placeholder{color:#565360}
-.own:focus{border-color:#8b5cf6}
+.own:focus{border-color:var(--ac)}
 .own.saved{border-color:#3a7c4f}
 .own.errsave{border-color:#b25555}
-.sublink{display:block;text-align:center;font-size:10.5px;font-weight:500;letter-spacing:.01em;color:#c9beff;
- background:#1a1533;border:1px solid #322863;border-radius:7px;padding:6px 10px;text-decoration:none;margin-top:8px;
+.sublink{display:block;text-align:center;font-size:10.5px;font-weight:500;letter-spacing:.01em;color:var(--ac-pale);
+ background:color-mix(in srgb,var(--ac) 13%,#101014);border:1px solid color-mix(in srgb,var(--ac) 32%,#101014);border-radius:7px;padding:6px 10px;text-decoration:none;margin-top:8px;
  transition:background .15s,color .15s,transform .12s}
-.sublink:hover{background:#241b45;color:#e6e0ff}
+.sublink:hover{background:color-mix(in srgb,var(--ac) 21%,#101014);color:var(--ac-ice)}
 .sublink:active{transform:translateY(1px)}
 .svc{text-align:center;font-size:10px;font-weight:400;letter-spacing:.01em;color:#8a879d;margin-top:6px}
 /* lightbox for card scans */
@@ -609,11 +624,11 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .gbox h1{font-size:26px}
 input{width:100%;margin-top:26px;background:#111116;border:1px solid #24232c;border-radius:10px;
  color:#ecebf0;font-size:14px;font-weight:400;text-align:center;padding:12px;font-family:inherit;outline:none}
-input:focus{border-color:#8b5cf6}
-button{width:100%;margin-top:10px;background:#8b5cf6;border:0;border-radius:10px;color:#fff;
+input:focus{border-color:var(--ac)}
+button{width:100%;margin-top:10px;background:var(--ac);border:0;border-radius:10px;color:#fff;
  font-size:13px;font-weight:600;letter-spacing:.02em;padding:12px;cursor:pointer;font-family:inherit;
  transition:background .15s,transform .12s}
-button:hover{background:#9d74f8}
+button:hover{background:var(--ac-hot)}
 button:active{transform:translateY(1px)}
 .err{color:#ff8b8b;font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
 /* mobile: hide stage labels entirely; only the CURRENT stage is named */
@@ -623,9 +638,10 @@ button:active{transform:translateY(1px)}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
-# favicon: purple card mark, inline SVG so it needs no asset file
+# favicon: accent-colored card mark, inline SVG so it needs no asset file
+_FAV_FILL = ACCENT.replace("#", "%23")
 FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
-           "<rect width='64' height='64' rx='14' fill='%238b5cf6'/>"
+           f"<rect width='64' height='64' rx='14' fill='{_FAV_FILL}'/>"
            "<rect x='20' y='14' width='24' height='36' rx='4' fill='none' stroke='white' stroke-width='4'/>"
            "<circle cx='32' cy='32' r='3.5' fill='white'/></svg>")
 
@@ -660,7 +676,7 @@ def gate_page(error=""):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
 <h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="Password or email" autofocus autocomplete="current-password">
@@ -907,7 +923,7 @@ def dash_page(a, subs):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <div class="hrow"><div><h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
 <div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
@@ -965,7 +981,7 @@ def detail_page(a, sub):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
-<style>{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" href="/">← All submissions</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
@@ -1059,7 +1075,7 @@ def people_page(a, owner, customer=False):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
-<style>{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 {back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
@@ -1108,7 +1124,7 @@ def customer_page(a, email):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
 {HEAD_HTML}
-<style>{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <a class="view" href="/logout">Sign out</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div></div></div>
@@ -1157,7 +1173,7 @@ def search_page(a, q, owner="", customer=False):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Search</title>
 {HEAD_HTML}
-<style>{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 {back}
 <h1 style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
