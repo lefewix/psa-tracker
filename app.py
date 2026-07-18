@@ -286,15 +286,20 @@ def set_owner(a, cert_id, owner):
               (cert_id, owner.strip(), time.strftime("%Y-%m-%dT%H:%M")))
     c.commit(); c.close()
 
-def suggest(a, q, limit_names=8, limit_cards=12):
-    """Live search backing the unified search box. People (priority) + cards."""
+def suggest(a, q, owner=None, limit_names=8, limit_cards=12):
+    """Live search backing the unified search box. People (priority) + cards.
+    With owner set (person page), cards are limited to that person's; the People
+    section stays global so the box still works as a person switcher."""
     ql = (q or "").strip().lower()
     owners = owners_map(a)
+    want = (owner or "").strip().lower()
     names = sorted({v for v in owners.values() if v})
     name_hits = [n for n in names if ql in n.lower()][:limit_names]
     card_hits = []
     if ql:
         for c in load_all_cards(a):
+            if want and owners.get(str(c["cert_id"]), "").lower() != want:
+                continue
             hay = " ".join((c.get("name") or "", str(c.get("cert_no") or ""),
                             str(c.get("cert_id") or ""))).lower()
             if ql in hay:
@@ -512,16 +517,21 @@ def card_html(s, archived=False):
 <div class="foot"><span class="est">{foot}</span>
 <a class="view" href="/sub/{sub}">View cards →</a></div></div>"""
 
-def search_box(value=""):
-    """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS)."""
+def search_box(value="", owner=""):
+    """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
+    With owner set, card results are scoped to that person (SEARCH_JS reads data-owner)."""
+    ph = f"Search {owner}'s cards…" if owner else "Search names or cards…"
     return (f'<div class="searchwrap"><input class="searchbar" id="q" type="search" '
-            f'autocomplete="off" spellcheck="false" placeholder="Search names or cards…" '
+            f'autocomplete="off" spellcheck="false" placeholder="{html.escape(ph)}" '
+            f'data-owner="{html.escape(owner)}" '
             f'value="{html.escape(value)}"><div class="preview" id="preview"></div></div>')
 
 SEARCH_JS = """<script>
 (function(){
   var q=document.getElementById('q'), pv=document.getElementById('preview'), t;
   if(!q) return;
+  var own=q.dataset.owner||'';
+  var scope=own?('&owner='+encodeURIComponent(own)):'';
   function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
   function render(data){
     var h='';
@@ -545,14 +555,14 @@ SEARCH_JS = """<script>
   function go(){
     clearTimeout(t);
     t=setTimeout(function(){
-      fetch('/suggest?q='+encodeURIComponent(q.value.trim()),{headers:{'X-Requested-With':'fetch'}})
+      fetch('/suggest?q='+encodeURIComponent(q.value.trim())+scope,{headers:{'X-Requested-With':'fetch'}})
         .then(function(r){return r.json();}).then(render).catch(function(){pv.style.display='none';});
     },110);
   }
   q.addEventListener('input',go);
   q.addEventListener('focus',go);
   q.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){e.preventDefault();location.href='/search?q='+encodeURIComponent(q.value.trim());}
+    if(e.key==='Enter'){e.preventDefault();location.href='/search?q='+encodeURIComponent(q.value.trim())+scope;}
     else if(e.key==='Escape'){pv.style.display='none';}
   });
   document.addEventListener('click',function(e){ if(!pv.contains(e.target)&&e.target!==q) pv.style.display='none'; });
@@ -722,16 +732,19 @@ def people_page(a, owner):
 <a class="view" href="/">← All submissions</a>
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(owner)}</h1>
 <div class="sub">{len(cards)} CARDS WITH {html.escape(a['label'].upper())}</div></div>{est}</div>
-<div class="toolbar">{search_box()}</div>
+<div class="toolbar">{search_box(owner=owner)}</div>
 {grid}
 </div>{SEARCH_JS}{OWNER_JS}</body></html>"""
 
-def search_page(a, q):
+def search_page(a, q, owner=""):
     ql = (q or "").strip().lower()
     owners = owners_map(a)
+    want = (owner or "").strip().lower()
     res = []
     if ql:
         for c in load_all_cards(a):
+            if want and owners.get(str(c["cert_id"]), "").lower() != want:
+                continue
             hay = " ".join((
                 c.get("name") or "", str(c.get("cert_no") or ""),
                 str(c.get("cert_id") or ""), owners.get(str(c["cert_id"]), ""),
@@ -749,14 +762,20 @@ def search_page(a, q):
     else:
         grid = '<div class="empty">Type a card name or number to search.</div>'
     count = f"{len(res)} MATCH" + ("ES" if len(res) != 1 else "") if ql else "ALL CARDS"
+    if owner:
+        count += f" · {html.escape(owner.upper())}'S CARDS ONLY"
+        back = (f'<a class="view" href="/cards?owner={urllib.parse.quote(owner)}">'
+                f'← {html.escape(owner)}\'s cards</a>')
+    else:
+        back = '<a class="view" href="/">← All submissions</a>'
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Search</title>
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
-<a class="view" href="/">← All submissions</a>
+{back}
 <h1 style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
-<div class="toolbar">{search_box(q or '')}</div>
+<div class="toolbar">{search_box(q or '', owner=owner)}</div>
 {grid}
 </div>{SEARCH_JS}{OWNER_JS}</body></html>"""
 
@@ -846,11 +865,14 @@ class H(BaseHTTPRequestHandler):
             owner = urllib.parse.parse_qs(parsed.query).get("owner", [""])[0]
             return self.send(200, people_page(acct, owner))
         if path == "/search":
-            q = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
-            return self.send(200, search_page(acct, q))
+            qs = urllib.parse.parse_qs(parsed.query)
+            return self.send(200, search_page(acct, qs.get("q", [""])[0],
+                                              owner=qs.get("owner", [""])[0]))
         if path == "/suggest":
-            q = urllib.parse.parse_qs(parsed.query).get("q", [""])[0]
-            return self.send(200, json.dumps(suggest(acct, q)), "application/json; charset=utf-8")
+            qs = urllib.parse.parse_qs(parsed.query)
+            return self.send(200, json.dumps(suggest(acct, qs.get("q", [""])[0],
+                                                     owner=qs.get("owner", [""])[0])),
+                             "application/json; charset=utf-8")
         if path.startswith("/sub/"):
             num = path.split("/sub/", 1)[1].strip("/")
             sub = load_sub(acct, num)
