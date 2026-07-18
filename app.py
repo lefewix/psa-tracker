@@ -82,7 +82,7 @@ def fmt_local(iso):
 def short_date(iso):
     """'2026-09-25' -> 'SEP 25' for compact pill display."""
     try:
-        return datetime.fromisoformat(iso[:10]).strftime("%b %d").upper()
+        return datetime.fromisoformat(iso[:10]).strftime("%b %d")
     except (ValueError, TypeError):
         return iso
 
@@ -368,40 +368,33 @@ def suggest(a, q, owner=None, limit_names=5, limit_cards=5):
 
 CSS = """
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#07070a;min-height:100vh;position:relative;
- color:#ecebf0;font-family:'Inter',-apple-system,'Segoe UI',system-ui,sans-serif;
- -webkit-font-smoothing:antialiased;padding:44px 20px 80px}
-/* live aurora background: two big blurred gradient layers drifting on independent loops */
-body::before,body::after{content:"";position:fixed;inset:-30%;z-index:-1;pointer-events:none;will-change:transform,opacity}
-body::before{background:
- radial-gradient(42% 42% at 32% 30%, rgba(132,84,255,.60), transparent 62%),
- radial-gradient(36% 36% at 72% 62%, rgba(226,92,196,.44), transparent 62%);
- filter:blur(36px);animation:drift1 26s ease-in-out infinite alternate}
-body::after{background:
- radial-gradient(40% 40% at 66% 24%, rgba(132,84,255,.50), transparent 62%),
- radial-gradient(46% 46% at 24% 74%, rgba(52,168,255,.32), transparent 62%);
- filter:blur(46px);animation:drift2 35s ease-in-out infinite alternate}
-@keyframes drift1{
- 0%{transform:translate3d(-5%,-4%,0) scale(1);opacity:.85}
- 50%{opacity:1}
- 100%{transform:translate3d(7%,6%,0) scale(1.2);opacity:.8}}
-@keyframes drift2{
- 0%{transform:translate3d(6%,5%,0) scale(1.14);opacity:.8}
- 50%{opacity:1}
- 100%{transform:translate3d(-6%,-5%,0) scale(1);opacity:.95}}
-@media(prefers-reduced-motion:reduce){body::before,body::after,.node.now .dot{animation:none}}
+html{scroll-behavior:smooth}
+body{background-color:#101014;min-height:100vh;position:relative;
+ background-image:
+  radial-gradient(1100px 540px at 50% -140px, rgba(139,92,246,.09), transparent 62%),
+  radial-gradient(800px 560px at 88% 104%, rgba(99,102,241,.05), transparent 62%),
+  linear-gradient(180deg,#13121a 0%,#101014 460px);
+ background-repeat:no-repeat;
+ color:#ecebf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+ -webkit-font-smoothing:antialiased;padding:44px 20px 80px;font-variant-numeric:tabular-nums}
+/* faint grain so large dark surfaces don't read as flat vector fill */
+body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;background:
+ url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E") repeat}
+:focus-visible{outline:2px solid #8b5cf6;outline-offset:2px}
+.mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
+@media(prefers-reduced-motion:reduce){.node.now .dot,.grid img,.cover{animation:none}}
 .wrap{max-width:820px;margin:0 auto}
-h1{font-size:30px;font-weight:800;letter-spacing:-.02em}
-h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
-.sub{font-size:10px;font-weight:700;letter-spacing:.18em;color:#5a5866;margin-top:6px}
+h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
+h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
+.sub{font-size:12px;font-weight:400;letter-spacing:.01em;color:#77748a;margin-top:6px}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
-.synced{text-align:right;flex-shrink:0;font-size:9px;font-weight:700;letter-spacing:.13em;
+.synced{text-align:right;flex-shrink:0;font-size:11px;font-weight:400;letter-spacing:.01em;
  color:#6c6a7d;line-height:1.5;padding-top:5px;white-space:nowrap}
-.synced b{display:block;font-size:11.5px;font-weight:800;letter-spacing:.04em;color:#b9aeff;margin-top:2px}
-.synced .estnote{display:block;font-size:8.5px;font-weight:700;letter-spacing:.08em;color:#55516a;margin-top:3px;line-height:1.6}
+.synced b{display:block;font-size:12.5px;font-weight:600;letter-spacing:0;color:#b9aeff;margin-top:2px}
+.synced .estnote{display:block;font-size:10px;font-weight:400;letter-spacing:.01em;color:#55516a;margin-top:3px;line-height:1.6}
 .synced .lbl2{display:block;margin-top:8px}
-.hint{display:flex;align-items:center;gap:10px;margin:18px 0 2px;padding:11px 15px;font-size:12.5px;font-weight:600;
- color:#cdb8ff;background:linear-gradient(180deg,rgba(124,58,237,.16),rgba(124,58,237,.09));
+.hint{display:flex;align-items:center;gap:10px;margin:18px 0 2px;padding:11px 15px;font-size:13px;font-weight:400;
+ color:#cdb8ff;background:rgba(139,92,246,.10);
  border:1px solid rgba(167,139,250,.28);border-radius:12px}
 .hintx{width:auto;margin:0 0 0 auto;padding:0 4px;background:transparent;border:0;color:#8d87a0;
  font-size:13px;cursor:pointer;letter-spacing:0}
@@ -409,106 +402,134 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .toolbar{display:flex;gap:10px;margin:22px 0 4px;flex-wrap:wrap;align-items:stretch}
 .searchwrap{position:relative;flex:1;min-width:220px}
 .searchwrap .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#6c6a7d;pointer-events:none}
-.searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:600}
+.searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:400}
 .preview{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:#111116;
  border:1px solid #262530;border-radius:12px;padding:6px;display:none;max-height:64vh;overflow:auto;
- box-shadow:0 14px 44px rgba(0,0,0,.55)}
-.pvsec{font-size:8.5px;font-weight:800;letter-spacing:.14em;color:#5a5866;padding:9px 10px 4px}
+ box-shadow:0 14px 44px rgba(8,5,20,.7)}
+.pvsec{font-size:10px;font-weight:600;letter-spacing:.04em;color:#5a5866;padding:9px 10px 4px}
 .pvrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;text-decoration:none;
- color:#ecebf0;font-size:12.5px;font-weight:600}
+ color:#ecebf0;font-size:12.5px;font-weight:500}
 .pvrow:hover{background:#1a1922}
-.pvrow small{display:block;color:#77748a;font-size:10px;font-weight:600;margin-top:1px;letter-spacing:.02em}
-.pvtag{font-size:8px;font-weight:800;letter-spacing:.1em;color:#c9beff;background:#221b45;border:1px solid #382c72;
- border-radius:99px;padding:3px 7px;text-transform:uppercase;flex-shrink:0}
+.pvrow small{display:block;color:#77748a;font-size:10.5px;font-weight:400;margin-top:1px;letter-spacing:.01em}
+.pvtag{font-size:9px;font-weight:500;letter-spacing:.02em;color:#c9beff;background:#221b45;border:1px solid #382c72;
+ border-radius:6px;padding:3px 7px;flex-shrink:0}
 .pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #26252f;flex-shrink:0;background:#17171c}
 .pvempty{padding:14px 10px;color:#5f5d6e;font-size:12px}
 .filters{display:flex;gap:7px;flex-wrap:wrap;margin:26px 0 22px}
-.f{font-size:10px;font-weight:700;letter-spacing:.09em;color:#8d8a9a;background:#17171c;
- border:1px solid #24232c;padding:6px 13px;border-radius:99px;cursor:pointer;transition:.15s}
+.f{font-size:11.5px;font-weight:500;letter-spacing:.01em;color:#8d8a9a;background:#17171c;
+ border:1px solid #24232c;padding:6px 13px;border-radius:7px;cursor:pointer;transition:.15s}
 .f:hover{border-color:#3a3849;color:#c3c0d0}
-.f.on{background:#7c5cff;border-color:#7c5cff;color:#fff}
+.f.on{background:#8b5cf6;border-color:#8b5cf6;color:#fff}
 .f.farch.on{background:#4d4b59;border-color:#4d4b59;color:#fff}
-/* glass cards over the aurora: translucent purple gradient + faint hairline */
-.card{background:linear-gradient(180deg,rgba(38,24,56,.52),rgba(24,15,34,.55));
+/* flat cards: solid surface + faint hairline */
+.card{background:#17161c;
  border:1px solid rgba(255,255,255,.08);border-radius:18px;
  padding:26px 30px;margin-bottom:20px;
- backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
- box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 34px rgba(0,0,0,.28);
+ box-shadow:0 4px 16px rgba(8,5,20,.45);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
 .card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
+/* spotlight border: the card edge lights up under the cursor (JS sets --mx/--my) */
+.card,.gc{position:relative}
+.card::before,.gc::before{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+ background:radial-gradient(230px circle at var(--mx,50%) var(--my,50%),rgba(167,139,250,.4),transparent 70%);
+ padding:1px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+ -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
+@media(hover:hover){.card:hover::before,.gc:hover::before{opacity:1}}
+/* staggered entry: cards rise in with slight delays instead of mounting all at once */
+@media(prefers-reduced-motion:no-preference){
+ .card,.gc{animation:rise .38s cubic-bezier(.2,.7,.3,1) both}
+ .card:nth-child(2),.gc:nth-child(2){animation-delay:.04s}
+ .card:nth-child(3),.gc:nth-child(3){animation-delay:.08s}
+ .card:nth-child(4),.gc:nth-child(4){animation-delay:.12s}
+ .card:nth-child(5),.gc:nth-child(5){animation-delay:.16s}
+ .card:nth-child(6),.gc:nth-child(6){animation-delay:.2s}
+ .card:nth-child(7),.gc:nth-child(7){animation-delay:.24s}
+ .card:nth-child(8),.gc:nth-child(8){animation-delay:.28s}}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.num{font-size:21px;font-weight:800;letter-spacing:-.01em}
-.meta{font-size:14px;font-weight:600;color:#9b93b3;margin-top:3px}
-.pill{font-size:11px;font-weight:800;letter-spacing:.09em;padding:8px 15px;border-radius:99px;white-space:nowrap;
- text-transform:uppercase;color:#c9b8ff;background:rgba(139,92,246,.16);border:1px solid rgba(167,139,250,.32)}
+.num{font-size:20px;font-weight:700;letter-spacing:-.02em;
+ font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
+.meta{font-size:14px;font-weight:400;color:#9b93b3;margin-top:3px}
+.pill{font-size:12px;font-weight:500;letter-spacing:.01em;padding:7px 13px;border-radius:7px;white-space:nowrap;
+ color:#c9b8ff;background:rgba(139,92,246,.16);border:1px solid rgba(167,139,250,.32)}
 .pill.done{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
 .pill.hold{color:#ffc9c9;background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.35)}
 .pill.arch{color:#9d9aab;background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12)}
-.pill .pic{vertical-align:-1px;margin-right:5px}
+.pill .pic{vertical-align:-1.5px;margin-right:6px}
 .pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
-/* gradient progress timeline */
+/* progress timeline */
 .tl{position:relative;height:46px;margin:22px 0 12px}
 /* pixel-exact vertical geometry: track center y=7 == every dot's center
    (10px dot at y=2..12, 14px active dot at y=0..14, labels all start y=21) */
 .track{position:absolute;top:6px;left:5%;right:5%;height:2px;background:rgba(255,255,255,.09);border-radius:2px}
 .fill{position:absolute;top:6px;left:5%;height:2px;border-radius:2px;transition:width .4s;
- background:linear-gradient(90deg,#7c3aed,#d94ff2)}
+ background:#8b5cf6}
 .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
 /* dots are OPAQUE so the line disappears behind them instead of showing through */
 .dot{width:10px;height:10px;border-radius:50%;background:#423a4f;border:0;margin:2px auto 9px}
-.node.done .dot{background:#9d5bf0}
-.node.now .dot{width:14px;height:14px;margin:0 auto 7px;background:#d94ff2;
- box-shadow:0 0 0 4px rgba(217,79,242,.18),0 0 12px rgba(217,79,242,.6);
+.node.done .dot{background:#8b5cf6}
+.node.now .dot{width:14px;height:14px;margin:0 auto 7px;background:#8b5cf6;
+ box-shadow:0 0 0 4px rgba(139,92,246,.18);
  animation:nowpulse 2.6s ease-in-out infinite}
-@keyframes nowpulse{50%{box-shadow:0 0 0 7px rgba(217,79,242,.08),0 0 16px rgba(217,79,242,.85)}}
-.lbl{font-size:9px;font-weight:700;letter-spacing:.06em;color:#55516a;display:block;line-height:1.2;text-transform:uppercase}
+@keyframes nowpulse{50%{box-shadow:0 0 0 7px rgba(139,92,246,.08)}}
+.lbl{font-size:9px;font-weight:500;letter-spacing:.06em;color:#55516a;display:block;line-height:1.2;text-transform:uppercase}
 .node.done .lbl{color:#a79fc0}
-.node.now .lbl{color:#fff;font-weight:800}
+.node.now .lbl{color:#fff;font-weight:600}
 .foot{border-top:1px solid rgba(255,255,255,.06);padding-top:13px;display:flex;justify-content:space-between;
  align-items:center;gap:10px;flex-wrap:wrap}
 .footacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
-.est{font-size:13px;font-weight:600;color:#8d87a0}
-.view{font-size:13px;font-weight:600;color:#a78bfa;text-decoration:none}
+.est{font-size:13px;font-weight:400;color:#8d87a0}
+.view{font-size:13px;font-weight:500;color:#a78bfa;text-decoration:none;transition:color .15s}
 .view:hover{color:#c4b0ff}
-.archbtn{font-size:10.5px;font-weight:700;color:#8d8a9a;background:transparent;border:0;padding:0;cursor:pointer;
- font-family:inherit;letter-spacing:.02em}
+.archbtn{font-size:11.5px;font-weight:500;color:#8d8a9a;background:transparent;border:0;padding:0;cursor:pointer;
+ width:auto;margin:0;font-family:inherit;letter-spacing:.01em;transition:color .15s}
+.f:active,.archbtn:active,.hintx:active{transform:translateY(1px)}
 .archbtn:hover{color:#c3c0d0}
 .empty{color:#5f5d6e;font-size:13px;padding:40px 0;text-align:center}
 .cover{width:44px;height:60px;object-fit:cover;border-radius:5px;border:1px solid #26252f;background:#17171c;flex-shrink:0}
 .hd{display:flex;gap:13px;align-items:flex-start;flex:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:24px}
 .grid img{width:100%;border-radius:8px;border:1px solid #26252f;background:#17171c;aspect-ratio:1.72/2.4;object-fit:cover;display:block}
-.gc{background:linear-gradient(180deg,rgba(38,24,56,.52),rgba(24,15,34,.55));
+.gc{background:#17161c;
  border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:11px;
  display:flex;flex-direction:column;gap:2px;
- backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
- box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 34px rgba(0,0,0,.28);
+ box-shadow:0 4px 16px rgba(8,5,20,.45);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
 .gc:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
 .gc>a,.gc .ph{position:relative}
-.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed #2b2a34;background:#141419;display:flex;align-items:center;justify-content:center;color:#3f3d4a;font-size:10px;font-weight:700;letter-spacing:.1em}
+.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed #2b2a34;background:#141419;display:flex;align-items:center;justify-content:center;color:#3f3d4a;font-size:11px;font-weight:500;letter-spacing:.01em}
 .gradebadge{position:absolute;top:7px;left:7px;z-index:2;font-size:11px;font-weight:800;letter-spacing:.02em;
- color:#0c0a12;background:linear-gradient(135deg,#ffe08a,#f5b73d);padding:3px 8px;border-radius:7px;
- box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.35)}
-.gc .cn{font-size:14px;font-weight:800;color:#ecebf0;margin-top:9px;letter-spacing:-.01em}
-.cn.pre{color:#8d8a9a;font-size:11px;letter-spacing:.14em}
-.gc .nm{font-size:10px;font-weight:600;color:#77748a;line-height:1.4;margin-top:3px;height:56px;
+ color:#0c0a12;background:#f5b73d;padding:3px 8px;border-radius:7px;
+ box-shadow:0 2px 8px rgba(10,6,20,.55);border:1px solid rgba(255,255,255,.35)}
+.gc .cn{font-size:13.5px;font-weight:600;color:#ecebf0;margin-top:9px;letter-spacing:-.01em;line-height:19px;
+ font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
+.cn.pre{color:#8d8a9a;font-size:11px;letter-spacing:.02em;font-family:inherit;line-height:19px}
+.gc .nm{font-size:10.5px;font-weight:400;color:#77748a;line-height:1.4;margin-top:3px;height:56px;
  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
-.own{margin-top:auto;background:#0c0c10;border:1px solid #24232c;border-radius:7px;color:#ecebf0;font:inherit;font-size:11px;font-weight:600;padding:7px 9px;width:100%;outline:none}
+.own{margin-top:auto;background:#0c0c10;border:1px solid #24232c;border-radius:7px;color:#ecebf0;font:inherit;font-size:11.5px;font-weight:400;padding:7px 9px;width:100%;outline:none;transition:border-color .15s}
 .own::placeholder{color:#46444f}
-.own:focus{border-color:#7c5cff}
+.own:focus{border-color:#8b5cf6}
 .own.saved{border-color:#3a7c4f}
-.sublink{display:block;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:.05em;color:#c9beff;
- background:#1a1533;border:1px solid #322863;border-radius:99px;padding:6px 10px;text-decoration:none;margin-top:8px}
+.own.errsave{border-color:#b25555}
+.sublink{display:block;text-align:center;font-size:10.5px;font-weight:500;letter-spacing:.01em;color:#c9beff;
+ background:#1a1533;border:1px solid #322863;border-radius:7px;padding:6px 10px;text-decoration:none;margin-top:8px;
+ transition:background .15s,color .15s,transform .12s}
 .sublink:hover{background:#241b45;color:#e6e0ff}
-.svc{text-align:center;font-size:9.5px;font-weight:700;letter-spacing:.09em;color:#77748a;margin-top:6px;text-transform:uppercase}
+.sublink:active{transform:translateY(1px)}
+.svc{text-align:center;font-size:10px;font-weight:400;letter-spacing:.01em;color:#77748a;margin-top:6px}
 /* lightbox for card scans */
 .lb{position:fixed;inset:0;z-index:50;background:rgba(7,7,10,.84);display:none;
  align-items:center;justify-content:center;cursor:zoom-out;
  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .lb.open{display:flex}
-.lb img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 20px 80px rgba(0,0,0,.6)}
+.lb img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 20px 80px rgba(4,2,12,.8)}
 .grid a{cursor:zoom-in}
+/* image loading shimmer (JS adds .ld once loaded) */
+.grid img,.cover{background:linear-gradient(100deg,#15141a 40%,#1d1c24 50%,#15141a 60%) 0 0/200% 100%;
+ animation:shimmer 1.1s linear infinite}
+.grid img.ld,.cover.ld{background:#17171c;animation:none}
+@keyframes shimmer{to{background-position:-200% 0}}
 /* archived grey-out */
 .card.arch,.gc.arch{opacity:.42;filter:grayscale(.72)}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
@@ -519,31 +540,31 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .gbox{width:290px;text-align:center}
 .gbox h1{font-size:26px}
 input{width:100%;margin-top:26px;background:#111116;border:1px solid #24232c;border-radius:10px;
- color:#ecebf0;font-size:14px;font-weight:600;text-align:center;padding:12px;font-family:inherit;outline:none}
-input:focus{border-color:#7c5cff}
-button{width:100%;margin-top:10px;background:#7c5cff;border:0;border-radius:10px;color:#fff;
- font-size:12px;font-weight:800;letter-spacing:.1em;padding:12px;cursor:pointer;font-family:inherit}
-button:hover{background:#8f73ff}
+ color:#ecebf0;font-size:14px;font-weight:400;text-align:center;padding:12px;font-family:inherit;outline:none}
+input:focus{border-color:#8b5cf6}
+button{width:100%;margin-top:10px;background:#8b5cf6;border:0;border-radius:10px;color:#fff;
+ font-size:13px;font-weight:600;letter-spacing:.02em;padding:12px;cursor:pointer;font-family:inherit;
+ transition:background .15s,transform .12s}
+button:hover{background:#9d74f8}
+button:active{transform:translateY(1px)}
 .err{color:#ff8b8b;font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
 /* mobile: collapse stage labels to first letter, but show the CURRENT stage in
    full (avoids the ambiguous two-'A' problem of Arrived vs Assembly) */
 @media(max-width:640px){.lbl{font-size:0}.lbl:first-letter{font-size:9px}
-.node.now .lbl{font-size:8.5px;white-space:nowrap}
+.node.now .lbl{font-size:8.5px;white-space:nowrap;position:relative;z-index:2;
+ background:#17161c;padding:0 4px;border-radius:4px}
 .card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
-# favicon: purple-gradient card mark, inline SVG so it needs no asset file
+# favicon: purple card mark, inline SVG so it needs no asset file
 FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
-           "<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>"
-           "<stop offset='0' stop-color='%237c3aed'/><stop offset='1' stop-color='%23d94ff2'/>"
-           "</linearGradient></defs><rect width='64' height='64' rx='14' fill='url(%23g)'/>"
+           "<rect width='64' height='64' rx='14' fill='%238b5cf6'/>"
            "<rect x='20' y='14' width='24' height='36' rx='4' fill='none' stroke='white' stroke-width='4'/>"
            "<circle cx='32' cy='32' r='3.5' fill='white'/></svg>")
 
 HEAD_HTML = f"""<link rel="icon" type="image/svg+xml" href="{FAVICON}">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&display=swap" rel="stylesheet">"""
+<meta name="description" content="PSA grading submission tracker">"""
 
 def _pic(paths):
     """Tiny inline pill icon (stroke = currentColor so it inherits pill color)."""
@@ -563,7 +584,7 @@ def gate_page(error=""):
 <h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password">
-<button type="submit">ENTER</button></form>
+<button type="submit">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></div></body></html>"""
 
@@ -587,13 +608,13 @@ def card_html(s, archived=False):
     # the pill carries the ETA (latest expected return date), so the footer no
     # longer repeats an "Expected return" line
     if s["on_hold"]:
-        pill = f'<span class="pill hold">{ICON_HOLD}ON HOLD</span>'
+        pill = f'<span class="pill hold">{ICON_HOLD}On hold</span>'
     elif s["status"] == "Shipped":
-        pill = f'<span class="pill done">{ICON_CHECK}SHIPPED</span>'
+        pill = f'<span class="pill done">{ICON_CHECK}Shipped</span>'
     elif s["est_end"] or s["est_start"]:
-        pill = f'<span class="pill">{ICON_CLOCK}BACK ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
+        pill = f'<span class="pill">{ICON_CLOCK}Back ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
     else:
-        pill = f'<span class="pill done">{ICON_CLOCK}ETA PENDING</span>'
+        pill = f'<span class="pill done">{ICON_CLOCK}ETA pending</span>'
 
     if s["status"] == "Shipped" and s["shipped"]:
         foot = f'Shipped {html.escape(s["shipped"])}'
@@ -608,14 +629,14 @@ def card_html(s, archived=False):
              if s.get("thumb") else '')
     sub = html.escape(s['sub_number'])
     if archived:
-        pill += '<span class="pill arch">ARCHIVED</span>'
+        pill += '<span class="pill arch">Archived</span>'
     archattr = ' data-arch="1" style="display:none"' if archived else ''
     return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}>
 <div class="top"><div class="hd">{cover}<div><div class="num">#{sub}</div>
 <div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{pill}</div></div>
 {timeline_html(s['status'])}
 <div class="foot"><span class="est">{foot}</span>
-<a class="view" href="/sub/{sub}">View cards →</a></div></div>"""
+<a class="view" href="/sub/{sub}">View cards</a></div></div>"""
 
 def search_box(value="", owner=""):
     """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
@@ -641,7 +662,7 @@ SEARCH_JS = """<script>
     if(data.names&&data.names.length){
       h+='<div class="pvsec">People</div>';
       data.names.forEach(function(n){
-        h+='<a class="pvrow" href="/cards?owner='+encodeURIComponent(n)+'"><span class="pvtag">person</span><span>'+esc(n)+'</span></a>';
+        h+='<a class="pvrow" href="/cards?owner='+encodeURIComponent(n)+'"><span class="pvtag">Person</span><span>'+esc(n)+'</span></a>';
       });
     }
     if(data.cards&&data.cards.length){
@@ -658,6 +679,7 @@ SEARCH_JS = """<script>
   function go(){
     clearTimeout(t);
     t=setTimeout(function(){
+      if(pv.style.display!=='block'){pv.innerHTML='<div class="pvempty">Searching…</div>';pv.style.display='block';}
       fetch('/suggest?q='+encodeURIComponent(q.value.trim())+scope,{headers:{'X-Requested-With':'fetch'}})
         .then(function(r){return r.json();}).then(render).catch(function(){pv.style.display='none';});
     },110);
@@ -706,13 +728,45 @@ LIGHTBOX_JS = """<script>
 OWNER_JS = """
 <script>
 document.querySelectorAll('.own').forEach(function(i){
+  function fail(){ i.classList.add('errsave'); setTimeout(function(){i.classList.remove('errsave')},1200); }
   i.addEventListener('blur', function(){
     fetch('/owner', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(i.value)})
-     .then(function(r){ if(r.ok){ i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);} });
+     .then(function(r){ if(r.ok){ i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);} else { fail(); } })
+     .catch(fail);
   });
   i.addEventListener('keydown', function(e){ if(e.key==='Enter') i.blur(); });
 });
+</script>"""
+
+# page effects: swap the loading shimmer off images once loaded, and track the
+# cursor per card so the spotlight border knows where to glow
+FX_JS = """<script>
+document.querySelectorAll('.grid img,.cover').forEach(function(m){
+  var done=function(){m.classList.add('ld');};
+  if(m.complete){done();}
+  else{m.addEventListener('load',done);m.addEventListener('error',done);}
+});
+document.querySelectorAll('.card,.gc').forEach(function(c){
+  c.addEventListener('pointermove',function(e){
+    var r=c.getBoundingClientRect();
+    c.style.setProperty('--mx',(e.clientX-r.left)+'px');
+    c.style.setProperty('--my',(e.clientY-r.top)+'px');
+  });
+});
+</script>"""
+
+# person page: fold archived-sub cards behind a toggle below the active grid
+ARCHFOLD_JS = """<script>
+(function(){
+  var af=document.getElementById('archtoggle'),ag=document.getElementById('archgrid');
+  if(!af)return;
+  af.addEventListener('click',function(){
+    var on=af.classList.toggle('on');
+    ag.style.display=on?'':'none';
+    if(on)ag.scrollIntoView({behavior:'smooth',block:'nearest'});
+  });
+})();
 </script>"""
 
 def card_tile(c, owners, show_sub=False, archived=False, service=""):
@@ -722,7 +776,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service=""):
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
     grade = f'<span class="gradebadge">PSA {html.escape(c["grade"])}</span>' if c.get("grade") else ""
     if is_prelim:
-        head = '<div class="cn pre">PRELIM</div>'
+        head = '<div class="cn pre">Prelim</div>'
     else:
         head = f'<div class="cn">{html.escape(c["cert_no"] or c["cert_id"])}</div>'
     if c.get("front_thumb"):
@@ -730,8 +784,8 @@ def card_tile(c, owners, show_sub=False, archived=False, service=""):
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
         img = f'<a href="{big}">{grade}<img loading="lazy" src="{src}" alt=""></a>'  # grade overlays scan; opens in lightbox
     else:
-        img = f'<div class="ph">{grade}NO IMAGE YET</div>'
-    sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))} →</a>'
+        img = f'<div class="ph">{grade}No image yet</div>'
+    sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))}</a>'
                 if show_sub else "")
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     return (f'<div class="gc{" arch" if archived else ""}">{img}{sub_link}{svc}{head}'
@@ -763,17 +817,17 @@ def dash_page(a, subs):
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
     pills = []
     if gone:
-        pills.append(f'<span class="f farch" id="archtoggle">ARCHIVED · {len(gone)}</span>')
+        pills.append(f'<span class="f farch" id="archtoggle">Archived · {len(gone)}</span>')
     untag = untagged_count(a, active)
     if untag:
-        pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} NEED OWNERS →</a>')
+        pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} need owners</a>')
     filters = f'<div class="filters">{"".join(pills)}</div>' if pills else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
 <div class="hrow"><div><h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
-<div class="synced">LAST REFRESHED<b>{html.escape(stamp)}</b></div></div>
+<div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div></div>
 {hint}
 {toolbar}
 {filters}
@@ -792,7 +846,7 @@ if(af)af.addEventListener('click',function(){{
     c.style.display=(on?a:!a)?'':'none';
   }});
 }});
-</script>{SEARCH_JS}</body></html>"""
+</script>{SEARCH_JS}{FX_JS}</body></html>"""
 
 def eta_badge(s):
     """Top-right ETA badge for the sub detail page: expected return window, or
@@ -800,7 +854,7 @@ def eta_badge(s):
     if s["status"] == "Shipped" and s["shipped"]:
         note = (f'<span class="estnote">{html.escape(s["carrier"])} {html.escape(s["tracking"])}</span>'
                 if s["carrier"] and s["tracking"] else "")
-        return f'<div class="synced">SHIPPED<b>{html.escape(s["shipped"])}</b>{note}</div>'
+        return f'<div class="synced">Shipped<b>{html.escape(s["shipped"])}</b>{note}</div>'
     if s["est_start"]:
         val = html.escape(s["est_start"])
         if s["est_end"]:
@@ -822,7 +876,7 @@ def detail_page(a, sub):
         body = '<div class="empty">No cards assigned yet. PSA lists them during Research &amp; ID.</div>'
     if archived:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0">Unarchive</button>'
-        tag = ' · <span style="color:#9d9aab">ARCHIVED</span>'
+        tag = ' · <span style="color:#9d9aab">Archived</span>'
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1">Archive</button>'
         tag = ""
@@ -832,11 +886,11 @@ def detail_page(a, sub):
 <style>{CSS}</style></head><body><div class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" href="/">← All submissions</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'].upper())} · {sub['card_count']} CARDS · {html.escape(sub['status'].upper())}{tag}</div></div>
+<div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub)}</div>
 <div class="card" style="margin-top:18px">{timeline_html(sub['status'])}</div>
 {body}
-</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}</body></html>"""
+</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}</body></html>"""
 
 def grade_summary(cards):
     """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
@@ -860,25 +914,39 @@ def people_page(a, owner):
         active_nums = {s["sub_number"] for s in load_subs(a) if s["sub_number"] not in arch}
         cards = [c for c in load_all_cards(a)
                  if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), "")]
-        title, sub_line = "Unassigned", f"{len(cards)} CARDS AWAITING AN OWNER"
+        title, sub_line = "Unassigned", f"{len(cards)} cards awaiting an owner"
     else:
         want = owner.strip().lower()
         cards = [c for c in load_all_cards(a) if owners.get(str(c["cert_id"]), "").lower() == want]
-        title, sub_line = owner, f"{len(cards)} CARDS WITH {a['label'].upper()}"
+        title, sub_line = owner, f"{len(cards)} cards with {a['label']}"
     svc_map = {s["sub_number"]: s["service"] for s in load_subs(a)}
-    if cards:
-        grid = '<div class="grid">' + "".join(
-            card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
-                      service=svc_map.get(c["sub_number"], "")) for c in cards) + "</div>"
+    # archived subs' cards stay on the person page but are folded behind an
+    # ARCHIVED toggle below the active grid instead of greyed out inline
+    act_cards = [c for c in cards if c["sub_number"] not in arch]
+    arc_cards = [c for c in cards if c["sub_number"] in arch]
+    if not unassigned:
+        sub_line = f"{len(act_cards)} cards with {a['label']}"
+    def tiles(cs):
+        return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
+                                 service=svc_map.get(c["sub_number"], "")) for c in cs)
+    if act_cards:
+        grid = '<div class="grid">' + tiles(act_cards) + "</div>"
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
+    elif arc_cards:
+        grid = f'<div class="empty">All of {html.escape(owner)}’s cards are in archived submissions.</div>'
     else:
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
+    archsec = ""
+    if arc_cards:
+        archsec = (f'<div class="filters" style="margin:30px 0 0">'
+                   f'<span class="f farch" id="archtoggle">Archived · {len(arc_cards)}</span></div>'
+                   f'<div class="grid" id="archgrid" style="display:none">{tiles(arc_cards)}</div>')
     if unassigned:
         est = ""
     else:
         total, unpriced, covered, uncovered = 0.0, 0, 0.0, 0
-        for c in cards:
+        for c in act_cards:
             p = service_price(a, svc_map.get(c["sub_number"], ""))
             if p is None:
                 unpriced += 1
@@ -889,14 +957,14 @@ def people_page(a, owner):
                 uncovered += 1
             else:
                 covered += dv
-        gsum = grade_summary(cards)
-        gline = f'<span class="lbl2">GRADES</span><b>{html.escape(gsum)}</b>' if gsum else ""
-        ins = (f'<span class="lbl2">INSURED COVERAGE</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
+        gsum = grade_summary(act_cards)
+        gline = f'<span class="lbl2">Grades</span><b>{html.escape(gsum)}</b>' if gsum else ""
+        ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
                if covered or uncovered else "")
-        est = (f'<div class="synced">EST. GRADING COST<b>${total:,.2f}'
+        est = (f'<div class="synced">Est. grading cost<b>${total:,.2f}'
                f'{"+" if unpriced else ""}</b>{ins}{gline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
-               f'coverage = declared value on file with PSA</span></div>') if cards else ""
+               f'coverage = declared value on file with PSA</span></div>') if act_cards else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}'s cards</title>
 {HEAD_HTML}
@@ -906,7 +974,8 @@ def people_page(a, owner):
 <div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
 <div class="toolbar">{search_box(owner="" if unassigned else owner)}</div>
 {grid}
-</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}</body></html>"""
+{archsec}
+</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
 
 def search_page(a, q, owner=""):
     ql = (q or "").strip().lower()
@@ -933,9 +1002,9 @@ def search_page(a, q, owner=""):
         grid = f'<div class="empty">No cards match “{html.escape(q)}”.</div>'
     else:
         grid = '<div class="empty">Type a card name or number to search.</div>'
-    count = f"{len(res)} MATCH" + ("ES" if len(res) != 1 else "") if ql else "ALL CARDS"
+    count = f"{len(res)} match" + ("es" if len(res) != 1 else "") if ql else "All cards"
     if owner:
-        count += f" · {html.escape(owner.upper())}'S CARDS ONLY"
+        count += f" · {html.escape(owner)}'s cards only"
         back = (f'<a class="view" href="/cards?owner={urllib.parse.quote(owner)}">'
                 f'← {html.escape(owner)}\'s cards</a>')
     else:
@@ -949,7 +1018,7 @@ def search_page(a, q, owner=""):
 <div class="sub">{count}</div>
 <div class="toolbar">{search_box(q or '', owner=owner)}</div>
 {grid}
-</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}</body></html>"""
+</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}{FX_JS}</body></html>"""
 
 # ---------- server ----------
 
