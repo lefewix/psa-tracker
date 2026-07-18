@@ -531,7 +531,7 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 .wrap{max-width:820px;margin:0 auto}
 .logo{display:block;height:52px;width:auto;margin:0 0 10px;mix-blend-mode:var(--logoblend,normal)}
-.logo.chip{background:radial-gradient(var(--chipdots) 1px,transparent 1.3px) 0 0/11px 11px,var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
+.logo.chip{background:radial-gradient(var(--chipdots) 1px,transparent 1.4px) 0 0/26px 26px,var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
 .logo.sil{filter:var(--logofx,none)}
 .gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
