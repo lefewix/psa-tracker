@@ -444,6 +444,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .synced b{display:block;font-size:12.5px;font-weight:600;letter-spacing:0;color:#b9aeff;margin-top:2px}
 .synced .estnote{display:block;font-size:10px;font-weight:400;letter-spacing:.01em;color:#7d7a90;margin-top:3px;line-height:1.6}
 .synced .lbl2{display:block;margin-top:8px}
+.lgout{color:#85829a;display:inline-flex;padding:6px 0 0 2px;transition:color .15s}
+.lgout:hover{color:#c4b0ff}
+.lgout:active{transform:translateY(1px)}
 .hint{display:flex;align-items:center;gap:10px;margin:18px 0 2px;padding:11px 15px;font-size:13px;font-weight:400;
  color:#cdb8ff;background:rgba(139,92,246,.10);
  border:1px solid rgba(167,139,250,.28);border-radius:12px}
@@ -636,6 +639,10 @@ def _pic(paths):
             f'stroke-linejoin="round">{paths}</svg>')
 
 ICON_CLOCK = _pic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
+ICON_OUT = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+            'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+            '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>'
+            '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>')
 ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
 ICON_HOLD = _pic('<path d="M9 5v14M15 5v14"/>')
 
@@ -899,7 +906,7 @@ def dash_page(a, subs):
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
 <div class="hrow"><div><h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
-<div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div></div>
+<div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
 {toolbar}
 {filters}
