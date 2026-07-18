@@ -382,9 +382,11 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .f.on{background:#7c5cff;border-color:#7c5cff;color:#fff}
 .f.farch.on{background:#4d4b59;border-color:#4d4b59;color:#fff}
 /* glass cards over the aurora: translucent purple gradient + faint hairline */
-.card{background:linear-gradient(180deg,rgba(38,24,56,.72),rgba(24,15,34,.72));
- border:1px solid rgba(255,255,255,.06);border-radius:18px;
- padding:26px 30px;margin-bottom:20px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+.card{background:linear-gradient(180deg,rgba(38,24,56,.52),rgba(24,15,34,.55));
+ border:1px solid rgba(255,255,255,.08);border-radius:18px;
+ padding:26px 30px;margin-bottom:20px;
+ backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 34px rgba(0,0,0,.28);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
 .card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
@@ -426,9 +428,11 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .hd{display:flex;gap:13px;align-items:flex-start;flex:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:24px}
 .grid img{width:100%;border-radius:8px;border:1px solid #26252f;background:#17171c;aspect-ratio:1.72/2.4;object-fit:cover;display:block}
-.gc{background:linear-gradient(180deg,rgba(38,24,56,.72),rgba(24,15,34,.72));
- border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:11px;
- display:flex;flex-direction:column;gap:2px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+.gc{background:linear-gradient(180deg,rgba(38,24,56,.52),rgba(24,15,34,.55));
+ border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:11px;
+ display:flex;flex-direction:column;gap:2px;
+ backdrop-filter:blur(18px) saturate(150%);-webkit-backdrop-filter:blur(18px) saturate(150%);
+ box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 34px rgba(0,0,0,.28);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
 .gc:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed #2b2a34;background:#141419;display:flex;align-items:center;justify-content:center;color:#3f3d4a;font-size:10px;font-weight:700;letter-spacing:.1em}
