@@ -72,19 +72,30 @@ _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#171
  "dot0": "#423a4f", "shc": "rgba(8,5,20,.45)", "shc2": "rgba(8,5,20,.7)",
  "shc3": "rgba(8,5,20,.6)", "frost": "rgba(19,18,26,.7)",
  "sh1": "#15141a", "sh2": "#1d1c24", "err": "#ff8b8b", "holdtx": "#ffc9c9"}
-_LIGHT = {"bg": "#f7f6fb", "bgtop": "#ffffff", "mix": "#ffffff", "surface": "#ffffff",
- "surface2": "#f3f2f8", "surface3": "#efedf5", "inp": "#f6f5fa", "ph": "#f2f0f8",
- "hovrow": "#f1eff8", "txt": "#1b1826", "txtstrong": "#0f0d18",
- "m1": "#4f4b60", "m2": "#5d5970", "m3": "#5d5970", "m4": "#655f78", "m5": "#6a657c",
- "m6": "#736e84", "m7": "#7a7590", "m8": "#5a5480", "m9": "#6c687c",
- "m10": "#b8b5c6", "m11": "#b8b5c6",
- "b1": "#e2e0ea", "b2": "#e2e0ea", "b3": "#e2e0ea", "b4": "#d8d5e2", "b5": "#c6c2d4",
- "hair": "rgba(25,18,60,.09)", "hairh": "rgba(25,18,60,.18)",
- "hair2": "rgba(25,18,60,.07)", "track": "rgba(25,18,60,.12)",
- "chipbg": "rgba(25,18,60,.05)", "chipline": "rgba(25,18,60,.16)",
- "dot0": "#d8d5e4", "shc": "rgba(88,64,160,.14)", "shc2": "rgba(88,64,160,.16)",
- "shc3": "rgba(88,64,160,.14)", "frost": "rgba(252,251,255,.78)",
- "sh1": "#efedf6", "sh2": "#e6e3f0", "err": "#c23d3d", "holdtx": "#a03232"}
+# light neutrals: surfaces tint from the store accent (brand-aware whites);
+# text/borders stay hue-neutral for contrast
+_LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
+ "mix": "#ffffff", "surface": "#ffffff",
+ "surface2": "color-mix(in srgb,var(--ac) 5%,white)",
+ "surface3": "color-mix(in srgb,var(--ac) 7%,white)",
+ "inp": "color-mix(in srgb,var(--ac) 3%,white)",
+ "ph": "color-mix(in srgb,var(--ac) 5%,white)",
+ "hovrow": "color-mix(in srgb,var(--ac) 7%,white)",
+ "txt": "#1c1c22", "txtstrong": "#0e0e14",
+ "m1": "#4e4c58", "m2": "#5c5a68", "m3": "#5c5a68", "m4": "#63616e", "m5": "#686674",
+ "m6": "#71707e", "m7": "#79778a", "m8": "#5b5966", "m9": "#6b6975",
+ "m10": "#b6b5c0", "m11": "#b6b5c0",
+ "b1": "#e3e3ea", "b2": "#e3e3ea", "b3": "#e3e3ea", "b4": "#d9d9e2", "b5": "#c7c7d2",
+ "hair": "rgba(22,22,45,.09)", "hairh": "rgba(22,22,45,.18)",
+ "hair2": "rgba(22,22,45,.07)", "track": "rgba(22,22,45,.12)",
+ "chipbg": "rgba(22,22,45,.05)", "chipline": "rgba(22,22,45,.16)",
+ "dot0": "#d7d7e0", "shc": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.12))",
+ "shc2": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.14))",
+ "shc3": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.12))",
+ "frost": "rgba(255,255,255,.78)",
+ "sh1": "color-mix(in srgb,var(--ac) 5%,white)",
+ "sh2": "color-mix(in srgb,var(--ac) 9%,white)",
+ "err": "#c23d3d", "holdtx": "#a03232"}
 _N = _LIGHT if THEME == "light" else _DARK
 THEME_VARS = (":root{" + f"--ac:{ACCENT};--ac2:{ACCENT_2};"
               + "".join(f"{k}:color-mix(in srgb,var(--ac) {v});" for k, v in _AC_MIX.items())
