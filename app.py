@@ -76,6 +76,7 @@ _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#171
  "hair": "rgba(255,255,255,.08)", "hairh": "rgba(255,255,255,.14)",
  "hair2": "rgba(255,255,255,.06)", "track": "rgba(255,255,255,.09)",
  "chipbg": "rgba(255,255,255,.05)", "chipline": "rgba(255,255,255,.12)",
+ "logoblend": "normal",
  "dots": "color-mix(in srgb,var(--ac-pale) 6%,transparent)",
  "glow1": "color-mix(in srgb,var(--ac) 9%,transparent)",
  "glow2": "color-mix(in srgb,var(--ac) 6%,transparent)",
@@ -100,6 +101,7 @@ _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
  "hair": "rgba(22,22,45,.09)", "hairh": "rgba(22,22,45,.18)",
  "hair2": "rgba(22,22,45,.07)", "track": "rgba(22,22,45,.12)",
  "chipbg": "rgba(22,22,45,.05)", "chipline": "rgba(22,22,45,.16)",
+ "logoblend": "multiply",
  "dots": "color-mix(in srgb,var(--ac) 27%,transparent)",
  "glow1": "color-mix(in srgb,var(--ac) 23%,transparent)",
  "glow2": "color-mix(in srgb,var(--ac) 15%,transparent)",
@@ -510,7 +512,7 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
 @media(prefers-reduced-motion:reduce){.node.now .dot,.grid img,.cover{animation:none}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 .wrap{max-width:820px;margin:0 auto}
-.logo{display:block;height:52px;width:auto;margin:0 0 10px}
+.logo{display:block;height:52px;width:auto;margin:0 0 10px;mix-blend-mode:var(--logoblend,normal)}
 .gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
