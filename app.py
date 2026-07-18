@@ -584,12 +584,14 @@ def timeline_html(status):
 def card_html(s, archived=False):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
+    # the pill carries the ETA (latest expected return date), so the footer no
+    # longer repeats an "Expected return" line
     if s["on_hold"]:
         pill = f'<span class="pill hold">{ICON_HOLD}ON HOLD</span>'
     elif s["status"] == "Shipped":
         pill = f'<span class="pill done">{ICON_CHECK}SHIPPED</span>'
-    elif s["est_start"]:
-        pill = f'<span class="pill">{ICON_CLOCK}BACK ~{html.escape(short_date(s["est_start"]))}</span>'
+    elif s["est_end"] or s["est_start"]:
+        pill = f'<span class="pill">{ICON_CLOCK}BACK ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
     else:
         pill = f'<span class="pill done">{ICON_CLOCK}ETA PENDING</span>'
 
@@ -597,14 +599,10 @@ def card_html(s, archived=False):
         foot = f'Shipped {html.escape(s["shipped"])}'
         if s["carrier"] and s["tracking"]:
             foot += f' · {html.escape(s["carrier"])} {html.escape(s["tracking"])}'
-    elif s["est_start"]:
-        foot = f'Expected return: {html.escape(s["est_start"])}'
-        if s["est_end"]:
-            foot += f' to {html.escape(s["est_end"])}'
+    elif s["grades_ready"]:
+        foot = "Grades ready"
     else:
-        foot = "Estimate pending"
-    if s["grades_ready"]:
-        foot += " · grades ready"
+        foot = ""
 
     cover = (f'<img class="cover" loading="lazy" src="/img?u={urllib.parse.quote(img_url(s["thumb"], "small"))}" alt="">'
              if s.get("thumb") else '')
