@@ -60,10 +60,10 @@ def logo_tag():
     return '<img class="logo" src="/logo" alt="">' if os.path.exists(LOGO_PATH) else ""
 
 # Accent-derived shades flip direction per theme (lighter on dark, deeper on light)
-_AC_MIX = ({"--ac-hot": "85%,black", "--ac-soft": "80%,black",
-            "--ac-pale": "68%,black", "--ac-ice": "45%,black"} if THEME == "light" else
-           {"--ac-hot": "82%,white", "--ac-soft": "72%,white",
-            "--ac-pale": "45%,white", "--ac-ice": "15%,white"})
+_AC_MIX_L = {"--ac-hot": "85%,black", "--ac-soft": "80%,black",
+             "--ac-pale": "68%,black", "--ac-ice": "45%,black"}
+_AC_MIX_D = {"--ac-hot": "82%,white", "--ac-soft": "72%,white",
+             "--ac-pale": "45%,white", "--ac-ice": "15%,white"}
 # Neutral system: dark values are the original hand-picked palette (byte-identical
 # default); light values are the store-facing white theme.
 _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#17161c",
@@ -113,10 +113,17 @@ _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
  "sh1": "color-mix(in srgb,var(--ac) 5%,white)",
  "sh2": "color-mix(in srgb,var(--ac) 9%,white)",
  "err": "#c23d3d", "holdtx": "#a03232"}
-_N = _LIGHT if THEME == "light" else _DARK
-THEME_VARS = (":root{" + f"--ac:{ACCENT};--ac2:{ACCENT_2};"
-              + "".join(f"{k}:color-mix(in srgb,var(--ac) {v});" for k, v in _AC_MIX.items())
-              + "".join(f"--{k}:{v};" for k, v in _N.items()) + "}")
+def _theme_vars(mode):
+    acmix = _AC_MIX_L if mode == "light" else _AC_MIX_D
+    neut = _LIGHT if mode == "light" else _DARK
+    return ("".join(f"{k}:color-mix(in srgb,var(--ac) {v});" for k, v in acmix.items())
+            + "".join(f"--{k}:{v};" for k, v in neut.items()))
+
+# The store's PSA_THEME is the default; both palettes are emitted so the
+# client-side day/night toggle can flip instantly (data-theme on <html>).
+THEME_VARS = (f":root{{--ac:{ACCENT};--ac2:{ACCENT_2};{_theme_vars(THEME)}}}"
+              f':root[data-theme="dark"]{{{_theme_vars("dark")}}}'
+              f':root[data-theme="light"]{{{_theme_vars("light")}}}')
 ACCOUNTS_DIR = os.environ.get("PSA_ACCOUNTS_DIR", "/opt/psa-tracker/accounts")
 
 # Image proxy: PSA card images live on this public CloudFront host. We fetch +
@@ -677,6 +684,14 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  animation:shimmer 1.1s linear infinite}
 .grid img.ld,.cover.ld{background:var(--surface3);animation:none}
 @keyframes shimmer{to{background-position:-200% 0}}
+/* day/night corner toggle */
+#themeflip{position:fixed;right:18px;bottom:18px;z-index:40;width:42px;height:42px;
+ border-radius:50%;background:var(--frost);border:1px solid var(--hair);color:var(--m2);
+ backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;
+ display:flex;align-items:center;justify-content:center;padding:0;margin:0;
+ box-shadow:0 4px 14px var(--shc);transition:color .15s,transform .12s}
+#themeflip:hover{color:var(--txt)}
+#themeflip:active{transform:translateY(1px)}
 /* archived grey-out */
 .card.arch,.gc.arch{opacity:.42;filter:grayscale(.72)}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
@@ -710,7 +725,39 @@ FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='
            "<circle cx='32' cy='32' r='3.5' fill='white'/></svg>")
 
 HEAD_HTML = f"""<link rel="icon" type="image/svg+xml" href="{FAVICON}">
-<meta name="description" content="PSA grading submission tracker">"""
+<meta name="description" content="PSA grading submission tracker">
+<script>(function(){{try{{var t=localStorage.getItem('psa_theme');
+if(t&&t!=="{THEME}")document.documentElement.dataset.theme=t;}}catch(e){{}}}})()</script>"""
+
+_SUN = ('<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+        'stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/>'
+        '<path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8'
+        'M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8"/></svg>')
+_MOON = ('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+         'stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+         '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>')
+
+THEME_JS = f"""<script>
+(function(){{
+  var d=document.documentElement, def="{THEME}";
+  var cur=d.dataset.theme||def;
+  var b=document.createElement('button');b.id='themeflip';b.type='button';
+  var SUN={json.dumps(_SUN)}, MOON={json.dumps(_MOON)};
+  function render(){{
+    b.innerHTML=(cur==='dark')?SUN:MOON;
+    b.title=b.ariaLabel=(cur==='dark')?'Switch to light mode':'Switch to dark mode';
+  }}
+  b.addEventListener('click',function(){{
+    cur=(cur==='dark')?'light':'dark';
+    try{{
+      if(cur===def){{delete d.dataset.theme;localStorage.removeItem('psa_theme');}}
+      else{{d.dataset.theme=cur;localStorage.setItem('psa_theme',cur);}}
+    }}catch(e){{d.dataset.theme=cur;}}
+    render();
+  }});
+  document.body.appendChild(b);render();
+}})();
+</script>"""
 
 def _pic(paths):
     """Tiny inline pill icon (stroke = currentColor so it inherits pill color)."""
@@ -746,7 +793,7 @@ def gate_page(error=""):
 <input type="password" name="password" placeholder="Password or email" autofocus autocomplete="current-password">
 <button type="submit">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
-</div></div></div></body></html>"""
+</div></div></div>{THEME_JS}</body></html>"""
 
 def timeline_html(status):
     """The horizontal stage progress bar (Arrived → … → Shipped). Shared by the
@@ -1008,7 +1055,7 @@ if(af)af.addEventListener('click',function(){{
     c.style.display=(on?a:!a)?'':'none';
   }});
 }});
-</script>{SEARCH_JS}{FX_JS}</body></html>"""
+</script>{SEARCH_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def eta_badge(s):
     """Top-right ETA badge for the sub detail page: expected return window, or
@@ -1052,7 +1099,7 @@ def detail_page(a, sub):
 {eta_badge(sub)}</div>
 <div class="card" style="margin-top:18px">{timeline_html(sub['status'])}</div>
 {body}
-</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}</body></html>"""
+</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def grade_summary(cards):
     """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
@@ -1146,7 +1193,7 @@ def people_page(a, owner, customer=False):
 <div class="toolbar">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
 {archsec}
-</div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
+</div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -1195,7 +1242,7 @@ def customer_page(a, email):
 <div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
 <div style="margin-top:28px">{body}</div>
 {archsec}
-</div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
+</div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
@@ -1243,7 +1290,7 @@ def search_page(a, q, owner="", customer=False):
 <div class="sub">{count}</div>
 <div class="toolbar">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
-</div>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}</body></html>"""
+</div>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 # ---------- server ----------
 
