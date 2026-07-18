@@ -27,7 +27,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
-import hashlib, hmac, html, json, os, re, shlex, sqlite3, threading, time
+import base64, hashlib, hmac, html, json, os, re, shlex, sqlite3, threading, time
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -185,25 +185,46 @@ def service_price(a, service):
 
 # ---------- auth ----------
 
-def make_token(acct_id, exp):
+def _b64e(s):
+    return base64.urlsafe_b64encode(s.encode()).decode().rstrip("=")
+
+def _b64d(s):
+    return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode()
+
+def make_token(acct_id, exp, email=""):
+    """Admin (site-password) token: acct.exp.sig
+    Customer token carries the email: acct.exp.email_b64.sig"""
+    if email:
+        msg = f"{acct_id}.{exp}.customer.{email}".encode()
+        sig = hmac.new(SECRET, msg, hashlib.sha256).hexdigest()
+        return f"{acct_id}.{exp}.{_b64e(email)}.{sig}"
     msg = f"{acct_id}.{exp}".encode()
     sig = hmac.new(SECRET, msg, hashlib.sha256).hexdigest()
     return f"{acct_id}.{exp}.{sig}"
 
 def valid_token(tok):
-    """Return the account id the token grants, or None."""
+    """Return (acct_id, customer_email) the token grants, or None.
+    customer_email == "" means a full site-password session."""
     parts = (tok or "").split(".")
-    if len(parts) != 3:
+    if len(parts) not in (3, 4):
         return None
-    acct_id, exp_s, sig = parts
+    acct_id, exp_s, sig = parts[0], parts[1], parts[-1]
     try:
         exp = int(exp_s)
     except ValueError:
         return None
     if exp < time.time():
         return None
+    if len(parts) == 4:
+        try:
+            email = _b64d(parts[2])
+        except Exception:
+            return None
+        good = hmac.new(SECRET, f"{acct_id}.{exp_s}.customer.{email}".encode(),
+                        hashlib.sha256).hexdigest()
+        return (acct_id, email) if hmac.compare_digest(good, sig) else None
     good = hmac.new(SECRET, f"{acct_id}.{exp_s}".encode(), hashlib.sha256).hexdigest()
-    return acct_id if hmac.compare_digest(good, sig) else None
+    return (acct_id, "") if hmac.compare_digest(good, sig) else None
 
 # Per-IP login throttle (in-memory; resets on restart). The 0.4s sleep blunts
 # casual brute force; this stops a determined loop.
@@ -326,6 +347,28 @@ def set_owner(a, cert_id, owner):
     c.execute("INSERT OR REPLACE INTO owners(cert_id, owner, updated_at) VALUES (?,?,?)",
               (cert_id, owner.strip(), time.strftime("%Y-%m-%dT%H:%M")))
     c.commit(); c.close()
+
+def find_customer(email):
+    """Match a login email against owner tags across accounts (case-insensitive).
+    Returns the account dict or None. Emails ARE the customer passwords in the
+    store product - deliberately low-stakes (view-only card lists)."""
+    e = email.strip().lower()
+    if not e:
+        return None
+    for a in load_accounts().values():
+        for tag in set(owners_map(a).values()):
+            if tag.strip().lower() == e:
+                return a
+    return None
+
+def cust_statline(s):
+    """One-line per-card status for customer tiles (replaces the sub link)."""
+    if not s:
+        return ""
+    if s["status"] == "Shipped":
+        return f"Shipped {s['shipped']}" if s["shipped"] else "Shipped"
+    eta = s["est_end"] or s["est_start"]
+    return s["status"] + (f" · back ~{short_date(eta)}" if eta else "")
 
 def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
     """Live search backing the unified search box. People (priority) + cards.
@@ -603,7 +646,7 @@ def gate_page(error=""):
 <style>{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
 <h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
-<input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password">
+<input type="password" name="password" placeholder="Password or email" autofocus autocomplete="current-password">
 <button type="submit">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></div></body></html>"""
@@ -658,10 +701,11 @@ def card_html(s, archived=False):
 <div class="foot"><span class="est">{foot}</span>
 <a class="view" href="/sub/{sub}">View cards</a></div></div>"""
 
-def search_box(value="", owner=""):
+def search_box(value="", owner="", ph=None):
     """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
     With owner set, card results are scoped to that person (SEARCH_JS reads data-owner)."""
-    ph = f"Search {owner}'s cards…" if owner else "Search names or cards…"
+    if ph is None:
+        ph = f"Search {owner}'s cards…" if owner else "Search names or cards…"
     icon = ('<svg class="sicon" width="14" height="14" viewBox="0 0 24 24" fill="none" '
             'stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'
             '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>')
@@ -790,7 +834,7 @@ ARCHFOLD_JS = """<script>
 })();
 </script>"""
 
-def card_tile(c, owners, show_sub=False, archived=False, service=""):
+def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline=""):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
     name = html.escape(smart_title(c["name"] or ""))
@@ -806,12 +850,19 @@ def card_tile(c, owners, show_sub=False, archived=False, service=""):
         img = f'<a href="{big}">{grade}<img loading="lazy" src="{src}" alt=""></a>'  # grade overlays scan; opens in lightbox
     else:
         img = f'<div class="ph">{grade}No image yet</div>'
-    sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))}</a>'
-                if show_sub else "")
+    if customer:
+        # customers never link into submissions (those show other people's cards);
+        # the chip carries this card's own status instead
+        sub_link = f'<div class="sublink" style="cursor:default">{html.escape(statline)}</div>' if statline else ""
+    else:
+        sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))}</a>'
+                    if show_sub else "")
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
+    own_input = ("" if customer else
+                 f'<input class="own" data-cert="{cid}" value="{owner}" placeholder="+ owner name">')
     return (f'<div class="gc{" arch" if archived else ""}">{img}{sub_link}{svc}{head}'
             f'<div class="nm">{name}</div>'
-            f'<input class="own" data-cert="{cid}" value="{owner}" placeholder="+ owner name">'
+            f'{own_input}'
             f'</div>')
 
 def untagged_count(a, active_subs):
@@ -927,12 +978,13 @@ def grade_summary(cards):
     parts = " · ".join(f"{n}× PSA {gr}" for gr, n in sorted(g.items(), key=sortkey))
     return parts
 
-def people_page(a, owner):
+def people_page(a, owner, customer=False):
     owners = owners_map(a)
     arch = archived_set(a)
-    unassigned = owner.strip().lower() == "unassigned"
+    unassigned = (not customer) and owner.strip().lower() == "unassigned"
+    subs_by = {s["sub_number"]: s for s in load_subs(a)}
     if unassigned:  # operator worklist: untagged cards in active subs
-        active_nums = {s["sub_number"] for s in load_subs(a) if s["sub_number"] not in arch}
+        active_nums = {n for n in subs_by if n not in arch}
         cards = [c for c in load_all_cards(a)
                  if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), "")]
         title, sub_line = "Unassigned", f"{len(cards)} cards awaiting an owner"
@@ -940,16 +992,20 @@ def people_page(a, owner):
         want = owner.strip().lower()
         cards = [c for c in load_all_cards(a) if owners.get(str(c["cert_id"]), "").lower() == want]
         title, sub_line = owner, f"{len(cards)} cards with {a['label']}"
-    svc_map = {s["sub_number"]: s["service"] for s in load_subs(a)}
+    svc_map = {n: s["service"] for n, s in subs_by.items()}
     # archived subs' cards stay on the person page but are folded behind an
     # ARCHIVED toggle below the active grid instead of greyed out inline
     act_cards = [c for c in cards if c["sub_number"] not in arch]
     arc_cards = [c for c in cards if c["sub_number"] in arch]
-    if not unassigned:
+    if customer:
+        title, sub_line = "Your cards", f"{len(act_cards)} cards · {owner}"
+    elif not unassigned:
         sub_line = f"{len(act_cards)} cards with {a['label']}"
     def tiles(cs):
         return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
-                                 service=svc_map.get(c["sub_number"], "")) for c in cs)
+                                 service=svc_map.get(c["sub_number"], ""), customer=customer,
+                                 statline=cust_statline(subs_by.get(c["sub_number"])))
+                       for c in cs)
     if act_cards:
         grid = '<div class="grid">' + tiles(act_cards) + "</div>"
     elif unassigned:
@@ -963,8 +1019,8 @@ def people_page(a, owner):
         archsec = (f'<div class="filters" style="margin:30px 0 0">'
                    f'<span class="f farch" id="archtoggle">Archived · {len(arc_cards)}</span></div>'
                    f'<div class="grid" id="archgrid" style="display:none">{tiles(arc_cards)}</div>')
-    if unassigned:
-        est = ""
+    if unassigned or customer:
+        est = ""  # store cost/coverage numbers are operator-only
     else:
         total, unpriced, covered, uncovered = 0.0, 0, 0.0, 0
         for c in act_cards:
@@ -986,19 +1042,23 @@ def people_page(a, owner):
                f'{"+" if unpriced else ""}</b>{ins}{gline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA</span></div>') if act_cards else ""
+    back = ('<a class="view" href="/logout">Sign out</a>' if customer
+            else '<a class="view" href="/">← All submissions</a>')
+    page_title = "Your cards" if customer else f"{title}'s cards"
+    owner_js = "" if customer else OWNER_JS
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}'s cards</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
-<a class="view" href="/">← All submissions</a>
+{back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
-<div class="toolbar">{search_box(owner="" if unassigned else owner)}</div>
+<div class="toolbar">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
 {archsec}
-</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
+</div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
 
-def search_page(a, q, owner=""):
+def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
     owners = owners_map(a)
     want = (owner or "").strip().lower()
@@ -1015,16 +1075,21 @@ def search_page(a, q, owner=""):
                 res.append(c)
     if res:
         arch = archived_set(a)
-        svc_map = {s["sub_number"]: s["service"] for s in load_subs(a)}
+        subs_by = {s["sub_number"]: s for s in load_subs(a)}
         grid = '<div class="grid">' + "".join(
             card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
-                      service=svc_map.get(c["sub_number"], "")) for c in res) + "</div>"
+                      service=(subs_by.get(c["sub_number"]) or {}).get("service", ""),
+                      customer=customer,
+                      statline=cust_statline(subs_by.get(c["sub_number"]))) for c in res) + "</div>"
     elif ql:
         grid = f'<div class="empty">No cards match “{html.escape(q)}”.</div>'
     else:
         grid = '<div class="empty">Type a card name or number to search.</div>'
     count = f"{len(res)} match" + ("es" if len(res) != 1 else "") if ql else "All cards"
-    if owner:
+    if customer:
+        count += " · your cards only"
+        back = '<a class="view" href="/">← Your cards</a>'
+    elif owner:
         count += f" · {html.escape(owner)}'s cards only"
         back = (f'<a class="view" href="/cards?owner={urllib.parse.quote(owner)}">'
                 f'← {html.escape(owner)}\'s cards</a>')
@@ -1037,9 +1102,9 @@ def search_page(a, q, owner=""):
 {back}
 <h1 style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
-<div class="toolbar">{search_box(q or '', owner=owner)}</div>
+<div class="toolbar">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
-</div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}{FX_JS}</body></html>"""
+</div>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}</body></html>"""
 
 # ---------- server ----------
 
@@ -1054,14 +1119,17 @@ class H(BaseHTTPRequestHandler):
         return xff.split(",")[0].strip() if xff else self.address_string()
 
     def authed(self):
-        """Return the account dict this request's session is bound to, or None."""
+        """Return (account dict, customer_email) for this session, or None.
+        customer_email == "" means a full site-password (admin) session."""
         raw = self.headers.get("Cookie", "")
         for part in raw.split(";"):
             k, _, v = part.strip().partition("=")
             if k == "psa_session":
-                acct_id = valid_token(v)
-                if acct_id:
-                    return load_accounts().get(acct_id)
+                got = valid_token(v)
+                if got:
+                    acct = load_accounts().get(got[0])
+                    if acct:
+                        return acct, got[1]
         return None
 
     def send(self, code, body, ctype="text/html; charset=utf-8", extra=None):
@@ -1116,11 +1184,32 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
-        acct = self.authed()
-        if not acct:
+        got = self.authed()
+        if not got:
             return self.send(200, gate_page())
+        acct, cust = got
         if path == "/img":
             return self.serve_img(parsed.query)
+        if path == "/logout":
+            return self.send(302, "", extra=[("Location", "/"),
+                ("Set-Cookie", "psa_session=; Path=/; Max-Age=0")])
+        if cust:
+            # customer sessions are pinned server-side to their own email:
+            # no dashboard, no other owners, no sub pages (they show other
+            # customers' cards), no owner directory
+            if path == "/":
+                return self.send(200, people_page(acct, cust, customer=True))
+            if path == "/search":
+                qs = urllib.parse.parse_qs(parsed.query)
+                return self.send(200, search_page(acct, qs.get("q", [""])[0],
+                                                  owner=cust, customer=True))
+            if path == "/suggest":
+                if not suggest_allowed(self.client_ip()):
+                    return self.send(429, '{"names":[],"cards":[]}', "application/json; charset=utf-8")
+                qs = urllib.parse.parse_qs(parsed.query)
+                return self.send(200, json.dumps(suggest(acct, qs.get("q", [""])[0], owner=cust)),
+                                 "application/json; charset=utf-8")
+            return self.send(302, "", extra=[("Location", "/")])
         if path == "/":
             return self.send(200, dash_page(acct, load_subs(acct)))
         if path == "/cards":
@@ -1143,17 +1232,15 @@ class H(BaseHTTPRequestHandler):
             if not sub:
                 return self.send(404, '<div class="empty">Not found</div>')
             return self.send(200, detail_page(acct, sub))
-        if path == "/logout":
-            return self.send(302, "", extra=[("Location", "/"),
-                ("Set-Cookie", "psa_session=; Path=/; Max-Age=0")])
         self.send(404, "not found", "text/plain")
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
         if path == "/owner":
-            acct = self.authed()
-            if not acct:
+            got = self.authed()
+            if not got or got[1]:  # customers can't tag or archive
                 return self.send(403, "auth", "text/plain")
+            acct = got[0]
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
             cid = (form.get("cert_id") or [""])[0]
@@ -1162,9 +1249,10 @@ class H(BaseHTTPRequestHandler):
                 set_owner(acct, cid, owner)
             return self.send(204, "", "text/plain")
         if path == "/archive":
-            acct = self.authed()
-            if not acct:
+            got = self.authed()
+            if not got or got[1]:  # customers can't tag or archive
                 return self.send(403, "auth", "text/plain")
+            acct = got[0]
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
             sub = (form.get("sub") or [""])[0]
@@ -1188,12 +1276,21 @@ class H(BaseHTTPRequestHandler):
             if hmac.compare_digest(given, a["password"]):
                 matched = a
                 break
+        email = ""
+        if not matched and "@" in given:
+            # customer login: the email IS the credential (store product;
+            # view-only, low-stakes by design). Matches owner tags.
+            hit = find_customer(given)
+            if hit:
+                matched, email = hit, given.strip().lower()
         if not matched:
             login_fail(ip)
-            return self.send(200, gate_page("Incorrect password."))
+            msg = ("No cards found for that email yet." if "@" in given
+                   else "Incorrect password.")
+            return self.send(200, gate_page(msg))
         login_ok(ip)
         exp = int(time.time()) + COOKIE_DAYS * 86400
-        cookie = (f"psa_session={make_token(matched['id'], exp)}; Path=/; Max-Age={COOKIE_DAYS*86400}; "
+        cookie = (f"psa_session={make_token(matched['id'], exp, email)}; Path=/; Max-Age={COOKIE_DAYS*86400}; "
                   "HttpOnly; SameSite=Lax" + ("; Secure" if COOKIE_SECURE else ""))
         self.send(302, "", extra=[("Location", "/"), ("Set-Cookie", cookie)])
 
