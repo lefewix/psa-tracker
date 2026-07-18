@@ -67,7 +67,8 @@ def logo_tag():
     if not os.path.exists(LOGO_PATH):
         return ""
     cls = "logo sil" if LOGO_SIL else ("logo chip" if LOGO_CHIP else "logo")
-    return f'<img class="{cls}" src="/logo" alt="">'
+    v = int(os.path.getmtime(LOGO_PATH))  # cache-buster: logo swaps show immediately
+    return f'<img class="{cls}" src="/logo?v={v}" alt="">'
 
 # Accent-derived shades flip direction per theme (lighter on dark, deeper on light)
 _AC_MIX_L = {"--ac-hot": "85%,black", "--ac-soft": "80%,black",
