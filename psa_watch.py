@@ -97,7 +97,7 @@ def fetch(url):
     cookie = os.environ.get("PSA_COOKIE")
     if not cookie:
         sys.exit("PSA_COOKIE not set")
-    # Cookie-only auth (no Bearer — it resolves to an empty context). Cloudflare
+    # Cookie-only auth (no Bearer - it resolves to an empty context). Cloudflare
     # bot mgmt requires a real browser TLS fingerprint, so use curl_cffi impersonation.
     headers = {
         "Cookie": cookie,
@@ -263,7 +263,7 @@ def parse_completed_lines(body):
         if spec is None:
             continue
         qty = int(ln.get("quantity") or 1)
-        # declaredValue is the LINE total (per-card value × quantity) — store per card
+        # declaredValue is the LINE total (per-card value × quantity) - store per card
         line_dv = ln.get("declaredValue")
         unit_dv = (float(line_dv) / max(1, qty)) if line_dv is not None else None
         out.append({"line_number": ln.get("lineNumber") or 0, "spec_id": int(spec),
@@ -302,8 +302,8 @@ def fetch_spec_lines(sub_number):
     return out
 
 def prelim_cards(sub_number, spec_lines):
-    """Turn spec lines into standalone prelim cards. Keys are namespaced by submission —
-    'spec:<sub>:<specId>' — because the SAME card (specId) can appear in multiple subs, and
+    """Turn spec lines into standalone prelim cards. Keys are namespaced by submission -
+    'spec:<sub>:<specId>' - because the SAME card (specId) can appear in multiple subs, and
     cert_id is a global PK; an un-namespaced 'spec:<specId>' would collide across subs and the
     last-written sub would steal the row. A line with quantity>1 (duplicates) expands into that
     many separate cards (copy 0 = base key, extras get a trailing ':<n>'), each an own tile
@@ -350,11 +350,11 @@ def assign_dv(cards, spec_lines):
     Cert cards can't be line-matched naively: quantity>1 form lines expand into
     that many sequential cert lines, and old graded subs have line_number=0 on
     every card (no spec review data). Strategy, safest first:
-      1. uniform — every card on the form is declared at the same value: assign it
+      1. uniform - every card on the form is declared at the same value: assign it
          to all cards (covers old line-0 subs too).
-      2. positional — expanded form positions == card count: map in submission
+      2. positional - expanded form positions == card count: map in submission
          order (cards sorted by line_number, cert_id).
-      3. identity — fall back to direct line_number match.
+      3. identity - fall back to direct line_number match.
     """
     units = []
     for l in sorted(spec_lines, key=lambda l: l["line_number"] or 0):
@@ -424,7 +424,7 @@ def refresh_cards(conn, subs, prev=None, full=False):
     for s in subs:
         sub = s["sub_number"]
         has_certs = bool(json.loads(s["cert_ids"] or "[]"))
-        # A sub that was ALREADY Shipped before this scan is frozen — PSA won't
+        # A sub that was ALREADY Shipped before this scan is frozen - PSA won't
         # change its cards/images. Skip its detail fetch unless something is
         # missing (image or declared value) or --full was passed. Cuts PSA API
         # calls roughly in half once every sub is fully populated.
@@ -439,7 +439,7 @@ def refresh_cards(conn, subs, prev=None, full=False):
             if has_certs:
                 _, body = fetch(detail_url(sub))
                 cards = parse_detail(sub, body)
-                # orders.get knows nothing about declared values — carry the ones we
+                # orders.get knows nothing about declared values - carry the ones we
                 # already learned forward by line number so we don't re-hit the spec
                 # endpoint every scan for active subs
                 if cards and any(c.get("declared_value") is None for c in cards):
@@ -450,8 +450,8 @@ def refresh_cards(conn, subs, prev=None, full=False):
                             c["declared_value"] = prior.get(c["line_number"])
             # Double-check images regardless of stage: a sub can have cert_ids but
             # orders.get still returns no images (e.g. Order Prep). Whenever a card
-            # is missing an image or a declared value — or the sub has no cards at
-            # all yet — fall back to the submission 'complete' page (spec images,
+            # is missing an image or a declared value - or the sub has no cards at
+            # all yet - fall back to the submission 'complete' page (spec images,
             # prelim names, per-card declared values).
             if not cards or any(not c["front_thumb"] or c.get("declared_value") is None
                                 for c in cards):
@@ -521,7 +521,7 @@ def upsert(conn, subs):
     return changes
 
 def cycle(conn):
-    # one retry on the orders.list fetch — a transient blip otherwise loses a
+    # one retry on the orders.list fetch - a transient blip otherwise loses a
     # whole scan window (we only run twice a day now)
     ctype = body = ""
     for attempt in (1, 2):
@@ -536,7 +536,7 @@ def cycle(conn):
     if not subs:
         log("parsed 0 subs -- parser needs adjusting or cookie expired; run --probe")
         return
-    # statuses BEFORE this scan's upsert — used to skip detail-fetching subs that
+    # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
     prev = {r[0]: r[1] for r in conn.execute("SELECT sub_number, status FROM subs")}
     changes = upsert(conn, subs)

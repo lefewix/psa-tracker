@@ -1,7 +1,7 @@
 #!/bin/bash
 # Add a tracked PSA account. Creates accounts/<id>/account.env (chmod 600).
 # The site password you choose here is what that account's friends type on the
-# lock screen — the password itself routes them to this account, so it MUST be
+# lock screen - the password itself routes them to this account, so it MUST be
 # unique across accounts (checked below).
 set -e
 ACCTS="${PSA_ACCOUNTS_DIR:-/opt/psa-tracker/accounts}"
@@ -32,7 +32,7 @@ for f in glob.glob(os.path.join(accts, "*", "account.env")):
             continue
         for t in tokens:
             if t.startswith("SITE_PASSWORD=") and t.split("=", 1)[1] == site:
-                sys.exit(f"ERROR: that site password is already used by {os.path.dirname(f)} — pick a unique one")
+                sys.exit(f"ERROR: that site password is already used by {os.path.dirname(f)} - pick a unique one")
 d = os.path.join(accts, id_)
 os.makedirs(d)
 p = os.path.join(d, "account.env")

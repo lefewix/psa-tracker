@@ -1,4 +1,4 @@
-# secrets & data — never commit
+# secrets & data - never commit
 backups/
 *.tar.gz
 *.db

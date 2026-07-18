@@ -1,18 +1,18 @@
 # psa-tracker
 
 A tiny self-hosted website that tracks PSA card-grading submissions so the
-friends you grade for can watch their cards move through PSA's pipeline —
+friends you grade for can watch their cards move through PSA's pipeline -
 Arrived → Order Prep → Research & ID → Grading → Assembly → QA Check → Shipped.
 
 - **Password gate, zero user accounts.** You hand each group of friends one
   password. Whichever password someone types routes them to the matching PSA
-  account's dashboard — the account chooser is invisible by design.
+  account's dashboard - the account chooser is invisible by design.
 - **Multi-account.** One instance can track any number of PSA accounts
   (`accounts/<id>/`), each with its own data, its own friends password, its own
   owner tags.
 - **Fully automatic.** Twice a day a real headless browser logs into PSA,
   refreshes the session cookie, and scans. No manual cookie copying, ever.
-- **Card galleries with images** — including *before* PSA assigns cert numbers
+- **Card galleries with images** - including *before* PSA assigns cert numbers
   (pulled from the submission's spec images), duplicate-aware (a line with
   qty 34 renders 34 tiles), with owner tagging, per-person pages, estimated
   grading cost, live search, and per-submission archiving.
@@ -77,7 +77,7 @@ Put a TLS reverse proxy (Caddy, nginx, Cloudflare tunnel…) in front of
 /opt/psa-tracker/add_account.sh
 ```
 
-Pick a unique site password — that password *is* the account selector. The
+Pick a unique site password - that password *is* the account selector. The
 account works for web login immediately; its first scan runs at the next timer
 tick (or `systemctl start psa-scan.service`).
 
@@ -93,7 +93,7 @@ Per-account (`account.env`): `LABEL`, `SITE_PASSWORD`, `PSA_LOGIN_EMAIL`,
 (`"regular:109,max:89.99,bulk:34.99,value:45.99"`, matched most-specific-first)
 used for the per-person estimated-cost badge.
 
-Each person's page also shows **INSURED COVERAGE** — the sum of the real
+Each person's page also shows **INSURED COVERAGE** - the sum of the real
 per-card declared values PSA has on file (captured automatically from the
 submission data; no configuration needed).
 
@@ -123,7 +123,7 @@ python3 psa_watch.py --once --full  # force full refresh (with account env loade
 - The image proxy is locked to PSA's CloudFront host, size-capped, and caches
   atomically. The 2FA-less PSA account is assumed; enable at your own risk of
   breaking auto-login.
-- The `submissions.completed` PSA endpoint returns payment/address PII — the
+- The `submissions.completed` PSA endpoint returns payment/address PII - the
   scraper extracts only the card lines and never stores the rest.
 
 ## Notes on PSA scraping
@@ -131,5 +131,5 @@ python3 psa_watch.py --once --full  # force full refresh (with account env loade
 Auth is cookie-only (Bearer silently returns nothing) and Cloudflare gates on
 TLS fingerprint, hence `curl_cffi ... impersonate="chrome"`. The OAuth client
 is confidential (secret is server-side), so tokens can't be minted from the
-refresh token — that's why cookie refresh drives a real browser through the
+refresh token - that's why cookie refresh drives a real browser through the
 sign-in page instead. See `HANDOFF.md` for the full API field maps.

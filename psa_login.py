@@ -2,15 +2,15 @@
 """psa-login: automated cookie refresh via a real browser.
 
 PSA/Collectors auth is a confidential OAuth2 client (secret lives server-side), so the
-scraper can't mint tokens itself. Instead we log in the way a human does — drive a real
+scraper can't mint tokens itself. Instead we log in the way a human does - drive a real
 Chromium (headful, under xvfb, to pass Cloudflare) through the collectors.com sign-in,
 then harvest the fresh psacard.com cookie and write it into /etc/psa-tracker.env.
 
 Runs before each scheduled scan so PSA_COOKIE never goes stale.
 
 Env (from /etc/psa-tracker.env):
-  PSA_LOGIN_EMAIL, PSA_LOGIN_PW   required — the PSA/Collectors account login.
-      NOTE: deliberately NOT PSA_PASSWORD — that name is the site's friends-gate password
+  PSA_LOGIN_EMAIL, PSA_LOGIN_PW   required - the PSA/Collectors account login.
+      NOTE: deliberately NOT PSA_PASSWORD - that name is the site's friends-gate password
       (read by app.py). Keep these separate or you'll clobber the site login.
   PSA_ENV_FILE              default /etc/psa-tracker.env  (where PSA_COOKIE is written)
   PLAYWRIGHT_BROWSERS_PATH  set by the wrapper to /opt/psa-tracker/.pw-browsers
@@ -56,12 +56,12 @@ def write_cookie(cookie):
 
 def do_login():
     if not EMAIL or not PASSWORD:
-        log("PSA_LOGIN_EMAIL / PSA_LOGIN_PW not set — aborting")
+        log("PSA_LOGIN_EMAIL / PSA_LOGIN_PW not set - aborting")
         return 2
     os.makedirs(DEBUG_DIR, exist_ok=True)
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=False,  # real headful browser under xvfb — beats Cloudflare bot mgmt
+            headless=False,  # real headful browser under xvfb - beats Cloudflare bot mgmt
             args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
                   "--disable-blink-features=AutomationControlled"],
         )

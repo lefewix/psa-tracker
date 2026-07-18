@@ -21,10 +21,10 @@ for envf in "$ACCTS"/*/account.env; do
     if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
       set -a; . "$envf"; set +a   # reload: pick up the fresh PSA_COOKIE
     else
-      echo "[run_scan] $id: login failed — scanning with existing cookie"
+      echo "[run_scan] $id: login failed - scanning with existing cookie"
     fi
     python3 /opt/psa-tracker/psa_watch.py --once "$@"
   )
 done
-[ "$found" = 1 ] || echo "[run_scan] no accounts found in $ACCTS — run add_account.sh"
+[ "$found" = 1 ] || echo "[run_scan] no accounts found in $ACCTS - run add_account.sh"
 echo "[run_scan] $(date -Is) all accounts done"

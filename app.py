@@ -6,11 +6,11 @@ here) and writes that account's owners.db (owner tags + archived subs).
 
 Multi-account: every directory under PSA_ACCOUNTS_DIR holding an account.env is
 a tracked PSA account. Each account has its OWN site password; the login form
-routes whoever types a password to the matching account — the account chooser is
+routes whoever types a password to the matching account - the account chooser is
 invisible by design. Site passwords must therefore be unique across accounts.
 
 Global env (systemd EnvironmentFile):
-  PSA_SECRET        required — random string for session-cookie signing
+  PSA_SECRET        required - random string for session-cookie signing
   PSA_BIND          default 0.0.0.0
   PSA_PORT          default 8080
   PSA_ACCOUNTS_DIR  default /opt/psa-tracker/accounts
@@ -18,12 +18,12 @@ Global env (systemd EnvironmentFile):
   SITE_TITLE        default "Submissions"   (dashboard heading + page titles)
   SITE_TAGLINE      default "PSA GRADING TRACKER" (login-gate subtitle)
   COOKIE_DAYS       default 30
-  PSA_COOKIE_SECURE default 1 — set 0 if hosting over plain HTTP (no TLS proxy)
+  PSA_COOKIE_SECURE default 1 - set 0 if hosting over plain HTTP (no TLS proxy)
 
 Per-account account.env (written by add_account.sh, chmod 600):
   LABEL             display name on that account's pages
   SITE_PASSWORD     the password that logs friends into THIS account
-  PSA_LOGIN_EMAIL / PSA_LOGIN_PW / PSA_COOKIE — used by psa_login.py/psa_watch.py
+  PSA_LOGIN_EMAIL / PSA_LOGIN_PW / PSA_COOKIE - used by psa_login.py/psa_watch.py
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
@@ -465,7 +465,7 @@ def card_html(s, archived=False):
     elif s["est_start"]:
         foot = f'Expected return: {html.escape(s["est_start"])}'
         if s["est_end"]:
-            foot += f' — {html.escape(s["est_end"])}'
+            foot += f' to {html.escape(s["est_end"])}'
     else:
         foot = "Estimate pending"
     if s["grades_ready"]:
@@ -585,7 +585,7 @@ def dash_page(a, subs):
     body = ("".join(card_html(s) for s in active) + "".join(card_html(s, archived=True) for s in gone)
             or '<div class="empty">No submissions yet.</div>')
     updated = max((s["updated_at"] or "" for s in subs), default="")
-    stamp = (updated[:16].replace('T', ' ') + " UTC") if updated else "—"
+    stamp = (updated[:16].replace('T', ' ') + " UTC") if updated else "n/a"
     toolbar = f'<div class="toolbar">{search_box()}</div>'
     filters = (f'<div class="filters"><span class="f farch" id="archtoggle">ARCHIVED · {len(gone)}</span></div>'
                if gone else "")
@@ -620,7 +620,7 @@ def eta_badge(s):
     if s["est_start"]:
         val = html.escape(s["est_start"])
         if s["est_end"]:
-            val += f' — {html.escape(s["est_end"])}'
+            val += f' to {html.escape(s["est_end"])}'
         note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
         return f'<div class="synced">PSA ETA<b>{val}</b>{note}</div>'
     return '<div class="synced">PSA ETA<b>Estimate pending</b></div>'
@@ -633,9 +633,9 @@ def detail_page(a, sub):
     if cards:
         body = '<div class="grid">' + "".join(card_tile(c, owners, archived=archived) for c in cards) + "</div>"
     elif json.loads(sub["cert_ids"] or "[]"):
-        body = '<div class="empty">Card images not synced yet — they appear after the next sync (once cards reach Research &amp; ID).</div>'
+        body = '<div class="empty">Card images not synced yet. They appear after the next sync (once cards reach Research &amp; ID).</div>'
     else:
-        body = '<div class="empty">No cards assigned yet — PSA lists them during Research &amp; ID.</div>'
+        body = '<div class="empty">No cards assigned yet. PSA lists them during Research &amp; ID.</div>'
     if archived:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0">Unarchive</button>'
         tag = ' · <span style="color:#9d9aab">ARCHIVED</span>'
@@ -866,7 +866,7 @@ class H(BaseHTTPRequestHandler):
         given = (form.get("password") or [""])[0]
         time.sleep(0.4)  # blunt the brute force; throttle below does the real work
         if login_locked(ip):
-            return self.send(200, gate_page("Too many attempts — try again in a few minutes."))
+            return self.send(200, gate_page("Too many attempts. Try again in a few minutes."))
         # The password IS the account selector: whichever account's site password
         # matches is the account this session gets. Passwords are unique per account.
         matched = None
@@ -889,12 +889,12 @@ def main():
         raise SystemExit("PSA_SECRET must be set")
     accts = load_accounts()
     if not accts:
-        raise SystemExit(f"no accounts found in {ACCOUNTS_DIR} — run add_account.sh first")
+        raise SystemExit(f"no accounts found in {ACCOUNTS_DIR} - run add_account.sh first")
     dupes = len(accts) - len({a["password"] for a in accts.values()})
     if dupes:
-        print(f"WARNING: {dupes} duplicate site password(s) across accounts — "
+        print(f"WARNING: {dupes} duplicate site password(s) across accounts - "
               "login routes to the first match; make them unique!", flush=True)
-    print(f"serving on {BIND}:{PORT} — {len(accts)} account(s): {', '.join(accts)}", flush=True)
+    print(f"serving on {BIND}:{PORT} - {len(accts)} account(s): {', '.join(accts)}", flush=True)
     ThreadingHTTPServer((BIND, PORT), H).serve_forever()
 
 if __name__ == "__main__":
