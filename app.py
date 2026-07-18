@@ -405,10 +405,13 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .hintx{width:auto;margin:0 0 0 auto;padding:0 4px;background:transparent;border:0;color:#8d87a0;
  font-size:13px;cursor:pointer;letter-spacing:0}
 .hintx:hover{color:#e6e0ff}
-.toolbar{display:flex;gap:10px;margin:22px 0 4px;flex-wrap:wrap;align-items:stretch;position:sticky;top:10px;z-index:20}
+.toolbar{display:flex;gap:10px;margin:22px -14px 4px;flex-wrap:wrap;align-items:stretch;position:sticky;top:0;z-index:20;padding:12px 14px;border-radius:12px;
+ background:rgba(19,18,26,.7);
+ backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);
+ box-shadow:0 10px 30px -12px rgba(8,5,20,.6)}
 .searchwrap{position:relative;flex:1;min-width:220px}
 .searchwrap .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#85829a;pointer-events:none}
-.searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:400;box-shadow:0 6px 22px rgba(8,5,20,.4)}
+.searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:400}
 .preview{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:#111116;
  border:1px solid #262530;border-radius:12px;padding:6px;display:none;max-height:64vh;overflow:auto;
  box-shadow:0 14px 44px rgba(8,5,20,.7)}
