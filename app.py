@@ -234,6 +234,21 @@ def login_ok(ip):
     with _FAILS_LOCK:
         _FAILS.pop(ip, None)
 
+# Light per-IP cap on /suggest so a valid session can't hammer full-table scans.
+_SUG = {}  # ip -> [count, window_start]
+_SUG_LOCK = threading.Lock()
+SUGGEST_MAX = 40  # per 10s (client debounces to ~9/s; this only stops abuse)
+
+def suggest_allowed(ip):
+    with _SUG_LOCK:
+        rec = _SUG.get(ip)
+        now = time.time()
+        if not rec or now - rec[1] > 10:
+            _SUG[ip] = [1, now]
+            return True
+        rec[0] += 1
+        return rec[0] <= SUGGEST_MAX
+
 # ---------- data (all account-scoped) ----------
 
 def own_conn(a):
@@ -385,6 +400,12 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .synced b{display:block;font-size:11.5px;font-weight:800;letter-spacing:.04em;color:#b9aeff;margin-top:2px}
 .synced .estnote{display:block;font-size:8.5px;font-weight:700;letter-spacing:.08em;color:#55516a;margin-top:3px;line-height:1.6}
 .synced .lbl2{display:block;margin-top:8px}
+.hint{display:flex;align-items:center;gap:10px;margin:18px 0 2px;padding:11px 15px;font-size:12.5px;font-weight:600;
+ color:#cdb8ff;background:linear-gradient(180deg,rgba(124,58,237,.16),rgba(124,58,237,.09));
+ border:1px solid rgba(167,139,250,.28);border-radius:12px}
+.hintx{width:auto;margin:0 0 0 auto;padding:0 4px;background:transparent;border:0;color:#8d87a0;
+ font-size:13px;cursor:pointer;letter-spacing:0}
+.hintx:hover{color:#e6e0ff}
 .toolbar{display:flex;gap:10px;margin:22px 0 4px;flex-wrap:wrap;align-items:stretch}
 .searchwrap{position:relative;flex:1;min-width:220px}
 .searchwrap .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#6c6a7d;pointer-events:none}
@@ -464,12 +485,15 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
  box-shadow:inset 0 1px 0 rgba(255,255,255,.07),0 10px 34px rgba(0,0,0,.28);
  transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
 .gc:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.14)}
+.gc>a,.gc .ph{position:relative}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed #2b2a34;background:#141419;display:flex;align-items:center;justify-content:center;color:#3f3d4a;font-size:10px;font-weight:700;letter-spacing:.1em}
+.gradebadge{position:absolute;top:7px;left:7px;z-index:2;font-size:11px;font-weight:800;letter-spacing:.02em;
+ color:#0c0a12;background:linear-gradient(135deg,#ffe08a,#f5b73d);padding:3px 8px;border-radius:7px;
+ box-shadow:0 2px 8px rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.35)}
 .gc .cn{font-size:14px;font-weight:800;color:#ecebf0;margin-top:9px;letter-spacing:-.01em}
 .cn.pre{color:#8d8a9a;font-size:11px;letter-spacing:.14em}
 .gc .nm{font-size:10px;font-weight:600;color:#77748a;line-height:1.4;margin-top:3px;height:56px;
  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
-.gc .gr{font-size:9px;font-weight:800;color:#c9beff;letter-spacing:.08em;margin-top:3px}
 .own{margin-top:auto;background:#0c0c10;border:1px solid #24232c;border-radius:7px;color:#ecebf0;font:inherit;font-size:11px;font-weight:600;padding:7px 9px;width:100%;outline:none}
 .own::placeholder{color:#46444f}
 .own:focus{border-color:#7c5cff}
@@ -501,7 +525,10 @@ button{width:100%;margin-top:10px;background:#7c5cff;border:0;border-radius:10px
  font-size:12px;font-weight:800;letter-spacing:.1em;padding:12px;cursor:pointer;font-family:inherit}
 button:hover{background:#8f73ff}
 .err{color:#ff8b8b;font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
+/* mobile: collapse stage labels to first letter, but show the CURRENT stage in
+   full (avoids the ambiguous two-'A' problem of Arrived vs Assembly) */
 @media(max-width:640px){.lbl{font-size:0}.lbl:first-letter{font-size:9px}
+.node.now .lbl{font-size:8.5px;white-space:nowrap}
 .card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
@@ -695,7 +722,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service=""):
     is_prelim = str(c["cert_id"]).startswith("spec:")
     name = html.escape(smart_title(c["name"] or ""))
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
-    grade = f'<div class="gr">PSA {html.escape(c["grade"])}</div>' if c.get("grade") else ""
+    grade = f'<span class="gradebadge">PSA {html.escape(c["grade"])}</span>' if c.get("grade") else ""
     if is_prelim:
         head = '<div class="cn pre">PRELIM</div>'
     else:
@@ -703,39 +730,62 @@ def card_tile(c, owners, show_sub=False, archived=False, service=""):
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
-        img = f'<a href="{big}"><img loading="lazy" src="{src}" alt=""></a>'  # opens in lightbox
+        img = f'<a href="{big}">{grade}<img loading="lazy" src="{src}" alt=""></a>'  # grade overlays scan; opens in lightbox
     else:
-        img = '<div class="ph">NO IMAGE YET</div>'
+        img = f'<div class="ph">{grade}NO IMAGE YET</div>'
     sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))} →</a>'
                 if show_sub else "")
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     return (f'<div class="gc{" arch" if archived else ""}">{img}{sub_link}{svc}{head}'
-            f'<div class="nm">{name}</div>{grade}'
+            f'<div class="nm">{name}</div>'
             f'<input class="own" data-cert="{cid}" value="{owner}" placeholder="+ owner name">'
             f'</div>')
+
+def untagged_count(a, active_subs):
+    """Cards in ACTIVE (non-archived) subs that have no owner yet - the operator's
+    to-tag worklist. Archived subs are excluded (old stuff, intentionally untagged)."""
+    owners = owners_map(a)
+    active_nums = {s["sub_number"] for s in active_subs}
+    n = 0
+    for c in load_all_cards(a):
+        if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), ""):
+            n += 1
+    return n
 
 def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
     gone = [s for s in subs if s["sub_number"] in arch]
     body = ("".join(card_html(s) for s in active) + "".join(card_html(s, archived=True) for s in gone)
-            or '<div class="empty">No submissions yet.</div>')
+            or '<div class="empty">No submissions yet. Cards appear here once PSA receives them.</div>')
     updated = max((s["updated_at"] or "" for s in subs), default="")
     stamp = fmt_local(updated) if updated else "n/a"
     toolbar = f'<div class="toolbar">{search_box()}</div>'
-    filters = (f'<div class="filters"><span class="f farch" id="archtoggle">ARCHIVED · {len(gone)}</span></div>'
-               if gone else "")
+    hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
+            '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
+    pills = []
+    if gone:
+        pills.append(f'<span class="f farch" id="archtoggle">ARCHIVED · {len(gone)}</span>')
+    untag = untagged_count(a, active)
+    if untag:
+        pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} NEED OWNERS →</a>')
+    filters = f'<div class="filters">{"".join(pills)}</div>' if pills else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
 <div class="hrow"><div><h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
 <div class="synced">LAST REFRESHED<b>{html.escape(stamp)}</b></div></div>
+{hint}
 {toolbar}
 {filters}
 <div id="list">{body}</div>
 </div>
 <script>
+(function(){{var h=document.getElementById('hint');
+ if(h&&localStorage.getItem('psa_hint_seen')){{h.style.display='none';}}
+ var x=document.getElementById('hintx');
+ if(x)x.addEventListener('click',function(){{h.style.display='none';localStorage.setItem('psa_hint_seen','1');}});}})();
 var af=document.getElementById('archtoggle');
 if(af)af.addEventListener('click',function(){{
   var on=af.classList.toggle('on');
@@ -790,47 +840,73 @@ def detail_page(a, sub):
 {body}
 </div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}</body></html>"""
 
+def grade_summary(cards):
+    """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
+    import collections
+    g = collections.Counter(c["grade"] for c in cards if c.get("grade"))
+    if not g:
+        return ""
+    def sortkey(item):
+        try:
+            return (-float(item[0].split()[0]),)
+        except ValueError:
+            return (0,)
+    parts = " · ".join(f"{n}× PSA {gr}" for gr, n in sorted(g.items(), key=sortkey))
+    return parts
+
 def people_page(a, owner):
     owners = owners_map(a)
-    want = owner.strip().lower()
-    cards = [c for c in load_all_cards(a) if owners.get(str(c["cert_id"]), "").lower() == want]
     arch = archived_set(a)
+    unassigned = owner.strip().lower() == "unassigned"
+    if unassigned:  # operator worklist: untagged cards in active subs
+        active_nums = {s["sub_number"] for s in load_subs(a) if s["sub_number"] not in arch}
+        cards = [c for c in load_all_cards(a)
+                 if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), "")]
+        title, sub_line = "Unassigned", f"{len(cards)} CARDS AWAITING AN OWNER"
+    else:
+        want = owner.strip().lower()
+        cards = [c for c in load_all_cards(a) if owners.get(str(c["cert_id"]), "").lower() == want]
+        title, sub_line = owner, f"{len(cards)} CARDS WITH {a['label'].upper()}"
     svc_map = {s["sub_number"]: s["service"] for s in load_subs(a)}
     if cards:
         grid = '<div class="grid">' + "".join(
             card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
                       service=svc_map.get(c["sub_number"], "")) for c in cards) + "</div>"
+    elif unassigned:
+        grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     else:
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
-    total = 0.0
-    unpriced = 0
-    covered = 0.0
-    uncovered = 0
-    for c in cards:
-        p = service_price(a, svc_map.get(c["sub_number"], ""))
-        if p is None:
-            unpriced += 1
-        else:
-            total += p
-        dv = c.get("declared_value")
-        if dv is None:
-            uncovered += 1
-        else:
-            covered += dv
-    ins = (f'<span class="lbl2">INSURED COVERAGE</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
-           if covered or uncovered else "")
-    est = (f'<div class="synced">EST. GRADING COST<b>${total:,.2f}'
-           f'{"+" if unpriced else ""}</b>{ins}'
-           f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
-           f'coverage = declared value on file with PSA</span></div>') if cards else ""
+    if unassigned:
+        est = ""
+    else:
+        total, unpriced, covered, uncovered = 0.0, 0, 0.0, 0
+        for c in cards:
+            p = service_price(a, svc_map.get(c["sub_number"], ""))
+            if p is None:
+                unpriced += 1
+            else:
+                total += p
+            dv = c.get("declared_value")
+            if dv is None:
+                uncovered += 1
+            else:
+                covered += dv
+        gsum = grade_summary(cards)
+        gline = f'<span class="lbl2">GRADES</span><b>{html.escape(gsum)}</b>' if gsum else ""
+        ins = (f'<span class="lbl2">INSURED COVERAGE</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
+               if covered or uncovered else "")
+        est = (f'<div class="synced">EST. GRADING COST<b>${total:,.2f}'
+               f'{"+" if unpriced else ""}</b>{ins}{gline}'
+               f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
+               f'coverage = declared value on file with PSA</span></div>') if cards else ""
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(owner)}'s cards</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}'s cards</title>
 {HEAD_HTML}
 <style>{CSS}</style></head><body><div class="wrap">
 <a class="view" href="/">← All submissions</a>
-<div class="hrow" style="margin-top:14px"><div><h1>{html.escape(owner)}</h1>
-<div class="sub">{len(cards)} CARDS WITH {html.escape(a['label'].upper())}</div></div>{est}</div>
-<div class="toolbar">{search_box(owner=owner)}</div>
+<div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
+<div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
+<div class="toolbar">{search_box(owner="" if unassigned else owner)}</div>
 {grid}
 </div>{SEARCH_JS}{OWNER_JS}{LIGHTBOX_JS}</body></html>"""
 
@@ -967,6 +1043,8 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, search_page(acct, qs.get("q", [""])[0],
                                               owner=qs.get("owner", [""])[0]))
         if path == "/suggest":
+            if not suggest_allowed(self.client_ip()):
+                return self.send(429, '{"names":[],"cards":[]}', "application/json; charset=utf-8")
             qs = urllib.parse.parse_qs(parsed.query)
             return self.send(200, json.dumps(suggest(acct, qs.get("q", [""])[0],
                                                      owner=qs.get("owner", [""])[0])),

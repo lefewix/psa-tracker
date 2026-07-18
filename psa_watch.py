@@ -173,6 +173,15 @@ def detail_url(sub_number):
     return ("https://www.psacard.com/api/grading/trpc/orders.get?batch=1&input="
             + urllib.parse.quote(json.dumps({"0": blob}, separators=(",", ":"))))
 
+def grade_str(pc):
+    """psaCerts entry -> display grade, e.g. '10', '9 OC', or '' if not yet graded.
+    validFlag/gradeValue guard against half-populated in-progress certs."""
+    gv = pc.get("gradeValue")
+    if not gv:
+        return ""
+    q = (pc.get("qualifier") or "").strip()
+    return f"{gv} {q}".strip() if q and q.lower() not in ("none", "0") else str(gv)
+
 def parse_detail(sub_number, body):
     """orders.get -> per-card {cert_id, cert_no, name, images, grade}."""
     try:
@@ -199,11 +208,12 @@ def parse_detail(sub_number, body):
         pc = psa.get(cid, {})
         cards.append({
             "sub_number": sub_number, "cert_id": cid,
-            "cert_no": str(sp.get("certNo") or pc.get("certNo") or ""),
+            # once graded, specReviewResults empties out -> fall back to psaCerts
+            "cert_no": str(sp.get("certNo") or pc.get("certNumber") or ""),
             "name": sp.get("specDescription") or pc.get("specDescription") or "",
             "line_number": sp.get("lineNumber") or 0,
             "front_thumb": front or "", "back_thumb": back or "",
-            "grade": str(pc.get("grade") or pc.get("cardGrade") or ""),
+            "grade": grade_str(pc),
         })
     # certs known but no image yet (early stages): still record from spec list
     for cid, sp in specs.items():
@@ -430,8 +440,11 @@ def refresh_cards(conn, subs, prev=None, full=False):
         # calls roughly in half once every sub is fully populated.
         if not full and s["status"] == "Shipped" and prev.get(sub) == "Shipped":
             row = conn.execute("""SELECT count(*), sum(front_thumb!=''),
-                sum(declared_value IS NULL) FROM cards WHERE sub_number=?""", (sub,)).fetchone()
-            if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0):
+                sum(declared_value IS NULL), sum(grade='') FROM cards WHERE sub_number=?""",
+                (sub,)).fetchone()
+            # only skip once cards are fully imaged, valued, AND graded (if grades ready)
+            need_grades = s["grades_ready"] and (row[3] or 0)
+            if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0) and not need_grades:
                 skipped += 1
                 continue
         try:
