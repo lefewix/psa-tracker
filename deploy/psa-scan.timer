@@ -1,0 +1,10 @@
+[Unit]
+Description=Run PSA cookie refresh + scan twice daily
+
+[Timer]
+# adjust the timezone/hours to taste
+OnCalendar=*-*-* 01,13:00:00 America/Toronto
+Persistent=true
+
+[Install]
+WantedBy=timers.target

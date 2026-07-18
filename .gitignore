@@ -1,0 +1,14 @@
+# secrets & data — never commit
+backups/
+*.tar.gz
+*.db
+account.env
+*.env
+!deploy/example.env
+imgcache/
+login_debug/
+.pw-browsers/
+__pycache__/
+*.pyc
+*.png
+*.b64

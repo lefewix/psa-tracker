@@ -1,0 +1,10 @@
+[Unit]
+Description=PSA cookie refresh + submission scan (all accounts)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/psa-tracker/run_scan.sh
+# generous: browser login (~40s) + scan (~60s) per account
+TimeoutStartSec=1800

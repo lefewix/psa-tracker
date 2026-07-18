@@ -1,0 +1,14 @@
+[Unit]
+Description=PSA tracker website
+After=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/psa-tracker.env
+WorkingDirectory=/opt/psa-tracker
+ExecStart=/usr/bin/python3 /opt/psa-tracker/app.py
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
