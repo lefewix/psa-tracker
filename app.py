@@ -400,14 +400,16 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
 /* gradient progress timeline */
 .tl{position:relative;height:46px;margin:22px 0 12px}
-.track{position:absolute;top:5px;left:5%;right:5%;height:2px;background:rgba(255,255,255,.09);border-radius:2px}
-.fill{position:absolute;top:5px;left:5%;height:2px;border-radius:2px;transition:width .4s;
+/* pixel-exact vertical geometry: track center y=7 == every dot's center
+   (10px dot at y=2..12, 14px active dot at y=0..14, labels all start y=21) */
+.track{position:absolute;top:6px;left:5%;right:5%;height:2px;background:rgba(255,255,255,.09);border-radius:2px}
+.fill{position:absolute;top:6px;left:5%;height:2px;border-radius:2px;transition:width .4s;
  background:linear-gradient(90deg,#7c3aed,#d94ff2);
  box-shadow:0 0 9px rgba(217,79,242,.45)}
 .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
-.dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.16);border:0;margin:2px auto 10px}
+.dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.16);border:0;margin:2px auto 9px}
 .node.done .dot{background:#9d5bf0}
-.node.now .dot{width:13px;height:13px;margin:0 auto 8px;background:#d94ff2;
+.node.now .dot{width:14px;height:14px;margin:0 auto 7px;background:#d94ff2;
  box-shadow:0 0 0 4px rgba(217,79,242,.18),0 0 12px rgba(217,79,242,.6);
  animation:nowpulse 2.6s ease-in-out infinite}
 @keyframes nowpulse{50%{box-shadow:0 0 0 7px rgba(217,79,242,.08),0 0 16px rgba(217,79,242,.85)}}
