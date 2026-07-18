@@ -598,6 +598,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  animation:shimmer 1.1s linear infinite}
 .grid img.ld,.cover.ld{background:#17171c;animation:none}
 @keyframes shimmer{to{background-position:-200% 0}}
+/* submission group cards (customer view): no spotlight of their own */
+.grp::before{display:none}
+.grp>.bloom{display:none}
 /* archived grey-out */
 .card.arch,.gc.arch{opacity:.42;filter:grayscale(.72)}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
@@ -646,6 +649,16 @@ ICON_OUT = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke=
 ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
 ICON_HOLD = _pic('<path d="M9 5v14M15 5v14"/>')
 
+def eta_pill(s):
+    """Status pill for a sub: return ETA, shipped, hold, or pending."""
+    if s["on_hold"]:
+        return f'<span class="pill hold">{ICON_HOLD}On hold</span>'
+    if s["status"] == "Shipped":
+        return f'<span class="pill done">{ICON_CHECK}Shipped</span>'
+    if s["est_end"] or s["est_start"]:
+        return f'<span class="pill">{ICON_CLOCK}Back ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
+    return f'<span class="pill done">{ICON_CLOCK}ETA pending</span>'
+
 def gate_page(error=""):
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
@@ -677,14 +690,7 @@ def card_html(s, archived=False):
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
     # longer repeats an "Expected return" line
-    if s["on_hold"]:
-        pill = f'<span class="pill hold">{ICON_HOLD}On hold</span>'
-    elif s["status"] == "Shipped":
-        pill = f'<span class="pill done">{ICON_CHECK}Shipped</span>'
-    elif s["est_end"] or s["est_start"]:
-        pill = f'<span class="pill">{ICON_CLOCK}Back ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
-    else:
-        pill = f'<span class="pill done">{ICON_CLOCK}ETA pending</span>'
+    pill = eta_pill(s)
 
     if s["status"] == "Shipped" and s["shipped"]:
         foot = f'Shipped {html.escape(s["shipped"])}'
@@ -1065,6 +1071,55 @@ def people_page(a, owner, customer=False):
 {archsec}
 </div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
 
+def customer_page(a, email):
+    """Customer home: THEIR cards grouped by submission, each group carrying the
+    sub's service line, ETA pill, and the full stage timeline."""
+    owners = owners_map(a)
+    arch = archived_set(a)
+    subs_by = {s["sub_number"]: s for s in load_subs(a)}
+    want = email.strip().lower()
+    mine = [c for c in load_all_cards(a) if owners.get(str(c["cert_id"]), "").lower() == want]
+    groups = {}
+    for c in mine:
+        groups.setdefault(c["sub_number"], []).append(c)
+
+    def group_html(n, cs):
+        s = subs_by.get(n)
+        svc = html.escape(s["service"]) if s else ""
+        pill = eta_pill(s) if s else ""
+        tl = timeline_html(s["status"]) if s else ""
+        cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
+        tiles = "".join(card_tile(c, owners, show_sub=False, archived=(n in arch), customer=True)
+                        for c in cs)
+        return (f'<div class="card grp{" arch" if n in arch else ""}">'
+                f'<div class="top"><div><div class="num">#{html.escape(str(n))}</div>'
+                f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
+                f'{tl}<div class="grid" style="margin-top:14px">{tiles}</div></div>')
+
+    order = sorted(groups, key=lambda n: -int(n) if str(n).isdigit() else 0)
+    act = [n for n in order if n not in arch]
+    gone = [n for n in order if n in arch]
+    body = ("".join(group_html(n, groups[n]) for n in act)
+            or '<div class="empty">No cards yet — they appear once the store receives your submission.</div>')
+    archsec = ""
+    if gone:
+        archsec = (f'<div class="filters" style="margin:30px 0 0">'
+                   f'<span class="f farch" id="archtoggle">Archived · {len(gone)}</span></div>'
+                   f'<div id="archgrid" style="display:none">'
+                   + "".join(group_html(n, groups[n]) for n in gone) + '</div>')
+    total = sum(len(groups[n]) for n in act)
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
+{HEAD_HTML}
+<style>{CSS}</style></head><body><div class="wrap">
+<a class="view" href="/logout">Sign out</a>
+<div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
+<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div></div></div>
+<div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
+{body}
+{archsec}
+</div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
+
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
     owners = owners_map(a)
@@ -1205,7 +1260,7 @@ class H(BaseHTTPRequestHandler):
             # no dashboard, no other owners, no sub pages (they show other
             # customers' cards), no owner directory
             if path == "/":
-                return self.send(200, people_page(acct, cust, customer=True))
+                return self.send(200, customer_page(acct, cust))
             if path == "/search":
                 qs = urllib.parse.parse_qs(parsed.query)
                 return self.send(200, search_page(acct, qs.get("q", [""])[0],
