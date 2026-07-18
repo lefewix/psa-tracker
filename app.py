@@ -1191,7 +1191,7 @@ def customer_page(a, email):
 <div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div></div></div>
 <div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
-{body}
+<div style="margin-top:28px">{body}</div>
 {archsec}
 </div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}</body></html>"""
 
