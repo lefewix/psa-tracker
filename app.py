@@ -598,9 +598,6 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  animation:shimmer 1.1s linear infinite}
 .grid img.ld,.cover.ld{background:#17171c;animation:none}
 @keyframes shimmer{to{background-position:-200% 0}}
-/* submission group cards (customer view): no spotlight of their own */
-.grp::before{display:none}
-.grp>.bloom{display:none}
 /* archived grey-out */
 .card.arch,.gc.arch{opacity:.42;filter:grayscale(.72)}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
