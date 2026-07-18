@@ -327,7 +327,7 @@ def set_owner(a, cert_id, owner):
               (cert_id, owner.strip(), time.strftime("%Y-%m-%dT%H:%M")))
     c.commit(); c.close()
 
-def suggest(a, q, owner=None, limit_names=5, limit_cards=5):
+def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
     """Live search backing the unified search box. People (priority) + cards.
     With owner set (person page), results are ONLY that person's cards - no
     People section; switching person means going back to all submissions."""
@@ -413,7 +413,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .searchwrap .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#85829a;pointer-events:none}
 .searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:400}
 .preview{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:#111116;
- border:1px solid #262530;border-radius:12px;padding:6px;display:none;max-height:64vh;overflow:auto;
+ border:1px solid #262530;border-radius:12px;padding:6px;display:none;max-height:64vh;overflow:auto;overscroll-behavior:contain;
  box-shadow:0 14px 44px rgba(8,5,20,.7)}
 .pvsec{font-size:10px;font-weight:600;letter-spacing:.04em;color:#7d7a90;padding:9px 10px 4px}
 .pvrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;text-decoration:none;
