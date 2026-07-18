@@ -391,8 +391,8 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed #2b2a34;background:#141419;display:flex;align-items:center;justify-content:center;color:#3f3d4a;font-size:10px;font-weight:700;letter-spacing:.1em}
 .gc .cn{font-size:14px;font-weight:800;color:#ecebf0;margin-top:9px;letter-spacing:-.01em}
 .cn.pre{color:#8d8a9a;font-size:11px;letter-spacing:.14em}
-.gc .nm{font-size:10px;font-weight:600;color:#77748a;line-height:1.3;margin-top:2px;height:26px;
- display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gc .nm{font-size:10px;font-weight:600;color:#77748a;line-height:1.4;margin-top:3px;height:70px;
+ display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:8px}
 .gc .gr{font-size:9px;font-weight:800;color:#c9beff;letter-spacing:.08em;margin-top:3px}
 .own{margin-top:auto;background:#0c0c10;border:1px solid #24232c;border-radius:7px;color:#ecebf0;font:inherit;font-size:11px;font-weight:600;padding:7px 9px;width:100%;outline:none}
 .own::placeholder{color:#46444f}
