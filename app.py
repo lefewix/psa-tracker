@@ -431,6 +431,34 @@ def load_all_cards(a):
     except sqlite3.OperationalError:
         return []
 
+# Card market values (psa_values.py fills card_values from PSA cert pages).
+# Feature-flagged: with PSA_VALUES unset - or the table absent - every page
+# renders exactly as it did before the feature existed.
+VALUES_ON = os.environ.get("PSA_VALUES", "0") == "1"
+
+def load_values(a):
+    """cert_no -> display value in USD (PSA's estimate, else latest comp sale),
+    plus the freshest fetch date for 'as of' captions."""
+    if not VALUES_ON:
+        return {}, ""
+    try:
+        conn = _ro_conn(a)
+        try:
+            rows = conn.execute(
+                "SELECT cert_no, estimate, last_sale, fetched_at FROM card_values").fetchall()
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return {}, ""
+    vals, latest = {}, ""
+    for r in rows:
+        v = r["estimate"] if r["estimate"] is not None else r["last_sale"]
+        if v is not None:
+            vals[r["cert_no"]] = v
+        if r["fetched_at"] and r["fetched_at"] > latest:
+            latest = r["fetched_at"]
+    return vals, (short_date(latest) if latest else "")
+
 def owners_map(a):
     c = own_conn(a)
     m = {cid: ow for cid, ow in c.execute("SELECT cert_id, owner FROM owners WHERE owner!=''")}
@@ -674,6 +702,8 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .cn.pre{color:var(--m3);font-size:11px;letter-spacing:.02em;font-family:inherit;line-height:19px}
 .gc .nm{font-size:10.5px;font-weight:400;color:var(--m4);line-height:1.4;margin-top:3px;height:56px;
  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
+.gc .cval{font-size:11.5px;font-weight:600;letter-spacing:.01em;color:var(--ac-pale);margin:-2px 0 6px}
+.gc .cval span{font-size:9.5px;font-weight:500;color:var(--m7)}
 .own{margin-top:auto;background:var(--inp);border:1px solid var(--b1);border-radius:7px;color:var(--txt);font:inherit;font-size:11.5px;font-weight:400;padding:7px 9px;width:100%;outline:none;transition:border-color .15s}
 .own::placeholder{color:var(--m10)}
 .own:focus{border-color:var(--ac)}
@@ -993,7 +1023,8 @@ ARCHFOLD_JS = """<script>
 })();
 </script>"""
 
-def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline=""):
+def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline="",
+              value=None):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
     name = html.escape(smart_title(c["name"] or ""))
@@ -1019,8 +1050,11 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     own_input = ("" if customer else
                  f'<input class="own" data-cert="{cid}" value="{owner}" placeholder="+ owner name">')
+    val = (f'<div class="cval num">${value:,.0f} <span>USD</span></div>'
+           if value is not None and not customer else "")
     return (f'<div class="gc{" arch" if archived else ""}">{img}{sub_link}{svc}{head}'
             f'<div class="nm">{name}</div>'
+            f'{val}'
             f'{own_input}'
             f'</div>')
 
@@ -1043,6 +1077,15 @@ def dash_page(a, subs):
             or '<div class="empty">No submissions yet. Cards appear here once PSA receives them.</div>')
     updated = max((s["updated_at"] or "" for s in subs), default="")
     stamp = fmt_local(updated) if updated else "n/a"
+    vals, vas_of = load_values(a)
+    vblock = ""
+    if vals:
+        shipped = {s["sub_number"] for s in subs if s["status"] == "Shipped"}
+        vtotal = sum(vals.get(c["cert_no"] or "", 0)
+                     for c in load_all_cards(a) if c["sub_number"] in shipped)
+        if vtotal:
+            vblock = (f'<span class="lbl2">Est. value · shipped</span><b class="num">${vtotal:,.0f} USD</b>'
+                      f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     toolbar = f'<div class="toolbar">{search_box()}</div>'
     hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
@@ -1058,7 +1101,7 @@ def dash_page(a, subs):
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <div class="hrow"><div>{logo_tag()}<h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
-<div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
+<div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b>{vblock}</div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
 {toolbar}
 {filters}
@@ -1079,28 +1122,39 @@ if(af)af.addEventListener('click',function(){{
 }});
 </script>{SEARCH_JS}{FX_JS}{THEME_JS}</body></html>"""
 
-def eta_badge(s):
+def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
-    ship date + tracking once shipped."""
+    ship date + tracking once shipped. `extra` = additional lbl2/b lines
+    (e.g. the sub's estimated value) appended inside the same block."""
     if s["status"] == "Shipped" and s["shipped"]:
         note = (f'<span class="estnote">{html.escape(s["carrier"])} {html.escape(s["tracking"])}</span>'
                 if s["carrier"] and s["tracking"] else "")
-        return f'<div class="synced">Shipped<b>{html.escape(s["shipped"])}</b>{note}</div>'
+        return f'<div class="synced">Shipped<b>{html.escape(s["shipped"])}</b>{note}{extra}</div>'
     if s["est_start"]:
         val = html.escape(s["est_start"])
         if s["est_end"]:
             val += f' to {html.escape(s["est_end"])}'
         note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
-        return f'<div class="synced">PSA ETA<b>{val}</b>{note}</div>'
-    return '<div class="synced">PSA ETA<b>Estimate pending</b></div>'
+        return f'<div class="synced">PSA ETA<b>{val}</b>{note}{extra}</div>'
+    return f'<div class="synced">PSA ETA<b>Estimate pending</b>{extra}</div>'
 
 def detail_page(a, sub):
     num = sub["sub_number"]
     archived = num in archived_set(a)
     cards = load_cards(a, num)
     owners = owners_map(a)
+    vals, vas_of = load_values(a)
+    vtotal = sum(vals.get(c["cert_no"] or "", 0) for c in cards)
+    vextra = ""
+    if vtotal:
+        vmiss = sum(1 for c in cards if c.get("grade") and (c["cert_no"] or "") not in vals)
+        vextra = (f'<span class="lbl2">Est. value</span><b class="num">${vtotal:,.0f}{"+" if vmiss else ""} USD</b>'
+                  f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     if cards:
-        body = '<div class="grid">' + "".join(card_tile(c, owners, archived=archived) for c in cards) + "</div>"
+        body = ('<div class="grid">'
+                + "".join(card_tile(c, owners, archived=archived,
+                                    value=vals.get(c["cert_no"] or "")) for c in cards)
+                + "</div>")
     elif json.loads(sub["cert_ids"] or "[]"):
         body = '<div class="empty">Card images not synced yet. They appear after the next sync (once cards reach Research &amp; ID).</div>'
     else:
@@ -1118,7 +1172,7 @@ def detail_page(a, sub):
 <div class="foot" style="border:0;padding:0"><a class="view" href="/">← All submissions</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
-{eta_badge(sub)}</div>
+{eta_badge(sub, vextra)}</div>
 <div class="card" style="margin-top:18px">{timeline_html(sub['status'])}</div>
 {body}
 </div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{THEME_JS}</body></html>"""
@@ -1160,10 +1214,12 @@ def people_page(a, owner, customer=False):
         title, sub_line = "Your cards", f"{len(act_cards)} cards · {owner}"
     elif not unassigned:
         sub_line = f"{len(act_cards)} cards with {a['label']}"
+    vals, vas_of = ({}, "") if customer else load_values(a)
     def tiles(cs):
         return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
                                  service=svc_map.get(c["sub_number"], ""), customer=customer,
-                                 statline=cust_statline(subs_by.get(c["sub_number"])))
+                                 statline=cust_statline(subs_by.get(c["sub_number"])),
+                                 value=vals.get(c["cert_no"] or ""))
                        for c in cs)
     if act_cards:
         grid = '<div class="grid">' + tiles(act_cards) + "</div>"
@@ -1197,10 +1253,14 @@ def people_page(a, owner, customer=False):
         gline = f'<span class="lbl2">Grades</span><b>{html.escape(gsum)}</b>' if gsum else ""
         ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
                if covered or uncovered else "")
+        vtot = sum(vals.get(c["cert_no"] or "", 0) for c in act_cards)
+        vline = (f'<span class="lbl2">Est. value · graded</span><b class="num">${vtot:,.0f} USD</b>'
+                 if vtot else "")
+        vnote = f'<br>values = PSA estimates · as of {html.escape(vas_of)}' if vline else ""
         est = (f'<div class="synced">Est. grading cost<b>${total:,.2f}'
-               f'{"+" if unpriced else ""}</b>{ins}{gline}'
+               f'{"+" if unpriced else ""}</b>{ins}{vline}{gline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
-               f'coverage = declared value on file with PSA</span></div>') if act_cards else ""
+               f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     back = ('<a class="view" href="/logout">Sign out</a>' if customer
             else '<a class="view" href="/">← All submissions</a>')
     page_title = "Your cards" if customer else f"{title}'s cards"

@@ -24,6 +24,12 @@ for envf in "$ACCTS"/*/account.env; do
       echo "[run_scan] $id: login failed - scanning with existing cookie"
     fi
     python3 /opt/psa-tracker/psa_watch.py --once "$@"
+    # Card market values (PSA_VALUES=1 in the env enables; remove to disable).
+    # Public cert pages, so failures never block the scan.
+    if [ "${PSA_VALUES:-0}" = "1" ]; then
+      xvfb-run -a python3 /opt/psa-tracker/psa_values.py \
+        || echo "[run_scan] $id: values fetch failed (non-fatal)"
+    fi
   )
 done
 [ "$found" = 1 ] || echo "[run_scan] no accounts found in $ACCTS - run add_account.sh"
