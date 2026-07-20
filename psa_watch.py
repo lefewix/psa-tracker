@@ -33,9 +33,22 @@ POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
-STEP_ORDER = ["Submitted", "OrderPrep", "ResearchAndID", "Grading", "Assembly", "QA", "Shipped"]
-STEP_LABEL = {"Submitted": "Arrived", "OrderPrep": "Order Prep", "ResearchAndID": "Research & ID",
-              "Grading": "Grading", "Assembly": "Assembly", "QA": "QA Check", "Shipped": "Shipped"}
+# orders.list reports progressSummary.lastCompletedStep, but psacard.com displays
+# the stage currently IN PROGRESS -- the step AFTER the last completed one (in the
+# order detail's orderProgressSteps, the first non-completed step is the one PSA
+# highlights). Store that same current stage, else the site reads one stage behind
+# PSA. "Submitted" done = package at PSA, prep not finished -> "Arrived". QA done
+# stays "QA Check": grades_ready flags the grades, "Shipped" waits for the real
+# ship event. Detail-endpoint step names (Arrived/QACheck/GradesReady/Completed)
+# are included in case orders.list ever adopts that vocabulary.
+CURRENT_STAGE = {
+    "Submitted": "Arrived",       "Arrived": "Order Prep",
+    "OrderPrep": "Research & ID", "ResearchAndID": "Grading",
+    "Grading": "Assembly",        "Assembly": "QA Check",
+    "QA": "QA Check",             "QACheck": "QA Check",
+    "GradesReady": "QA Check",    "Shipped": "Shipped",
+    "Completed": "Shipped",
+}
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS subs (
@@ -149,7 +162,7 @@ def parse(ctype, body):
             "sub_number": str(o.get("submissionNumber") or ""),
             "order_number": str(o.get("orderNumber") or ""),
             "service": o.get("service") or "",
-            "status": STEP_LABEL.get(step, step),
+            "status": CURRENT_STAGE.get(step, step),
             "raw_step": step,
             "card_count": int(o.get("itemCount") or 0),
             "destination": "Ship back" if not o.get("isPickup") else "Pickup",
