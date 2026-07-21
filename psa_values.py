@@ -16,7 +16,10 @@ Everything lands in the additive `card_values` table - the rest of the schema is
 untouched, so DROP TABLE card_values (or just unsetting PSA_VALUES for the web
 app / run_scan.sh) fully reverts the feature.
 
-Usage: psa_values.py [--all]
+Also refreshes the USDCAD rate into fx_rates each run (keyless public FX APIs);
+app.py converts the stored USD values to CAD at render time.
+
+Usage: psa_values.py [--all | --fx-only]
 Env:   PSA_DB              account database (same as psa_watch.py)
        PSA_VALUES_BATCH    max cert pages per run (default 40; --all = no cap)
        PSA_VALUES_MAX_AGE  refresh values older than this many days (default 14)
@@ -46,7 +49,43 @@ CREATE TABLE IF NOT EXISTS card_values (
   fetched_at     TEXT,
   error          TEXT
 );
+CREATE TABLE IF NOT EXISTS fx_rates (
+  pair       TEXT PRIMARY KEY,
+  rate       REAL,
+  fetched_at TEXT
+);
 """
+
+FX_URLS = (  # keyless USD->CAD sources, first one that answers wins
+    ("https://api.frankfurter.app/latest?from=USD&to=CAD", ("rates", "CAD")),
+    ("https://open.er-api.com/v6/latest/USD", ("rates", "CAD")),
+)
+
+
+def fetch_fx(conn):
+    """Refresh the USDCAD rate (app.py renders card values in CAD with it).
+    Failures keep the previous stored rate - stale beats absent."""
+    import urllib.request
+    for url, path in FX_URLS:
+        try:
+            with urllib.request.urlopen(url, timeout=15) as r:
+                data = json.loads(r.read().decode())
+            rate = data
+            for k in path:
+                rate = rate[k]
+            rate = float(rate)
+            if not (0.5 < rate < 3):  # sanity: a broken feed must not scale the site
+                raise ValueError(f"implausible USDCAD rate {rate}")
+            now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            conn.execute("""INSERT INTO fx_rates (pair, rate, fetched_at) VALUES ('USDCAD',?,?)
+                ON CONFLICT(pair) DO UPDATE SET rate=excluded.rate, fetched_at=excluded.fetched_at""",
+                (rate, now))
+            conn.commit()
+            log(f"USDCAD rate {rate:.4f} ({url.split('/')[2]})")
+            return True
+        except Exception as ex:
+            log(f"fx fetch failed ({url.split('/')[2]}): {str(ex)[:80]}")
+    return False
 
 
 def log(m):
@@ -123,6 +162,11 @@ def upsert(conn, certs, est, sales, error=""):
 def main():
     limit = None if "--all" in sys.argv else BATCH
     conn = sqlite3.connect(DB_PATH)
+    conn.execute("PRAGMA busy_timeout=10000")
+    conn.executescript(SCHEMA)
+    fetch_fx(conn)
+    if "--fx-only" in sys.argv:
+        return 0
     todo = pick_groups(conn)
     if limit is not None:
         todo = todo[:limit]

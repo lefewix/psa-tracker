@@ -437,27 +437,33 @@ def load_all_cards(a):
 VALUES_ON = os.environ.get("PSA_VALUES", "0") == "1"
 
 def load_values(a):
-    """cert_no -> display value in USD (PSA's estimate, else latest comp sale),
-    plus the freshest fetch date for 'as of' captions."""
+    """cert_no -> display value (PSA's estimate, else latest comp sale) converted
+    to CAD via the stored USDCAD rate (psa_values.py keeps it fresh; raw USD only
+    if no rate was ever fetched), plus freshest fetch date and currency label."""
     if not VALUES_ON:
-        return {}, ""
+        return {}, "", "CAD"
     try:
         conn = _ro_conn(a)
         try:
             rows = conn.execute(
                 "SELECT cert_no, estimate, last_sale, fetched_at FROM card_values").fetchall()
+            try:
+                fx = conn.execute("SELECT rate FROM fx_rates WHERE pair='USDCAD'").fetchone()
+            except sqlite3.Error:
+                fx = None
         finally:
             conn.close()
     except sqlite3.Error:
-        return {}, ""
+        return {}, "", "CAD"
+    rate, cur = (fx["rate"], "CAD") if fx and fx["rate"] else (1.0, "USD")
     vals, latest = {}, ""
     for r in rows:
         v = r["estimate"] if r["estimate"] is not None else r["last_sale"]
         if v is not None:
-            vals[r["cert_no"]] = v
+            vals[r["cert_no"]] = v * rate
         if r["fetched_at"] and r["fetched_at"] > latest:
             latest = r["fetched_at"]
-    return vals, (short_date(latest) if latest else "")
+    return vals, (short_date(latest) if latest else ""), cur
 
 def owners_map(a):
     c = own_conn(a)
@@ -1024,7 +1030,7 @@ ARCHFOLD_JS = """<script>
 </script>"""
 
 def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline="",
-              value=None):
+              value=None, vcur="CAD"):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
     name = html.escape(smart_title(c["name"] or ""))
@@ -1050,7 +1056,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     own_input = ("" if customer else
                  f'<input class="own" data-cert="{cid}" value="{owner}" placeholder="+ owner name">')
-    val = (f'<div class="cval num">${value:,.0f} <span>USD</span></div>'
+    val = (f'<div class="cval num">${value:,.0f} <span>{vcur}</span></div>'
            if value is not None and not customer else "")
     return (f'<div class="gc{" arch" if archived else ""}">{img}{sub_link}{svc}{head}'
             f'<div class="nm">{name}</div>'
@@ -1077,15 +1083,6 @@ def dash_page(a, subs):
             or '<div class="empty">No submissions yet. Cards appear here once PSA receives them.</div>')
     updated = max((s["updated_at"] or "" for s in subs), default="")
     stamp = fmt_local(updated) if updated else "n/a"
-    vals, vas_of = load_values(a)
-    vblock = ""
-    if vals:
-        shipped = {s["sub_number"] for s in subs if s["status"] == "Shipped"}
-        vtotal = sum(vals.get(c["cert_no"] or "", 0)
-                     for c in load_all_cards(a) if c["sub_number"] in shipped)
-        if vtotal:
-            vblock = (f'<span class="lbl2">Est. value · shipped</span><b class="num">${vtotal:,.0f} USD</b>'
-                      f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     toolbar = f'<div class="toolbar">{search_box()}</div>'
     hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
@@ -1101,7 +1098,7 @@ def dash_page(a, subs):
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <div class="hrow"><div>{logo_tag()}<h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
-<div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b>{vblock}</div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
+<div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
 {toolbar}
 {filters}
@@ -1143,17 +1140,17 @@ def detail_page(a, sub):
     archived = num in archived_set(a)
     cards = load_cards(a, num)
     owners = owners_map(a)
-    vals, vas_of = load_values(a)
+    vals, vas_of, vcur = load_values(a)
     vtotal = sum(vals.get(c["cert_no"] or "", 0) for c in cards)
     vextra = ""
     if vtotal:
         vmiss = sum(1 for c in cards if c.get("grade") and (c["cert_no"] or "") not in vals)
-        vextra = (f'<span class="lbl2">Est. value</span><b class="num">${vtotal:,.0f}{"+" if vmiss else ""} USD</b>'
+        vextra = (f'<span class="lbl2">Est. value</span><b class="num">${vtotal:,.0f}{"+" if vmiss else ""} {vcur}</b>'
                   f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     if cards:
         body = ('<div class="grid">'
                 + "".join(card_tile(c, owners, archived=archived,
-                                    value=vals.get(c["cert_no"] or "")) for c in cards)
+                                    value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cards)
                 + "</div>")
     elif json.loads(sub["cert_ids"] or "[]"):
         body = '<div class="empty">Card images not synced yet. They appear after the next sync (once cards reach Research &amp; ID).</div>'
@@ -1214,12 +1211,12 @@ def people_page(a, owner, customer=False):
         title, sub_line = "Your cards", f"{len(act_cards)} cards · {owner}"
     elif not unassigned:
         sub_line = f"{len(act_cards)} cards with {a['label']}"
-    vals, vas_of = ({}, "") if customer else load_values(a)
+    vals, vas_of, vcur = ({}, "", "CAD") if customer else load_values(a)
     def tiles(cs):
         return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
                                  service=svc_map.get(c["sub_number"], ""), customer=customer,
                                  statline=cust_statline(subs_by.get(c["sub_number"])),
-                                 value=vals.get(c["cert_no"] or ""))
+                                 value=vals.get(c["cert_no"] or ""), vcur=vcur)
                        for c in cs)
     if act_cards:
         grid = '<div class="grid">' + tiles(act_cards) + "</div>"
@@ -1254,7 +1251,7 @@ def people_page(a, owner, customer=False):
         ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
                if covered or uncovered else "")
         vtot = sum(vals.get(c["cert_no"] or "", 0) for c in act_cards)
-        vline = (f'<span class="lbl2">Est. value · graded</span><b class="num">${vtot:,.0f} USD</b>'
+        vline = (f'<span class="lbl2">Est. value · graded</span><b class="num">${vtot:,.0f} {vcur}</b>'
                  if vtot else "")
         vnote = f'<br>values = PSA estimates · as of {html.escape(vas_of)}' if vline else ""
         est = (f'<div class="synced">Est. grading cost<b>${total:,.2f}'
