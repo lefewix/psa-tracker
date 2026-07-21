@@ -1027,26 +1027,50 @@ SORT_JS = """<script>
   var list=document.getElementById('list');
   var btns=document.querySelectorAll('.fsort');
   if(!list||!btns.length)return;
-  function key(c,m){
-    if(m==='svc')return (c.dataset.svc||'').toLowerCase();
-    if(m==='eta')return c.dataset.eta||'9999-99-99';  // no ETA (incl. shipped) sinks last
-    return -parseInt(c.dataset.sub||'0',10);          // newest sub first
+  // clicking the active pill again reverses it; labels follow the direction
+  var BASE={sub:'Newest',svc:'Order type',eta:'Return time'};
+  var DIR={sub:['Newest','Oldest'],
+           svc:['Order type \\u00b7 A\\u2013Z','Order type \\u00b7 Z\\u2013A'],
+           eta:['Return \\u00b7 soonest','Return \\u00b7 latest']};
+  function subDesc(a,b){return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
+  function cmp(a,b,m,d){
+    var r=0;
+    if(m==='sub'){r=subDesc(a,b);return d?-r:r;}
+    if(m==='svc'){
+      var x=(a.dataset.svc||'').toLowerCase(),y=(b.dataset.svc||'').toLowerCase();
+      r=x<y?-1:x>y?1:0; if(r)return d?-r:r;
+    }else{
+      var x=a.dataset.eta||'',y=b.dataset.eta||'';
+      if(x&&!y)return -1; if(!x&&y)return 1;   // no return date: always last
+      r=x<y?-1:x>y?1:0; if(r)return d?-r:r;
+    }
+    return subDesc(a,b);  // ties: newest sub first, both directions
   }
-  function apply(m){
+  function apply(m,d){
     var cards=[].slice.call(list.children).filter(function(c){return c.classList.contains('card')});
     var act=cards.filter(function(c){return c.dataset.arch!=='1'});
     var arc=cards.filter(function(c){return c.dataset.arch==='1'});
-    function cmp(a,b){var x=key(a,m),y=key(b,m);
-      if(x<y)return -1; if(x>y)return 1;
-      return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
-    act.sort(cmp); arc.sort(cmp);
+    var by=function(a,b){return cmp(a,b,m,d)};
+    act.sort(by); arc.sort(by);
     act.concat(arc).forEach(function(c){list.appendChild(c)});
-    btns.forEach(function(b){b.classList.toggle('on',b.dataset.sort===m)});
-    try{localStorage.setItem('psa_sort',m)}catch(e){}
+    btns.forEach(function(b){
+      var on=b.dataset.sort===m;
+      b.classList.toggle('on',on);
+      b.textContent=on?DIR[m][d?1:0]:BASE[b.dataset.sort];
+    });
+    cur=m; rev=d;
+    try{localStorage.setItem('psa_sort',m+(d?':r':''))}catch(e){}
   }
-  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.sort)})});
+  var cur='sub',rev=0;
+  btns.forEach(function(b){b.addEventListener('click',function(){
+    var m=b.dataset.sort;
+    apply(m, m===cur?!rev:0);
+  })});
   var saved=null; try{saved=localStorage.getItem('psa_sort')}catch(e){}
-  if(saved&&saved!=='sub')apply(saved);
+  if(saved){
+    var m=saved.split(':')[0], d=saved.indexOf(':r')>-1;
+    if(DIR[m]&&(m!=='sub'||d))apply(m,d);
+  }
 })();
 </script>"""
 
