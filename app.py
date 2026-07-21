@@ -652,20 +652,22 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .num{font-size:20px;font-weight:700;letter-spacing:-.02em;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
-.pill{font-size:12px;font-weight:500;letter-spacing:.01em;padding:7px 13px;border-radius:7px;white-space:nowrap;
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;letter-spacing:.01em;
+ padding:7px 13px;border-radius:7px;white-space:nowrap;
  color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 16%,transparent);border:1px solid color-mix(in srgb,var(--ac-soft) 32%,transparent)}
 .pill.done{color:var(--m9);background:var(--chipbg);border-color:var(--chipline)}
 .pill.hold{color:var(--holdtx);background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.35)}
 .pill.arch{color:var(--m9);background:var(--chipbg);border-color:var(--chipline)}
-.pill .pic{vertical-align:-1.5px;margin-right:6px}
-.pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+/* -3px: optically seat the first pill's center on the sub-number line beside it
+   (measured 3px low with top-aligned columns) */
+.pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end;margin-top:-3px}
 /* progress timeline */
 .tl{position:relative;height:46px;margin:22px 0 12px}
 /* pixel-exact vertical geometry: track center y=7 == every dot's center
    (10px dot at y=2..12, 14px active dot at y=0..14, labels all start y=21) */
 .track{position:absolute;top:6px;left:5%;right:5%;height:2px;background:var(--track);border-radius:2px}
 .fill{position:absolute;top:6px;left:5%;height:2px;border-radius:2px;transition:width .4s;
- background:var(--ac)}
+ background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 38%,var(--track)),var(--ac))}
 .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
 /* dots are OPAQUE so the line disappears behind them instead of showing through */
 .dot{width:10px;height:10px;border-radius:50%;background:var(--dot0);border:0;margin:2px auto 9px}
@@ -889,7 +891,10 @@ def card_html(s, archived=False):
     if archived:
         pill += '<span class="pill arch">Archived</span>'
     archattr = ' data-arch="1" style="display:none"' if archived else ''
-    return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}>
+    # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
+    sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
+                f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
+    return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd">{cover}<div><div class="num">#{sub}</div>
 <div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{pill}</div></div>
 {timeline_html(s['status'])}
@@ -1017,6 +1022,34 @@ document.querySelectorAll('.card,.gc').forEach(function(c){
 </script>"""
 
 # person page: fold archived-sub cards behind a toggle below the active grid
+SORT_JS = """<script>
+(function(){
+  var list=document.getElementById('list');
+  var btns=document.querySelectorAll('.fsort');
+  if(!list||!btns.length)return;
+  function key(c,m){
+    if(m==='svc')return (c.dataset.svc||'').toLowerCase();
+    if(m==='eta')return c.dataset.eta||'9999-99-99';  // no ETA (incl. shipped) sinks last
+    return -parseInt(c.dataset.sub||'0',10);          // newest sub first
+  }
+  function apply(m){
+    var cards=[].slice.call(list.children).filter(function(c){return c.classList.contains('card')});
+    var act=cards.filter(function(c){return c.dataset.arch!=='1'});
+    var arc=cards.filter(function(c){return c.dataset.arch==='1'});
+    function cmp(a,b){var x=key(a,m),y=key(b,m);
+      if(x<y)return -1; if(x>y)return 1;
+      return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
+    act.sort(cmp); arc.sort(cmp);
+    act.concat(arc).forEach(function(c){list.appendChild(c)});
+    btns.forEach(function(b){b.classList.toggle('on',b.dataset.sort===m)});
+    try{localStorage.setItem('psa_sort',m)}catch(e){}
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){apply(b.dataset.sort)})});
+  var saved=null; try{saved=localStorage.getItem('psa_sort')}catch(e){}
+  if(saved&&saved!=='sub')apply(saved);
+})();
+</script>"""
+
 ARCHFOLD_JS = """<script>
 (function(){
   var af=document.getElementById('archtoggle'),ag=document.getElementById('archgrid');
@@ -1087,6 +1120,10 @@ def dash_page(a, subs):
     hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
     pills = []
+    if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
+        pills += ['<span class="f fsort on" data-sort="sub">Newest</span>',
+                  '<span class="f fsort" data-sort="svc">Order type</span>',
+                  '<span class="f fsort" data-sort="eta">Return time</span>']
     if gone:
         pills.append(f'<span class="f farch" id="archtoggle">Archived · {len(gone)}</span>')
     untag = untagged_count(a, active)
@@ -1117,7 +1154,7 @@ if(af)af.addEventListener('click',function(){{
     c.style.display=(on?a:!a)?'':'none';
   }});
 }});
-</script>{SEARCH_JS}{FX_JS}{THEME_JS}</body></html>"""
+</script>{SORT_JS}{SEARCH_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
