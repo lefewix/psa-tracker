@@ -27,7 +27,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
-import base64, hashlib, hmac, html, json, os, re, shlex, sqlite3, threading, time
+import base64, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -761,6 +761,9 @@ button{width:100%;margin-top:10px;background:var(--ac);border:0;border-radius:10
 button:hover{background:var(--ac-hot)}
 button:active{transform:translateY(1px)}
 .err{color:var(--err);font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
+.setupform input{margin-top:10px}
+.setupform{margin-top:18px}
+.setupnote{font-size:10.5px;font-weight:400;color:var(--m7);margin-top:14px;line-height:1.6}
 /* mobile: hide stage labels entirely; only the CURRENT stage is named */
 @media(max-width:640px){.lbl{font-size:0}
 .node.now .lbl{font-size:8.5px;white-space:nowrap}
@@ -852,6 +855,88 @@ def gate_page(error=""):
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="Password or email" autofocus autocomplete="current-password">
 <button type="submit">Enter</button></form>
+<div class="err">{html.escape(error)}</div>
+</div></div></div>{THEME_JS}</body></html>"""
+
+# ---------- first-run setup ----------
+# A fresh instance (accounts/ empty) serves a one-time setup form instead of the
+# gate: site password + PSA login -> accounts/<id>/account.env + first scan kick.
+# The form stays reachable only until the instance has connected once (a
+# PSA_COOKIE lands or subs exist) - after that it is gone for good.
+
+def setup_state():
+    """(setup_allowed, existing_account_or_None). Allowed on a fresh instance,
+    or for retrying the single account that has never managed to connect."""
+    accts = load_accounts()
+    if not accts:
+        return True, None
+    if len(accts) > 1:
+        return False, None
+    a = next(iter(accts.values()))
+    env = read_env_file(os.path.join(ACCOUNTS_DIR, a["id"], "account.env"))
+    if env.get("PSA_COOKIE"):
+        return False, None
+    try:
+        conn = _ro_conn(a)
+        n = conn.execute("SELECT COUNT(*) FROM subs").fetchone()[0]
+        conn.close()
+    except sqlite3.Error:
+        n = 0
+    return (n == 0), a
+
+def write_account_env(acct_id, label, site_pw, psa_email, psa_pw):
+    base = os.path.join(ACCOUNTS_DIR, acct_id)
+    os.makedirs(base, exist_ok=True)
+    q = lambda v: "'" + v.replace("'", "") + "'"  # single-quoted, shell-safe
+    body = "\n".join([f"LABEL={q(label)}", f"SITE_PASSWORD={q(site_pw)}",
+                      f"PSA_LOGIN_EMAIL={q(psa_email)}", f"PSA_LOGIN_PW={q(psa_pw)}",
+                      "PSA_COOKIE=''"]) + "\n"
+    fd = os.open(os.path.join(base, "account.env"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(body)
+
+def start_first_scan():
+    """Fire login+scan without blocking; harmless where systemd is absent."""
+    try:
+        subprocess.Popen(["systemctl", "start", "--no-block", "psa-scan.service"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
+
+def scan_active():
+    try:
+        r = subprocess.run(["systemctl", "is-active", "psa-scan.service"],
+                           capture_output=True, text=True, timeout=3)
+        return r.stdout.strip() in ("active", "activating")
+    except Exception:
+        return False
+
+def first_sync_note(a):
+    """Status line under the empty dashboard until the first PSA sync lands."""
+    env = read_env_file(os.path.join(ACCOUNTS_DIR, a["id"], "account.env"))
+    if env.get("PSA_COOKIE"):
+        return ""
+    if scan_active():
+        return "First sync with PSA is running — refresh in a minute or two."
+    return ('Waiting for the first PSA sync (runs at 1am/1pm, or start it now with '
+            '<span class="num">systemctl start psa-scan</span>). Wrong PSA login? '
+            '<a href="/setup">Re-enter it</a>.')
+
+def setup_page(error="", label="", psa_email=""):
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)} · Setup</title>
+{HEAD_HTML}
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
+{logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">First-time setup — connect your PSA account</div>
+<form method="POST" action="/setup" class="setupform">
+<input name="label" placeholder="Store or site name" maxlength="40" value="{html.escape(label)}">
+<input type="password" name="site_pw" placeholder="Choose a site password (for visitors)" autocomplete="new-password">
+<input type="email" name="psa_email" placeholder="PSA account email" value="{html.escape(psa_email)}">
+<input type="password" name="psa_pw" placeholder="PSA account password" autocomplete="new-password">
+<button type="submit">Connect PSA</button></form>
+<div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
+only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
 <div class="err">{html.escape(error)}</div>
 </div></div></div>{THEME_JS}</body></html>"""
 
@@ -1136,8 +1221,13 @@ def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
     gone = [s for s in subs if s["sub_number"] in arch]
-    body = ("".join(card_html(s) for s in active) + "".join(card_html(s, archived=True) for s in gone)
-            or '<div class="empty">No submissions yet. Cards appear here once PSA receives them.</div>')
+    if subs:
+        body = "".join(card_html(s) for s in active) + "".join(card_html(s, archived=True) for s in gone)
+    else:
+        note = first_sync_note(a)
+        body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
+                + (f'<br><span style="color:var(--m7);font-size:11.5px">{note}</span>' if note else "")
+                + '</div>')
     updated = max((s["updated_at"] or "" for s in subs), default="")
     stamp = fmt_local(updated) if updated else "n/a"
     toolbar = f'<div class="toolbar">{search_box()}</div>'
@@ -1527,6 +1617,13 @@ class H(BaseHTTPRequestHandler):
         path = parsed.path
         if path == "/logo":
             return self.serve_logo()
+        s_allowed, s_retry = setup_state()
+        if path == "/setup":
+            if not s_allowed:
+                return self.send(302, "", extra=[("Location", "/")])
+            return self.send(200, setup_page())
+        if s_allowed and s_retry is None:  # fresh instance: everything is setup
+            return self.send(200, setup_page())
         got = self.authed()
         if not got:
             return self.send(200, gate_page())
@@ -1603,6 +1700,30 @@ class H(BaseHTTPRequestHandler):
             if sub:
                 set_archived(acct, sub, on)
             return self.send(204, "", "text/plain")
+        if path == "/setup":
+            allowed, retry = setup_state()
+            if not allowed:
+                return self.send(403, "setup is closed", "text/plain")
+            n = int(self.headers.get("Content-Length", "0") or 0)
+            form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
+            get = lambda k: (form.get(k) or [""])[0].strip()
+            label = get("label") or "My cards"
+            site_pw, psa_email, psa_pw = get("site_pw"), get("psa_email"), get("psa_pw")
+            time.sleep(0.4)
+            if len(site_pw) < 4:
+                return self.send(200, setup_page("Site password needs at least 4 characters.",
+                                                 label, psa_email))
+            if "@" not in psa_email or not psa_pw:
+                return self.send(200, setup_page("Enter your PSA account email and password.",
+                                                 label, psa_email))
+            acct_id = (retry["id"] if retry else
+                       (re.sub(r"[^a-z0-9-]+", "-", label.lower()).strip("-")[:24] or "main"))
+            write_account_env(acct_id, label, site_pw, psa_email, psa_pw)
+            start_first_scan()
+            exp = int(time.time()) + COOKIE_DAYS * 86400
+            cookie = (f"psa_session={make_token(acct_id, exp)}; Path=/; Max-Age={COOKIE_DAYS*86400}; "
+                      "HttpOnly; SameSite=Lax" + ("; Secure" if COOKIE_SECURE else ""))
+            return self.send(302, "", extra=[("Location", "/"), ("Set-Cookie", cookie)])
         if path != "/login":
             return self.send(404, "not found", "text/plain")
         ip = self.client_ip()
@@ -1643,7 +1764,8 @@ def main():
         raise SystemExit("PSA_SECRET must be set")
     accts = load_accounts()
     if not accts:
-        raise SystemExit(f"no accounts found in {ACCOUNTS_DIR} - run add_account.sh first")
+        print(f"no accounts in {ACCOUNTS_DIR} - serving FIRST-RUN SETUP at / "
+              "(or run add_account.sh)", flush=True)
     dupes = len(accts) - len({a["password"] for a in accts.values()})
     if dupes:
         print(f"WARNING: {dupes} duplicate site password(s) across accounts - "

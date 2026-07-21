@@ -58,7 +58,12 @@ apt-get install -y xvfb xauth
 cp deploy/example.env /etc/psa-tracker.env   # then EDIT it (PSA_SECRET etc.)
 chmod 600 /etc/psa-tracker.env
 
-# 4. first account
+# 4. first account - EITHER of:
+#    a) skip this step: with no accounts yet, the site serves a one-time
+#       setup page at / (site password + PSA login) and kicks the first
+#       scan itself once you submit it. The page disappears for good after
+#       the first successful PSA sign-in.
+#    b) the CLI way:
 /opt/psa-tracker/add_account.sh
 
 # 5. services
