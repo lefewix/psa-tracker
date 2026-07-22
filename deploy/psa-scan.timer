@@ -1,9 +1,10 @@
 [Unit]
-Description=Run PSA cookie refresh + scan twice daily
+Description=Hourly PSA scan (cookie reuse; full browser login at PSA_LOGIN_HOURS)
 
 [Timer]
-# adjust the timezone/hours to taste
-OnCalendar=*-*-* 01,13:00:00 America/Toronto
+# run_scan.sh reuses the stored cookie most hours and only does the real
+# browser login at 1am/1pm (PSA_LOGIN_HOURS) or when the cookie dies.
+OnCalendar=*-*-* *:00:00
 Persistent=true
 
 [Install]

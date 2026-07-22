@@ -71,6 +71,12 @@ cp deploy/psa-web.service deploy/psa-scan.service deploy/psa-scan.timer /etc/sys
 systemctl daemon-reload
 systemctl enable --now psa-web.service psa-scan.timer
 systemctl start psa-scan.service   # first scan now instead of waiting for the timer
+# The timer fires hourly; a real browser login only happens at 1am/1pm
+# (PSA_LOGIN_HOURS) or when the stored cookie dies - other runs reuse it.
+# Optional: PSA_SETTINGS_PW_HASH (sha256 of a settings password) in the global
+# env enables /settings - web UI for updating PSA credentials (write-only),
+# per-account Discord webhooks and adding accounts. Anyone's person page can
+# link a Discord user ID to get @-mentioned on updates to their subs.
 ```
 
 Put a TLS reverse proxy (Caddy, nginx, Cloudflare tunnel…) in front of

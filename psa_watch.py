@@ -503,6 +503,31 @@ def refresh_cards(conn, subs, prev=None, full=False):
         time.sleep(0.3)
     log(f"cards refreshed: {total}" + (f" ({skipped} stable shipped subs skipped)" if skipped else ""))
 
+def discord_mentions(conn, sub_numbers):
+    """Distinct Discord IDs to @-mention: owners whose cards sit in the changed
+    subs and who linked an ID on their person page (owners.db discord_links)."""
+    subs = [s for s in dict.fromkeys(sub_numbers)]
+    if not subs:
+        return []
+    try:
+        oc = sqlite3.connect(OWN_DB)
+        links = {o.lower(): d for o, d in oc.execute(
+            "SELECT owner, discord_id FROM discord_links WHERE discord_id != ''")}
+        owners = {str(c): o for c, o in oc.execute(
+            "SELECT cert_id, owner FROM owners WHERE owner != ''")} if links else {}
+        oc.close()
+    except sqlite3.Error:
+        return []
+    if not links:
+        return []
+    ids = []
+    q = ",".join("?" * len(subs))
+    for (cid,) in conn.execute(f"SELECT cert_id FROM cards WHERE sub_number IN ({q})", subs):
+        did = links.get(owners.get(str(cid), "").lower())
+        if did and did not in ids:
+            ids.append(did)
+    return ids
+
 def notify(text):
     if not WEBHOOK:
         return
@@ -515,7 +540,7 @@ def notify(text):
 
 def upsert(conn, subs):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    changes = []
+    changes, touched = [], []
     for s in subs:
         row = conn.execute("SELECT status, grades_ready FROM subs WHERE sub_number=?",
                            (s["sub_number"],)).fetchone()
@@ -532,19 +557,22 @@ def upsert(conn, subs):
             conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                          (s["sub_number"], s["status"], now))
             changes.append(f"new sub #{s['sub_number']} ({s['service']}, {s['card_count']} cards) -- {s['status']}")
+            touched.append(s["sub_number"])
         else:
             if row[0] != s["status"] and s["status"]:
                 conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                              (s["sub_number"], s["status"], now))
                 changes.append(f"sub #{s['sub_number']}: {row[0]} -> {s['status']}")
+                touched.append(s["sub_number"])
             if not row[1] and s["grades_ready"]:
                 changes.append(f"sub #{s['sub_number']}: grades are ready")
+                touched.append(s["sub_number"])
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
                 carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?
                 WHERE sub_number=?""", vals + (now, s["sub_number"]))
     conn.commit()
-    return changes
+    return changes, touched
 
 def cycle(conn):
     # one retry on the orders.list fetch - a transient blip otherwise loses a
@@ -561,24 +589,29 @@ def cycle(conn):
     subs = parse(ctype, body)
     if not subs:
         log("parsed 0 subs -- parser needs adjusting or cookie expired; run --probe")
-        return
+        return False
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
     prev = {r[0]: r[1] for r in conn.execute("SELECT sub_number, status FROM subs")}
-    changes = upsert(conn, subs)
+    changes, touched = upsert(conn, subs)
     log(f"parsed {len(subs)} subs, {len(changes)} changes")
     for c in changes:
         log(f"  {c}")
     if changes:
-        notify("**PSA update**\n" + "\n".join(changes))
+        msg = "**PSA update**\n" + "\n".join(changes)
+        ids = discord_mentions(conn, touched)
+        if ids:
+            msg += "\n" + " ".join(f"<@{i}>" for i in ids)
+        notify(msg)
     refresh_cards(conn, subs, prev, full="--full" in sys.argv)
+    return True
 
 def main():
     if "--probe" in sys.argv:
         probe(); return
     conn = db()
     if "--once" in sys.argv:
-        cycle(conn); return
+        sys.exit(0 if cycle(conn) else 3)
     log(f"daemon start, interval {POLL_INTERVAL}s")
     while True:
         try:

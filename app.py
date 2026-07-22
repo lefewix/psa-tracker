@@ -38,6 +38,10 @@ BIND = os.environ.get("PSA_BIND", "0.0.0.0")
 PORT = int(os.environ.get("PSA_PORT", "8080"))
 COOKIE_DAYS = int(os.environ.get("COOKIE_DAYS", "30"))
 COOKIE_SECURE = os.environ.get("PSA_COOKIE_SECURE", "1") not in ("0", "false", "no")
+# sha256 hex of the settings password. Typing that password on the main gate
+# (or at the gear icon's prompt) opens /settings. Unset -> settings disabled.
+SETTINGS_HASH = os.environ.get("PSA_SETTINGS_PW_HASH", "").lower()
+SETTINGS_MINUTES = int(os.environ.get("PSA_SETTINGS_MINUTES", "60"))
 SITE_TITLE = os.environ.get("SITE_TITLE", "Submissions")
 SITE_TAGLINE = os.environ.get("SITE_TAGLINE", "PSA GRADING TRACKER")
 
@@ -378,7 +382,71 @@ def own_conn(a):
     c = sqlite3.connect(a["own_db"])
     c.execute("CREATE TABLE IF NOT EXISTS owners (cert_id TEXT PRIMARY KEY, owner TEXT, updated_at TEXT)")
     c.execute("CREATE TABLE IF NOT EXISTS archived (sub_number TEXT PRIMARY KEY, archived_at TEXT)")
+    # discord_links: owner tag -> Discord user ID for @-mention pings (psa_watch
+    # reads it in notify()). IDs are WRITE-ONLY through the site - no endpoint
+    # ever returns one; the UI only reflects linked yes/no.
+    c.execute("CREATE TABLE IF NOT EXISTS discord_links (owner TEXT COLLATE NOCASE PRIMARY KEY, "
+              "discord_id TEXT, updated_at TEXT)")
     return c
+
+DISCORD_ID_RE = re.compile(r"^\d{17,20}$")
+
+def discord_linked(a, owner):
+    c = own_conn(a)
+    r = c.execute("SELECT 1 FROM discord_links WHERE owner=? AND discord_id != ''",
+                  (owner,)).fetchone()
+    c.close()
+    return bool(r)
+
+def set_discord(a, owner, discord_id):
+    """Set (or clear, with '') the Discord ID for an owner tag."""
+    c = own_conn(a)
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if discord_id:
+        c.execute("""INSERT INTO discord_links (owner, discord_id, updated_at) VALUES (?,?,?)
+                     ON CONFLICT(owner) DO UPDATE SET discord_id=excluded.discord_id,
+                     updated_at=excluded.updated_at""", (owner, discord_id, now))
+    else:
+        c.execute("DELETE FROM discord_links WHERE owner=?", (owner,))
+    c.commit()
+    c.close()
+
+def discord_widget(a, owner):
+    """Person-page block: link/unlink Discord pings for this owner tag. The
+    saved ID is never rendered - only the on/off state."""
+    if discord_linked(a, owner):
+        state = ('<span class="dstate">Discord pings on</span>'
+                 f'<button class="f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button>')
+        hint = "You&rsquo;ll be @-mentioned in the site&rsquo;s Discord channel when a sub with your cards updates."
+    else:
+        state = (f'<input type="password" id="did" class="own" style="width:200px;margin:0" '
+                 f'placeholder="Discord user ID" autocomplete="off" inputmode="numeric" maxlength="20">'
+                 f'<button class="f" id="dlink" data-owner="{html.escape(owner)}">Enable Discord pings</button>')
+        hint = ("Paste your Discord user ID to get @-mentioned when a sub with your cards updates "
+                "(Discord: Settings → Advanced → Developer Mode, then right-click your name → Copy User ID). "
+                "Your ID is stored server-side and never shown again.")
+    return (f'<div class="dlink">{state}<span class="dhint">{hint}</span></div>')
+
+DISCORD_JS = """<script>
+(function(){
+  function post(owner,id,done){
+    fetch('/discord',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'owner='+encodeURIComponent(owner)+'&id='+encodeURIComponent(id)})
+      .then(function(r){done(r.ok);});
+  }
+  var link=document.getElementById('dlink');
+  if(link)link.addEventListener('click',function(){
+    var v=(document.getElementById('did').value||'').trim();
+    if(!/^\\d{17,20}$/.test(v)){document.getElementById('did').classList.add('errsave');return;}
+    post(link.dataset.owner,v,function(ok){if(ok)location.reload();
+      else document.getElementById('did').classList.add('errsave');});
+  });
+  var un=document.getElementById('dunlink');
+  if(un)un.addEventListener('click',function(){
+    post(un.dataset.owner,'',function(ok){if(ok)location.reload();});
+  });
+})();
+</script>"""
 
 def archived_set(a):
     c = own_conn(a)
@@ -747,6 +815,19 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .grid img.ld,.cover.ld{background:var(--surface3);animation:none}
 @keyframes shimmer{to{background-position:-200% 0}}
 /* day/night corner toggle */
+#gearbtn{position:fixed;right:68px;bottom:18px;z-index:40;width:42px;height:42px;
+ border-radius:50%;background:var(--frost);border:1px solid var(--hair);color:var(--m2);
+ backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;
+ display:flex;align-items:center;justify-content:center;padding:0;margin:0;
+ box-shadow:0 4px 14px var(--shc);transition:color .15s,transform .12s;text-decoration:none}
+#gearbtn:hover{color:var(--txt)}
+#gearbtn:active{transform:translateY(1px)}
+.sblock .sform{max-width:430px}
+.sform input{margin-top:8px;text-align:left;font-size:13px;padding:10px 12px}
+.sform button{margin-top:12px}
+.slbl{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--m4);margin-top:16px}
+.schk{display:block;font-size:11.5px;color:var(--m4);margin-top:8px;cursor:pointer}
+.sok{font-size:12px;font-weight:600;color:#5fae78;margin-top:14px}
 #themeflip{position:fixed;right:18px;bottom:18px;z-index:40;width:42px;height:42px;
  border-radius:50%;background:var(--frost);border:1px solid var(--hair);color:var(--m2);
  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;
@@ -772,6 +853,14 @@ button{width:100%;margin-top:10px;background:var(--ac);border:0;border-radius:10
 button:hover{background:var(--ac-hot)}
 button:active{transform:translateY(1px)}
 .err{color:var(--err);font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
+.dlink{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 0;
+ padding:12px 14px;background:var(--surface3);border:1px solid var(--b1);border-radius:10px}
+.dlink .own{width:200px}
+.dstate{font-size:12px;font-weight:600;color:var(--ac-pale)}
+.dhint{flex-basis:100%;font-size:10.5px;font-weight:400;color:var(--m7);line-height:1.6}
+.numlink{text-decoration:none;color:inherit;display:inline-block}
+.numlink .num{transition:color .15s}
+.numlink:hover .num{color:var(--ac-pale)}
 .setupform input{margin-top:10px}
 .setupform{margin-top:18px}
 .setupnote{font-size:10.5px;font-weight:400;color:var(--m7);margin-top:14px;line-height:1.6}
@@ -871,6 +960,138 @@ def gate_page(error=""):
 <button type="submit">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></div>{THEME_JS}</body></html>"""
+
+# ---------- settings ----------
+# /settings edits per-account PSA credentials (WRITE-ONLY - existing values are
+# never displayed), per-account Discord webhooks, and adds accounts. Entry:
+# type the settings password on the main gate, or the gear icon (admin pages)
+# -> a settings-password prompt. Session = its own short-lived signed cookie.
+
+def env_set(path, updates):
+    """Update KEY='value' lines in an env file, preserving all other lines.
+    Empty value removes the key. Atomic write, chmod 600."""
+    try:
+        lines = open(path).read().splitlines()
+    except FileNotFoundError:
+        lines = []
+    out, seen = [], set()
+    for ln in lines:
+        k = ln.split("=", 1)[0] if ("=" in ln and not ln.lstrip().startswith("#")) else None
+        if k in updates:
+            seen.add(k)
+            if updates[k] != "":
+                out.append(f"{k}='" + updates[k].replace("'", "") + "'")
+        else:
+            out.append(ln)
+    for k, v in updates.items():
+        if k not in seen and v != "":
+            out.append(f"{k}='" + v.replace("'", "") + "'")
+    tmp = path + ".tmp"
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write("\n".join(out) + "\n")
+    os.replace(tmp, path)
+
+def settings_token(exp):
+    sig = hmac.new(SECRET, f"settings.{exp}".encode(), hashlib.sha256).hexdigest()
+    return f"{exp}.{sig}"
+
+def settings_cookie_hdr():
+    exp = int(time.time()) + SETTINGS_MINUTES * 60
+    return (f"psa_settings={settings_token(exp)}; Path=/; Max-Age={SETTINGS_MINUTES*60}; "
+            "HttpOnly; SameSite=Lax" + ("; Secure" if COOKIE_SECURE else ""))
+
+def settings_authed(cookie_header):
+    if not SETTINGS_HASH:
+        return False
+    for part in (cookie_header or "").split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == "psa_settings":
+            exp_s, _, sig = v.partition(".")
+            try:
+                exp = int(exp_s)
+            except ValueError:
+                return False
+            want = hmac.new(SECRET, f"settings.{exp}".encode(), hashlib.sha256).hexdigest()
+            return exp > time.time() and hmac.compare_digest(sig, want)
+    return False
+
+def is_settings_pw(given):
+    return bool(SETTINGS_HASH) and hmac.compare_digest(
+        hashlib.sha256(given.encode()).hexdigest(), SETTINGS_HASH)
+
+def account_env_path(acct_id):
+    return os.path.join(ACCOUNTS_DIR, acct_id, "account.env")
+
+def settings_gate(error=""):
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
+{HEAD_HTML}
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
+{logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
+<form method="POST" action="/settings/auth">
+<input type="password" name="password" placeholder="Settings password" autofocus autocomplete="off">
+<button type="submit">Open settings</button></form>
+<div class="err">{html.escape(error)}</div>
+</div></div></div>{THEME_JS}</body></html>"""
+
+def settings_page(msg="", err=""):
+    accts = load_accounts()
+    blocks = []
+    for a in accts.values():
+        env = read_env_file(account_env_path(a["id"]))
+        hook = "configured" if env.get("DISCORD_WEBHOOK") else "not set"
+        blocks.append(f"""<div class="card sblock">
+<div class="num">{html.escape(a['label'])}</div><div class="meta">account id: {html.escape(a['id'])}</div>
+<form method="POST" action="/settings/account" class="sform">
+<input type="hidden" name="acct" value="{html.escape(a['id'])}">
+<div class="slbl">PSA login (write-only — current values are never shown)</div>
+<input name="psa_email" type="email" placeholder="New PSA email (blank = keep)" autocomplete="off">
+<input name="psa_pw" type="password" placeholder="New PSA password (blank = keep)" autocomplete="new-password">
+<div class="slbl">Discord webhook — {hook}</div>
+<input name="webhook" type="password" placeholder="New webhook URL (blank = keep)" autocomplete="off">
+<label class="schk"><input type="checkbox" name="clear_webhook" value="1"> Remove webhook</label>
+<button type="submit">Save {html.escape(a['label'])}</button>
+</form></div>""")
+    add = """<div class="card sblock">
+<div class="num">Add a PSA account</div><div class="meta">tracked separately; its site password routes visitors to it</div>
+<form method="POST" action="/settings/add" class="sform">
+<input name="label" placeholder="Label (e.g. the owner's name)" maxlength="40">
+<input name="site_pw" type="password" placeholder="Site password for this account" autocomplete="new-password">
+<input name="psa_email" type="email" placeholder="PSA account email" autocomplete="off">
+<input name="psa_pw" type="password" placeholder="PSA account password" autocomplete="new-password">
+<button type="submit">Add account</button>
+</form></div>"""
+    note = (f'<div class="err" style="text-align:left">{html.escape(err)}</div>' if err else
+            (f'<div class="sok">{html.escape(msg)}</div>' if msg else ""))
+    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
+{HEAD_HTML}
+<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<a class="view" href="/">← Back to the site</a>
+<div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
+<div class="sub">Credential changes are picked up by the next hourly scan — nothing to restart.</div></div></div>
+{note}
+<div style="margin-top:22px">{"".join(blocks)}{add}</div>
+</div>{THEME_JS}</body></html>"""
+
+GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
+             '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+             'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
+             '<circle cx="12" cy="12" r="3.2"/>'
+             '<path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06'
+             'a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 '
+             '1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 '
+             '1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1 1.7 1.7 0 0 0-.34-1.87'
+             'l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34 1.7 1.7 0 0 0 1-1.55V3'
+             'a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06'
+             'a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.55 1H21'
+             'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a>')
+
+def gear_html(customer=False):
+    """Settings gear beside the theme toggle - admin sessions only, and only
+    when a settings password is configured."""
+    return "" if (customer or not SETTINGS_HASH) else GEAR_HTML
 
 # ---------- first-run setup ----------
 # A fresh instance (accounts/ empty) serves a one-time setup form instead of the
@@ -1134,6 +1355,19 @@ document.querySelectorAll('.own').forEach(function(i){
 # page effects: swap the loading shimmer off images once loaded, and track the
 # cursor per card so the spotlight border knows where to glow
 FX_JS = """<script>
+/* refresh on the hour (+2min, after the hourly scan) so open tabs stay
+   current; skipped while someone is typing in a visible input */
+(function(){
+  function arm(){
+    var n=new Date(),ms=((60-n.getMinutes())*60-n.getSeconds())*1000+120000;
+    setTimeout(function(){
+      var el=document.activeElement;
+      var typing=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
+      if(document.hidden||!typing){location.reload();}else{arm();}
+    },ms);
+  }
+  arm();
+})();
 document.querySelectorAll('.grid img,.cover').forEach(function(m){
   var done=function(){m.classList.add('ld');};
   if(m.complete){done();}
@@ -1311,7 +1545,7 @@ if(af)af.addEventListener('click',function(){{
     c.style.display=(on?a:!a)?'':'none';
   }});
 }});
-</script>{SORT_JS}{SEARCH_JS}{FX_JS}{THEME_JS}</body></html>"""
+</script>{SORT_JS}{SEARCH_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
 
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
@@ -1366,7 +1600,7 @@ def detail_page(a, sub):
 {eta_badge(sub, vextra)}</div>
 <div class="card" style="margin-top:18px">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
 {body}
-</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{THEME_JS}</body></html>"""
+</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
 
 def grade_summary(cards):
     """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
@@ -1406,14 +1640,38 @@ def people_page(a, owner, customer=False):
     elif not unassigned:
         sub_line = f"{len(act_cards)} cards with {a['label']}"
     vals, vas_of, vcur = ({}, "", "CAD") if customer else load_values(a)
-    def tiles(cs):
+    def tiles(cs):  # customer variant keeps the flat grid (their home is already grouped)
         return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
                                  service=svc_map.get(c["sub_number"], ""), customer=customer,
                                  statline=cust_statline(subs_by.get(c["sub_number"])),
                                  value=vals.get(c["cert_no"] or ""), vcur=vcur)
                        for c in cs)
+    def group_html(n, cs):
+        # admin person page mirrors the customer home: one dashboard-style card
+        # per submission (service line, ETA pill, stage timeline) with this
+        # person's tiles inside; the sub number links through to the sub page.
+        s = subs_by.get(n)
+        svc = html.escape(s["service"]) if s else ""
+        pill = eta_pill(s) if s else ""
+        tl = timeline_html(s["status"]) if s else ""
+        cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
+        tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
+                                    value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
+        return (f'<div class="card grp{" arch" if n in arch else ""}">'
+                f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
+                f'<div class="num">#{html.escape(str(n))}</div></a>'
+                f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
+                f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div>'
+                f'<div class="foot"><span class="est"></span>'
+                f'<a class="view" href="/sub/{html.escape(str(n))}">Go to sub #{html.escape(str(n))}</a></div></div>')
+    def grouped(cs):
+        gs = {}
+        for c in cs:
+            gs.setdefault(c["sub_number"], []).append(c)
+        order = sorted(gs, key=lambda n: -int(n) if str(n).isdigit() else 0)
+        return "".join(group_html(n, gs[n]) for n in order)
     if act_cards:
-        grid = '<div class="grid">' + tiles(act_cards) + "</div>"
+        grid = ('<div class="grid">' + tiles(act_cards) + "</div>") if customer else grouped(act_cards)
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
@@ -1422,9 +1680,12 @@ def people_page(a, owner, customer=False):
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
     archsec = ""
     if arc_cards:
+        inner = (f'<div class="grid" id="archgrid" style="display:none">{tiles(arc_cards)}</div>'
+                 if customer else
+                 f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>')
         archsec = (f'<div class="filters" style="margin:30px 0 0">'
                    f'<span class="f farch" id="archtoggle">Archived · {len(arc_cards)}</span></div>'
-                   f'<div class="grid" id="archgrid" style="display:none">{tiles(arc_cards)}</div>')
+                   + inner)
     if unassigned or customer:
         est = ""  # store cost/coverage numbers are operator-only
     else:
@@ -1464,9 +1725,10 @@ def people_page(a, owner, customer=False):
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
 <div class="toolbar">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
+{"" if unassigned else discord_widget(a, owner)}
 {grid}
 {archsec}
-</div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}{THEME_JS}</body></html>"""
+</div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -1513,9 +1775,10 @@ def customer_page(a, email):
 <div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div></div></div>
 <div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
+{discord_widget(a, email)}
 <div style="margin-top:28px">{body}</div>
 {archsec}
-</div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{FX_JS}{THEME_JS}</body></html>"""
+</div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
@@ -1563,7 +1826,7 @@ def search_page(a, q, owner="", customer=False):
 <div class="sub">{count}</div>
 <div class="toolbar">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
-</div>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}{THEME_JS}</body></html>"""
+</div>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
 
 # ---------- server ----------
 
@@ -1667,6 +1930,12 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, setup_page())
         if s_allowed and s_retry is None:  # fresh instance: everything is setup
             return self.send(200, setup_page())
+        if path == "/settings":
+            if not SETTINGS_HASH:
+                return self.send(404, "not found", "text/plain")
+            if settings_authed(self.headers.get("Cookie", "")):
+                return self.send(200, settings_page())
+            return self.send(200, settings_gate())
         got = self.authed()
         if not got:
             return self.send(200, gate_page())
@@ -1743,6 +2012,21 @@ class H(BaseHTTPRequestHandler):
             if sub:
                 set_archived(acct, sub, on)
             return self.send(204, "", "text/plain")
+        if path == "/discord":
+            got = self.authed()
+            if not got:
+                return self.send(403, "auth", "text/plain")
+            acct, cust = got
+            n = int(self.headers.get("Content-Length", "0") or 0)
+            form = urllib.parse.parse_qs(self.rfile.read(min(n, 1024)).decode("utf-8", "replace"))
+            owner = (form.get("owner") or [""])[0].strip()
+            did = (form.get("id") or [""])[0].strip()
+            if cust and owner.lower() != cust:  # customers manage only their own tag
+                return self.send(403, "auth", "text/plain")
+            if not owner or len(owner) > 80 or (did and not DISCORD_ID_RE.fullmatch(did)):
+                return self.send(400, "bad request", "text/plain")
+            set_discord(acct, owner, did)
+            return self.send(204, "", "text/plain")
         if path == "/setup":
             allowed, retry = setup_state()
             if not allowed:
@@ -1767,6 +2051,70 @@ class H(BaseHTTPRequestHandler):
             cookie = (f"psa_session={make_token(acct_id, exp)}; Path=/; Max-Age={COOKIE_DAYS*86400}; "
                       "HttpOnly; SameSite=Lax" + ("; Secure" if COOKIE_SECURE else ""))
             return self.send(302, "", extra=[("Location", "/"), ("Set-Cookie", cookie)])
+        if path == "/settings/auth":
+            ip = self.client_ip()
+            n = int(self.headers.get("Content-Length", "0") or 0)
+            form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
+            given = (form.get("password") or [""])[0]
+            time.sleep(0.4)
+            if login_locked(ip):
+                return self.send(200, settings_gate("Too many attempts. Try again in a few minutes."))
+            if not is_settings_pw(given):
+                login_fail(ip)
+                return self.send(200, settings_gate("Incorrect password."))
+            login_ok(ip)
+            return self.send(302, "", extra=[("Location", "/settings"),
+                                             ("Set-Cookie", settings_cookie_hdr())])
+        if path in ("/settings/account", "/settings/add"):
+            if not settings_authed(self.headers.get("Cookie", "")):
+                return self.send(403, "settings auth", "text/plain")
+            n = int(self.headers.get("Content-Length", "0") or 0)
+            form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
+            get = lambda k: (form.get(k) or [""])[0].strip()
+            if path == "/settings/account":
+                acct_id = get("acct")
+                if acct_id not in load_accounts():
+                    return self.send(400, "unknown account", "text/plain")
+                updates, cred_change = {}, False
+                if get("psa_email"):
+                    if "@" not in get("psa_email"):
+                        return self.send(200, settings_page(err="That PSA email doesn't look like an email."))
+                    updates["PSA_LOGIN_EMAIL"] = get("psa_email"); cred_change = True
+                if get("psa_pw"):
+                    updates["PSA_LOGIN_PW"] = get("psa_pw"); cred_change = True
+                if get("clear_webhook"):
+                    updates["DISCORD_WEBHOOK"] = ""
+                elif get("webhook"):
+                    hook = get("webhook")
+                    if not (hook.startswith("https://discord.com/api/webhooks/")
+                            or hook.startswith("https://discordapp.com/api/webhooks/")):
+                        return self.send(200, settings_page(err="Webhook must be a discord.com/api/webhooks/… URL."))
+                    updates["DISCORD_WEBHOOK"] = hook
+                if not updates:
+                    return self.send(200, settings_page(err="Nothing to save — all fields were blank."))
+                if cred_change:
+                    updates["PSA_COOKIE"] = ""  # force a fresh browser sign-in next run
+                env_set(account_env_path(acct_id), updates)
+                msg = ("Saved — the next hourly scan signs in fresh with the new PSA login."
+                       if cred_change else "Saved — picked up by the next hourly scan.")
+                return self.send(200, settings_page(msg=msg))
+            label = get("label") or "Account"
+            site_pw, psa_email, psa_pw = get("site_pw"), get("psa_email"), get("psa_pw")
+            if len(site_pw) < 4:
+                return self.send(200, settings_page(err="Site password needs at least 4 characters."))
+            if is_settings_pw(site_pw):
+                return self.send(200, settings_page(err="That's the settings password — pick a different one."))
+            accts = load_accounts()
+            if any(hmac.compare_digest(site_pw, a["password"]) for a in accts.values()):
+                return self.send(200, settings_page(err="That site password already routes to another account."))
+            if "@" not in psa_email or not psa_pw:
+                return self.send(200, settings_page(err="Enter the PSA account email and password."))
+            acct_id = re.sub(r"[^a-z0-9-]+", "-", label.lower()).strip("-")[:24] or "acct"
+            if acct_id in accts:
+                acct_id = f"{acct_id}-{int(time.time()) % 10000}"
+            write_account_env(acct_id, label, site_pw, psa_email, psa_pw)
+            start_first_scan()
+            return self.send(200, settings_page(msg=f"Account “{label}” added — its first scan is running now."))
         if path != "/login":
             return self.send(404, "not found", "text/plain")
         ip = self.client_ip()
@@ -1776,6 +2124,10 @@ class H(BaseHTTPRequestHandler):
         time.sleep(0.4)  # blunt the brute force; throttle below does the real work
         if login_locked(ip):
             return self.send(200, gate_page("Too many attempts. Try again in a few minutes."))
+        if is_settings_pw(given):  # the settings password routes to /settings
+            login_ok(ip)
+            return self.send(302, "", extra=[("Location", "/settings"),
+                                             ("Set-Cookie", settings_cookie_hdr())])
         # The password IS the account selector: whichever account's site password
         # matches is the account this session gets. Passwords are unique per account.
         matched = None
