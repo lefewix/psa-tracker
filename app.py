@@ -413,23 +413,38 @@ def set_discord(a, owner, discord_id):
     c.close()
 
 def discord_widget(a, owner):
-    """Person-page block: link/unlink Discord pings for this owner tag. The
-    saved ID is never rendered - only the on/off state."""
-    if discord_linked(a, owner):
-        state = ('<span class="dstate">Discord pings on</span>'
-                 f'<button class="f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button>')
-        hint = "You&rsquo;ll be @-mentioned in the site&rsquo;s Discord channel when a sub with your cards updates."
+    """Small button under the person's name; opens a popout with the Discord
+    linking UI. The saved ID is never rendered - only the on/off state."""
+    linked = discord_linked(a, owner)
+    btn = ('<button type="button" class="f dbtn" id="dopen">'
+           + ("Discord pings: on" if linked else "Link Discord") + "</button>")
+    if linked:
+        inner = (f'<div class="srow" style="margin-top:16px"><span class="dstate">Discord pings on</span>'
+                 f'<button type="button" class="sbtn sdel f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button></div>'
+                 f'<div class="dhint">You&rsquo;ll be @-mentioned in the site&rsquo;s Discord channel '
+                 f'when a sub with your cards updates.</div>')
     else:
-        state = (f'<input type="password" id="did" class="own" style="width:200px;margin:0" '
-                 f'placeholder="Discord user ID" autocomplete="off" inputmode="numeric" maxlength="20">'
-                 f'<button class="f" id="dlink" data-owner="{html.escape(owner)}">Enable Discord pings</button>')
-        hint = ("Paste your Discord user ID to get @-mentioned when a sub with your cards updates "
-                "(Discord: Settings → Advanced → Developer Mode, then right-click your name → Copy User ID). "
-                "Your ID is stored server-side and never shown again.")
-    return (f'<div class="dlink">{state}<span class="dhint">{hint}</span></div>')
+        inner = (f'<div class="srow" style="margin-top:16px">'
+                 f'<input type="password" id="did" placeholder="Discord user ID" '
+                 f'autocomplete="off" inputmode="numeric" maxlength="20">'
+                 f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Enable</button></div>'
+                 f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a sub with '
+                 f'your cards updates. Discord: Settings &rarr; Advanced &rarr; Developer Mode, then '
+                 f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
+    return (btn + f'<div class="smodal" id="dmodal"><div class="card sblock">'
+                  f'<button type="button" class="sclose" id="dclose" aria-label="Close">✕</button>'
+                  f'<div class="stitle">Discord pings</div>{inner}</div></div>')
 
 DISCORD_JS = """<script>
 (function(){
+  var dm=document.getElementById('dmodal'),db=document.getElementById('dopen');
+  if(db&&dm){
+    db.addEventListener('click',function(){dm.classList.add('on');
+      var f=document.getElementById('did');if(f)f.focus();});
+    document.getElementById('dclose').addEventListener('click',function(){dm.classList.remove('on');});
+    dm.addEventListener('click',function(e){if(e.target===dm)dm.classList.remove('on');});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape')dm.classList.remove('on');});
+  }
   function post(owner,id,done){
     fetch('/discord',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'owner='+encodeURIComponent(owner)+'&id='+encodeURIComponent(id)})
@@ -840,7 +855,8 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  padding:9px 14px;border-radius:8px;background:color-mix(in srgb,var(--ac) 14%,transparent);
  border:1px solid color-mix(in srgb,var(--ac-soft) 30%,transparent)}
 .snote.serr{color:var(--holdtx);background:rgba(220,60,60,.12);border-color:rgba(220,90,90,.35)}
-.sbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.sbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.sbar .f{padding:12px 20px;font-size:13px;border-radius:9px}
 .spane{margin-top:18px}
 .smodal{position:fixed;inset:0;z-index:60;background:rgba(7,7,10,.72);display:none;
  align-items:center;justify-content:center;padding:18px}
@@ -874,11 +890,9 @@ button{width:100%;margin-top:10px;background:var(--ac);border:0;border-radius:10
 button:hover{background:var(--ac-hot)}
 button:active{transform:translateY(1px)}
 .err{color:var(--err);font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
-.dlink{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 26px;
- padding:12px 14px;background:var(--surface3);border:1px solid var(--b1);border-radius:10px}
-.dlink .own{width:200px}
-.dstate{font-size:12px;font-weight:600;color:var(--ac-pale)}
-.dhint{flex-basis:100%;font-size:10.5px;font-weight:400;color:var(--m7);line-height:1.6}
+.dbtn{margin-top:12px}
+.dstate{font-size:12.5px;font-weight:600;color:var(--ac-pale);flex:1}
+.dhint{font-size:10.5px;font-weight:400;color:var(--m7);line-height:1.7;margin-top:12px}
 .numlink{text-decoration:none;color:inherit;display:inline-block}
 .numlink .num{transition:color .15s}
 .numlink:hover .num{color:var(--ac-pale)}
@@ -1838,9 +1852,8 @@ def people_page(a, owner, customer=False):
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 {back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
-<div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
+<div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
-{"" if unassigned else discord_widget(a, owner)}
 {grid}
 {archsec}
 </div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
@@ -1888,9 +1901,8 @@ def customer_page(a, email):
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <a class="view" href="/logout">Sign out</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
-<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div></div></div>
+<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div></div>
 <div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
-{discord_widget(a, email)}
 <div style="margin-top:28px">{body}</div>
 {archsec}
 </div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{THEME_JS}</body></html>"""
