@@ -776,6 +776,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .node.now .lbl{color:var(--txtstrong);font-weight:600}
 .foot{border-top:1px solid var(--hair2);padding-top:13px;display:flex;justify-content:space-between;
  align-items:center;gap:10px;flex-wrap:wrap}
+/* group cards: the tile grid has no bottom margin of its own - give the
+   Go-to-sub foot real separation from the tiles */
+.grp .foot{margin-top:22px}
 .footacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
 .est{font-size:13px;font-weight:400;color:var(--m2)}
 .view{font-size:13px;font-weight:500;color:var(--ac-soft);text-decoration:none;transition:color .15s}
@@ -890,7 +893,7 @@ button{width:100%;margin-top:10px;background:var(--ac);border:0;border-radius:10
 button:hover{background:var(--ac-hot)}
 button:active{transform:translateY(1px)}
 .err{color:var(--err);font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
-.dbtn{margin-top:12px}
+.dbtn{margin-top:12px;padding:12px 20px;font-size:13px;border-radius:9px}
 .dstate{font-size:12.5px;font-weight:600;color:var(--ac-pale);flex:1}
 .dhint{font-size:10.5px;font-weight:400;color:var(--m7);line-height:1.7;margin-top:12px}
 .numlink{text-decoration:none;color:inherit;display:inline-block}
