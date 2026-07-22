@@ -832,7 +832,10 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .sbtn.sdel{background:transparent;border:1px solid rgba(220,90,90,.35);color:var(--holdtx);margin-top:10px}
 .sbtn.sdel:hover{background:rgba(220,60,60,.14)}
 .srow .sbtn.sdel{margin-top:0}
-.sdanger{margin-top:24px;padding-top:16px;border-top:1px solid var(--hair2)}
+.sacts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
+.sact.sdelchip{border-color:rgba(220,90,90,.35);color:var(--holdtx)}
+.sact.sdelchip:hover{background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.5);color:var(--holdtx)}
+.srev{max-width:460px}
 .slbl{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--m4);margin-top:18px;line-height:1.6;max-width:460px}
 .snote{display:inline-block;font-size:12px;font-weight:600;color:var(--ac-pale);margin-top:16px;
  padding:9px 14px;border-radius:8px;background:color-mix(in srgb,var(--ac) 14%,transparent);
@@ -1061,6 +1064,7 @@ def settings_page(msg="", err=""):
     Everything credential-shaped is write-only; the PSA email is the only PSA
     value settings ever displays."""
     accts = load_accounts()
+    multi = len(accts) > 1
     achips, apanes, wchips, wpanes = [], [], [], []
     for i, a in enumerate(accts.values()):
         env = read_env_file(account_env_path(a["id"]))
@@ -1071,34 +1075,44 @@ def settings_page(msg="", err=""):
         on = " on" if i == 0 else ""
         hide = "" if i == 0 else ' style="display:none"'
         aid = html.escape(a["id"])
+
+        def row(action, placeholder, note, kind="password"):
+            return (f'<div class="srev" id="{action}{i}" style="display:none">'
+                    f'<div class="slbl" style="margin-top:10px">{note}</div>'
+                    f'<form method="POST" action="/settings/account" class="srow">'
+                    f'<input type="hidden" name="acct" value="{aid}">'
+                    f'<input type="hidden" name="action" value="{action}">'
+                    f'<input name="value" type="{kind}" placeholder="{placeholder}" '
+                    f'autocomplete="{"new-password" if kind == "password" else "off"}">'
+                    f'<button type="submit" class="sbtn">Save</button></form></div>')
+
         achips.append(f'<button type="button" class="f schip{on}" data-group="a" '
                       f'data-pane="apane{i}">{email_html}</button>')
         apanes.append(f"""<div class="spane sg-a" id="apane{i}"{hide}>
 <div class="meta">{html.escape(a['label'])} · account id: {aid}</div>
-<div class="slbl">PSA password — write-only; saving forces a fresh PSA sign-in next scan.
-Changed the PSA email? Unlink and re-add the account.</div>
-<form method="POST" action="/settings/account" class="srow">
-<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="psa_pw">
-<input name="value" type="password" placeholder="New PSA password" autocomplete="new-password">
-<button type="submit" class="sbtn">Save</button></form>
-<div class="slbl">Site password — what admins and visitors type at the gate to reach this account</div>
-<form method="POST" action="/settings/account" class="srow">
-<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="site_pw">
-<input name="value" type="password" placeholder="New site password" autocomplete="new-password">
-<button type="submit" class="sbtn">Save</button></form>
-<div class="sdanger"><form method="POST" action="/settings/account"
+<div class="sacts">
+<button type="button" class="f sact" data-reveal="psa_pw{i}">Change PSA password</button>
+<button type="button" class="f sact" data-reveal="psa_email{i}">Change PSA email</button>
+<button type="button" class="f sact" data-reveal="site_pw{i}">Change site password</button>
+<form method="POST" action="/settings/account" style="margin:0"
  onsubmit="return confirm('Unlink {html.escape(a['label'])}? The site stops tracking it. Its data stays on the server (accounts/{aid}.unlinked-…) and can be restored by hand.')">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="unlink">
-<button type="submit" class="sbtn sdel">Unlink this account</button></form></div>
+<button type="submit" class="f sact sdelchip">Unlink</button></form>
+</div>
+{row("psa_pw", "New PSA password", "Write-only — the next hourly scan signs in fresh with it.")}
+{row("psa_email", "New PSA email", "Write-only — pair it with the matching password if that changed too; the next scan signs in fresh.", kind="email")}
+{row("site_pw", "New site password", "What admins and visitors type at the gate to reach this account. Works immediately.")}
 </div>""")
+
         hook_on = bool(env.get("DISCORD_WEBHOOK"))
-        wchips.append(f'<button type="button" class="f schip{on}" data-group="w" '
-                      f'data-pane="wpane{i}">{email_html}</button>')
+        if multi:
+            wchips.append(f'<button type="button" class="f schip{on}" data-group="w" '
+                          f'data-pane="wpane{i}">{email_html}</button>')
         remove_btn = (f'<form method="POST" action="/settings/account" style="margin:0">'
                       f'<input type="hidden" name="acct" value="{aid}">'
                       f'<input type="hidden" name="action" value="webhook_clear">'
                       f'<button type="submit" class="sbtn sdel">Remove</button></form>' if hook_on else "")
-        wpanes.append(f"""<div class="spane sg-w" id="wpane{i}"{hide}>
+        wpanes.append(f"""<div class="spane sg-w" id="wpane{i}"{'' if (i == 0 or not multi) else ' style="display:none"'}>
 <div class="meta">{'webhook configured — updates for this account ping its channel' if hook_on
                    else 'no webhook — this account inherits the global one, if any'}</div>
 <form method="POST" action="/settings/account" class="srow">
@@ -1124,7 +1138,7 @@ Changed the PSA email? Unlink and re-add the account.</div>
 </div>
 <div class="card sblock">
 <div class="num">Discord webhook</div>
-<div class="sbar">{"".join(wchips)}</div>
+{f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""}
 {"".join(wpanes)}
 </div>
 <div class="card sblock">
@@ -1154,6 +1168,17 @@ Changed the PSA email? Unlink and re-add the account.</div>
       document.querySelectorAll('.schip[data-group="'+g+'"]').forEach(function(x){{x.classList.toggle('on',x===b);}});
       document.querySelectorAll('.spane.sg-'+g).forEach(function(p){{
         p.style.display=(p.id===b.dataset.pane)?'':'none';}});
+    }});
+  }});
+  document.querySelectorAll('.sact[data-reveal]').forEach(function(b){{
+    b.addEventListener('click',function(){{
+      var t=document.getElementById(b.dataset.reveal);
+      var open=t.style.display!=='none';
+      var pane=b.closest('.spane');
+      pane.querySelectorAll('.srev').forEach(function(r){{r.style.display='none';}});
+      pane.querySelectorAll('.sact[data-reveal]').forEach(function(x){{x.classList.remove('on');}});
+      if(!open){{t.style.display='';b.classList.add('on');
+        var inp=t.querySelector('input[name=value]');if(inp)inp.focus();}}
     }});
   }});
   var m=document.getElementById('smodal');
@@ -2193,6 +2218,12 @@ class H(BaseHTTPRequestHandler):
                     env_set(account_env_path(acct_id), {"PSA_LOGIN_PW": value, "PSA_COOKIE": ""})
                     return self.send(200, settings_page(
                         msg="PSA password saved — the next hourly scan signs in fresh with it."))
+                if action == "psa_email":
+                    if "@" not in value:
+                        return self.send(200, settings_page(err="That doesn't look like an email."))
+                    env_set(account_env_path(acct_id), {"PSA_LOGIN_EMAIL": value, "PSA_COOKIE": ""})
+                    return self.send(200, settings_page(
+                        msg="PSA email saved — the next hourly scan signs in fresh with it."))
                 if action == "site_pw":
                     if len(value) < 4:
                         return self.send(200, settings_page(err="Site password needs at least 4 characters."))
