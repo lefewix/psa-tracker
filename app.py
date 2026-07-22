@@ -27,7 +27,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
-import base64, collections, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
+import base64, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -720,6 +720,8 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
 .logo.sil{filter:var(--logofx,none)}
 .brand{display:flex;align-items:center;gap:16px}
 .brand .logo{margin:0}
+.brand.sm{gap:13px}
+.brand.sm .logo{height:40px}
 .gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
@@ -1977,19 +1979,6 @@ def detail_page(a, sub):
 {body}
 </main>{OWNER_JS}{BACK_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
 
-def grade_summary(cards):
-    """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
-    g = collections.Counter(c["grade"] for c in cards if c.get("grade"))
-    if not g:
-        return ""
-    def sortkey(item):
-        try:
-            return (-float(item[0].split()[0]),)
-        except ValueError:
-            return (0,)
-    parts = " · ".join(f"{n}× PSA {gr}" for gr, n in sorted(g.items(), key=sortkey))
-    return parts
-
 def people_page(a, owner, customer=False):
     owners = owners_map(a)
     arch = archived_set(a)
@@ -2045,7 +2034,10 @@ def people_page(a, owner, customer=False):
         order = sorted(gs, key=lambda n: -int(n) if str(n).isdigit() else 0)
         return "".join(group_html(n, gs[n]) for n in order)
     if act_cards:
-        grid = ('<div class="grid">' + tiles(act_cards) + "</div>") if customer else grouped(act_cards)
+        # grouped cards carry no top margin of their own - give them the same
+        # breathing room below the search bar the customer home has (28px)
+        grid = ('<div class="grid">' + tiles(act_cards) + "</div>") if customer else (
+            '<div style="margin-top:28px">' + grouped(act_cards) + "</div>")
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
@@ -2075,8 +2067,6 @@ def people_page(a, owner, customer=False):
                 uncovered += 1
             else:
                 covered += dv
-        gsum = grade_summary(act_cards)
-        gline = f'<span class="lbl2">Grades</span><b>{html.escape(gsum)}</b>' if gsum else ""
         ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
                if covered or uncovered else "")
         vtot = sum(vals.get(c["cert_no"] or "", 0) for c in act_cards)
@@ -2084,7 +2074,7 @@ def people_page(a, owner, customer=False):
                  if vtot else "")
         vnote = f'<br>values = PSA estimates · as of {html.escape(vas_of)}' if vline else ""
         est = (f'<div class="synced">Est. grading cost<b>${total:,.2f}'
-               f'{"+" if unpriced else ""}</b>{ins}{vline}{gline}'
+               f'{"+" if unpriced else ""}</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     back = ('<a class="view" href="/logout">Sign out</a>' if customer
@@ -2119,14 +2109,22 @@ def customer_page(a, email):
         s = subs_by.get(n)
         svc = html.escape(s["service"]) if s else ""
         pill = eta_pill(s) if s else ""
-        tl = timeline_html(s["status"]) if s else ""
+        # these groups ARE the customer's sub detail view (no /sub access), so
+        # they get the entered-on stage dates the admin detail page has
+        tl = timeline_html(s["status"], stage_dates(a, s)) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles = "".join(card_tile(c, owners, show_sub=False, archived=(n in arch), customer=True)
                         for c in cs)
+        foot = ""
+        if s and s["status"] == "Shipped" and s["shipped"]:
+            ft = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
+            if s["carrier"] and s["tracking"]:  # the click they want most once shipped
+                ft += f' · {tracking_html(s["carrier"], s["tracking"])}'
+            foot = f'<div class="foot"><span class="est">{ft}</span></div>'
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><div class="num">#{html.escape(str(n))}</div>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
-                f'{tl}<div class="grid" style="margin-top:14px">{tiles}</div></div>')
+                f'{tl}<div class="grid" style="margin-top:14px">{tiles}</div>{foot}</div>')
 
     order = sorted(groups, key=lambda n: -int(n) if str(n).isdigit() else 0)
     act = [n for n in order if n not in arch]
@@ -2140,13 +2138,18 @@ def customer_page(a, email):
                    f'<div id="archgrid" style="display:none">'
                    + "".join(group_html(n, groups[n]) for n in gone) + '</div>')
     total = sum(len(groups[n]) for n in act)
+    # freshness stamp + store lockup: the customer home is the store's product
+    # face - it gets the same trust signals the admin dashboard has
+    updated = max((s["updated_at"] or "" for s in subs_by.values()), default="")
+    stamp = fmt_local(updated) if updated else "n/a"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 <a class="view" href="/logout">Sign out</a>
-<div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
-<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div></div>
+<div class="hrow" style="margin-top:14px"><div><div class="brand sm">{logo_tag()}<h1>Your cards</h1></div>
+<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
+<div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div></div>
 <div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
 <div style="margin-top:28px">{body}</div>
 {archsec}
