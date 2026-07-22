@@ -822,12 +822,21 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  box-shadow:0 4px 14px var(--shc);transition:color .15s,transform .12s;text-decoration:none}
 #gearbtn:hover{color:var(--txt)}
 #gearbtn:active{transform:translateY(1px)}
-.sblock .sform{max-width:430px}
+.sblock .sform,.spane .sform{max-width:430px}
 .sform input{margin-top:8px;text-align:left;font-size:13px;padding:10px 12px}
 .sform button{margin-top:12px}
 .slbl{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--m4);margin-top:16px}
 .schk{display:block;font-size:11.5px;color:var(--m4);margin-top:8px;cursor:pointer}
 .sok{font-size:12px;font-weight:600;color:#5fae78;margin-top:14px}
+.sbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.spane{margin-top:18px}
+.smodal{position:fixed;inset:0;z-index:60;background:rgba(7,7,10,.72);display:none;
+ align-items:center;justify-content:center;padding:18px}
+.smodal.on{display:flex}
+.smodal .card{width:min(460px,94vw);margin:0}
+.sclose{float:right;background:transparent;border:0;color:var(--m5);font-size:16px;cursor:pointer;
+ width:auto;margin:0;padding:2px 6px}
+.sclose:hover{color:var(--txt)}
 #themeflip{position:fixed;right:18px;bottom:18px;z-index:40;width:42px;height:42px;
  border-radius:50%;background:var(--frost);border:1px solid var(--hair);color:var(--m2);
  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;
@@ -853,7 +862,7 @@ button{width:100%;margin-top:10px;background:var(--ac);border:0;border-radius:10
 button:hover{background:var(--ac-hot)}
 button:active{transform:translateY(1px)}
 .err{color:var(--err);font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
-.dlink{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 0;
+.dlink{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:14px 0 26px;
  padding:12px 14px;background:var(--surface3);border:1px solid var(--b1);border-radius:10px}
 .dlink .own{width:200px}
 .dstate{font-size:12px;font-weight:600;color:var(--ac-pale)}
@@ -1036,32 +1045,32 @@ def settings_gate(error=""):
 </div></div></div>{THEME_JS}</body></html>"""
 
 def settings_page(msg="", err=""):
+    """One panel: a chip bar of connected PSA accounts (labeled by their PSA
+    email - the only PSA value settings ever displays; passwords stay
+    write-only), the selected account's form below, and an add-account modal."""
     accts = load_accounts()
-    blocks = []
-    for a in accts.values():
+    chips, panes = [], []
+    for i, a in enumerate(accts.values()):
         env = read_env_file(account_env_path(a["id"]))
+        email = env.get("PSA_LOGIN_EMAIL", "") or a["id"]
         hook = "configured" if env.get("DISCORD_WEBHOOK") else "not set"
-        blocks.append(f"""<div class="card sblock">
-<div class="num">{html.escape(a['label'])}</div><div class="meta">account id: {html.escape(a['id'])}</div>
+        # comment-break the @ so Cloudflare's email obfuscation leaves the chip
+        # label alone (it would otherwise inject a link inside the button)
+        email_html = html.escape(email).replace("@", "<!-- -->@")
+        chips.append(f'<button type="button" class="f schip{" on" if i == 0 else ""}" '
+                     f'data-pane="pane{i}">{email_html}</button>')
+        panes.append(f"""<div class="spane" id="pane{i}"{'' if i == 0 else ' style="display:none"'}>
+<div class="meta">{html.escape(a['label'])} · account id: {html.escape(a['id'])}</div>
 <form method="POST" action="/settings/account" class="sform">
 <input type="hidden" name="acct" value="{html.escape(a['id'])}">
-<div class="slbl">PSA login (write-only — current values are never shown)</div>
+<div class="slbl">PSA login (write-only — the current password is never shown)</div>
 <input name="psa_email" type="email" placeholder="New PSA email (blank = keep)" autocomplete="off">
 <input name="psa_pw" type="password" placeholder="New PSA password (blank = keep)" autocomplete="new-password">
 <div class="slbl">Discord webhook — {hook}</div>
 <input name="webhook" type="password" placeholder="New webhook URL (blank = keep)" autocomplete="off">
 <label class="schk"><input type="checkbox" name="clear_webhook" value="1"> Remove webhook</label>
-<button type="submit">Save {html.escape(a['label'])}</button>
+<button type="submit">Save changes</button>
 </form></div>""")
-    add = """<div class="card sblock">
-<div class="num">Add a PSA account</div><div class="meta">tracked separately; its site password routes visitors to it</div>
-<form method="POST" action="/settings/add" class="sform">
-<input name="label" placeholder="Label (e.g. the owner's name)" maxlength="40">
-<input name="site_pw" type="password" placeholder="Site password for this account" autocomplete="new-password">
-<input name="psa_email" type="email" placeholder="PSA account email" autocomplete="off">
-<input name="psa_pw" type="password" placeholder="PSA account password" autocomplete="new-password">
-<button type="submit">Add account</button>
-</form></div>"""
     note = (f'<div class="err" style="text-align:left">{html.escape(err)}</div>' if err else
             (f'<div class="sok">{html.escape(msg)}</div>' if msg else ""))
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
@@ -1072,7 +1081,38 @@ def settings_page(msg="", err=""):
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
 <div class="sub">Credential changes are picked up by the next hourly scan — nothing to restart.</div></div></div>
 {note}
-<div style="margin-top:22px">{"".join(blocks)}{add}</div>
+<div class="card sblock" style="margin-top:22px">
+<div class="num">PSA accounts</div>
+<div class="sbar">{"".join(chips)}<button type="button" class="f" id="saddbtn">+ Add account</button></div>
+{"".join(panes)}
+</div>
+<div class="smodal" id="smodal"><div class="card sblock">
+<button type="button" class="sclose" id="sclose" aria-label="Close">✕</button>
+<div class="num">Add a PSA account</div>
+<div class="meta">tracked separately; its site password routes visitors to it</div>
+<form method="POST" action="/settings/add" class="sform">
+<input name="label" placeholder="Label (e.g. the owner's name)" maxlength="40">
+<input name="site_pw" type="password" placeholder="Site password for this account" autocomplete="new-password">
+<input name="psa_email" type="email" placeholder="PSA account email" autocomplete="off">
+<input name="psa_pw" type="password" placeholder="PSA account password" autocomplete="new-password">
+<button type="submit">Add account</button>
+</form></div></div>
+<script>
+(function(){{
+  document.querySelectorAll('.schip').forEach(function(b){{
+    b.addEventListener('click',function(){{
+      document.querySelectorAll('.schip').forEach(function(x){{x.classList.toggle('on',x===b);}});
+      document.querySelectorAll('.spane').forEach(function(p){{
+        p.style.display=(p.id===b.dataset.pane)?'':'none';}});
+    }});
+  }});
+  var m=document.getElementById('smodal');
+  document.getElementById('saddbtn').addEventListener('click',function(){{m.classList.add('on');}});
+  document.getElementById('sclose').addEventListener('click',function(){{m.classList.remove('on');}});
+  m.addEventListener('click',function(e){{if(e.target===m)m.classList.remove('on');}});
+  document.addEventListener('keydown',function(e){{if(e.key==='Escape')m.classList.remove('on');}});
+}})();
+</script>
 </div>{THEME_JS}</body></html>"""
 
 GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
