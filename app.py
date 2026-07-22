@@ -27,7 +27,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
-import base64, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
+import base64, collections, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -99,7 +99,8 @@ _DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#171
  "glow3": "color-mix(in srgb,var(--ac2) 5%,transparent)",
  "dot0": "#423a4f", "shc": "rgba(8,5,20,.45)", "shc2": "rgba(8,5,20,.7)",
  "shc3": "rgba(8,5,20,.6)", "frost": "rgba(19,18,26,.7)",
- "sh1": "#15141a", "sh2": "#1d1c24", "err": "#ff8b8b", "holdtx": "#ffc9c9"}
+ "sh1": "#15141a", "sh2": "#1d1c24", "err": "#ff8b8b", "holdtx": "#ffc9c9",
+ "fhov": "#c3c0d0"}
 # light neutrals: surfaces tint from the store accent (brand-aware whites);
 # text/borders stay hue-neutral for contrast
 _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
@@ -128,7 +129,8 @@ _LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
  "frost": "rgba(255,255,255,.78)",
  "sh1": "color-mix(in srgb,var(--ac) 5%,white)",
  "sh2": "color-mix(in srgb,var(--ac) 9%,white)",
- "err": "#c23d3d", "holdtx": "#a03232"}
+ "err": "#c23d3d", "holdtx": "#a03232",
+ "fhov": "#2a2833"}
 def _theme_vars(mode):
     acmix = _AC_MIX_L if mode == "light" else _AC_MIX_D
     neut = _LIGHT if mode == "light" else _DARK
@@ -259,11 +261,40 @@ def parse_prices(spec):
             continue
     return out or DEFAULT_PRICES
 
+_ACCTS_LOCK = threading.Lock()
+_ACCTS_SIG = None
+_ACCTS_VAL = {}
+
+def _accounts_sig():
+    """Cheap change detector for the accounts cache: ids + account.env mtimes.
+    env_set/write_account_env/unlink all bump these, so edits still hot-load."""
+    try:
+        names = sorted(os.listdir(ACCOUNTS_DIR))
+    except OSError:
+        return ()
+    sig = []
+    for d in names:
+        if not re.fullmatch(r"[a-z0-9-]+", d):
+            continue
+        try:
+            sig.append((d, os.stat(os.path.join(ACCOUNTS_DIR, d, "account.env")).st_mtime_ns))
+        except OSError:
+            continue
+    return tuple(sig)
+
 def load_accounts():
-    """Scan ACCOUNTS_DIR -> {id: account dict}. Cheap enough to run per request,
-    so password/label changes and new accounts apply without a restart."""
+    """Scan ACCOUNTS_DIR -> {id: account dict}. Cached on account.env mtimes:
+    called several times per request (auth, setup, renderers), so don't re-parse
+    env files unless something on disk actually changed."""
+    global _ACCTS_SIG, _ACCTS_VAL
+    sig = _accounts_sig()
+    with _ACCTS_LOCK:
+        if sig == _ACCTS_SIG:
+            return _ACCTS_VAL
     accts = {}
     if not os.path.isdir(ACCOUNTS_DIR):
+        with _ACCTS_LOCK:
+            _ACCTS_SIG, _ACCTS_VAL = sig, accts
         return accts
     for d in sorted(os.listdir(ACCOUNTS_DIR)):
         if not re.fullmatch(r"[a-z0-9-]+", d):  # ids must be token-safe (no dots)
@@ -281,6 +312,8 @@ def load_accounts():
             "own_db": os.path.join(base, "owners.db"),
             "prices": parse_prices(env.get("PSA_PRICES", "")),
         }
+    with _ACCTS_LOCK:
+        _ACCTS_SIG, _ACCTS_VAL = sig, accts
     return accts
 
 def service_price(a, service):
@@ -379,15 +412,24 @@ def suggest_allowed(ip):
 
 # ---------- data (all account-scoped) ----------
 
+_OWN_READY = set()
+_OWN_LOCK = threading.Lock()
+
 def own_conn(a):
     c = sqlite3.connect(a["own_db"])
-    c.execute("CREATE TABLE IF NOT EXISTS owners (cert_id TEXT PRIMARY KEY, owner TEXT, updated_at TEXT)")
-    c.execute("CREATE TABLE IF NOT EXISTS archived (sub_number TEXT PRIMARY KEY, archived_at TEXT)")
-    # discord_links: owner tag -> Discord user ID for @-mention pings (psa_watch
-    # reads it in notify()). IDs are WRITE-ONLY through the site - no endpoint
-    # ever returns one; the UI only reflects linked yes/no.
-    c.execute("CREATE TABLE IF NOT EXISTS discord_links (owner TEXT COLLATE NOCASE PRIMARY KEY, "
-              "discord_id TEXT, updated_at TEXT)")
+    # schema is created once per db per process, not on every open - own_conn
+    # runs several times per page render
+    with _OWN_LOCK:
+        if a["own_db"] not in _OWN_READY:
+            c.execute("CREATE TABLE IF NOT EXISTS owners (cert_id TEXT PRIMARY KEY, owner TEXT, updated_at TEXT)")
+            c.execute("CREATE TABLE IF NOT EXISTS archived (sub_number TEXT PRIMARY KEY, archived_at TEXT)")
+            # discord_links: owner tag -> Discord user ID for @-mention pings (psa_watch
+            # reads it in notify()). IDs are WRITE-ONLY through the site - no endpoint
+            # ever returns one; the UI only reflects linked yes/no.
+            c.execute("CREATE TABLE IF NOT EXISTS discord_links (owner TEXT COLLATE NOCASE PRIMARY KEY, "
+                      "discord_id TEXT, updated_at TEXT)")
+            c.commit()
+            _OWN_READY.add(a["own_db"])
     return c
 
 DISCORD_ID_RE = re.compile(r"^\d{17,20}$")
@@ -581,12 +623,27 @@ def find_customer(email):
                 return a
     return None
 
+def email_login_on():
+    """True if any owner tag looks like an email. Controls the gate placeholder:
+    a personal instance with plain-name tags shouldn't advertise an email login
+    that can never match."""
+    for a in load_accounts().values():
+        try:
+            c = sqlite3.connect(f"file:{a['own_db']}?mode=ro", uri=True)
+            hit = c.execute("SELECT 1 FROM owners WHERE owner LIKE '%@%' LIMIT 1").fetchone()
+            c.close()
+        except sqlite3.Error:
+            continue
+        if hit:
+            return True
+    return False
+
 def cust_statline(s):
     """One-line per-card status for customer tiles (replaces the sub link)."""
     if not s:
         return ""
     if s["status"] == "Shipped":
-        return f"Shipped {s['shipped']}" if s["shipped"] else "Shipped"
+        return f"Shipped {fmt_mdy(s['shipped'])}" if s["shipped"] else "Shipped"
     eta = s["est_end"] or s["est_start"]
     return s["status"] + (f" · back ~{short_date(eta)}" if eta else "")
 
@@ -698,8 +755,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .pvempty{padding:14px 10px;color:var(--m6);font-size:12px}
 .filters{display:flex;gap:7px;flex-wrap:wrap;margin:26px 0 22px}
 .f{font-size:11.5px;font-weight:500;letter-spacing:.01em;color:var(--m3);background:var(--surface3);
- border:1px solid var(--b1);padding:6px 13px;border-radius:7px;cursor:pointer;transition:.15s}
-.f:hover{border-color:var(--b5);color:#c3c0d0}
+ border:1px solid var(--b1);padding:6px 13px;border-radius:7px;cursor:pointer;transition:.15s;
+ width:auto;margin:0;font-family:inherit;text-decoration:none;display:inline-block}
+.f:hover{border-color:var(--b5);color:var(--fhov)}
 .f.on{background:var(--ac);border-color:var(--ac);color:#fff}
 .f.farch.on{background:#4d4b59;border-color:#4d4b59;color:#fff}
 /* flat cards: solid surface + faint hairline */
@@ -786,7 +844,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .archbtn{font-size:11.5px;font-weight:500;color:var(--m3);background:transparent;border:0;padding:0;cursor:pointer;
  width:auto;margin:0;font-family:inherit;letter-spacing:.01em;transition:color .15s}
 .f:active,.archbtn:active,.hintx:active{transform:translateY(1px)}
-.archbtn:hover{color:#c3c0d0}
+.archbtn:hover{color:var(--fhov)}
 .empty{color:var(--m6);font-size:13px;padding:40px 0;text-align:center}
 .cover{width:44px;height:60px;object-fit:cover;border-radius:5px;border:1px solid var(--b3);background:var(--surface3);flex-shrink:0}
 .hd{display:flex;gap:13px;align-items:flex-start;flex:1}
@@ -880,8 +938,24 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
 .card.arch .fill{background:#4d4b59;box-shadow:none}
 .card.arch .node.now .dot,.card.arch .node.done .dot{background:#5b5968;border-color:#5b5968;box-shadow:none;animation:none}
+/* detail-page timeline card: one dot row, so it doesn't need dashboard-card padding */
+.card.tlcard{padding:16px 30px 10px;margin-bottom:0}
+/* archived sub DETAIL page: the header already says Archived - grey the scans
+   only, keep cert numbers/names/values fully legible (dashboard grey-out unchanged) */
+.archdim img{filter:grayscale(.72);opacity:.85;transition:filter .18s,opacity .18s}
+.archdim .gc:hover img{filter:grayscale(.1);opacity:1}
+/* carrier tracking link: quiet inline affordance on muted footer text */
+.tlink{color:inherit;text-decoration:none;border-bottom:1px dotted var(--m7);
+ transition:color .15s,border-color .15s}
+.tlink:hover{color:var(--ac-pale);border-bottom-color:var(--ac-pale)}
+/* owner-save undo chip (OWNER_JS injects it for a few seconds after a save) */
+.undo{width:auto;margin:6px 0 0;padding:4px 9px;background:transparent;
+ border:1px dashed var(--b4);border-radius:6px;color:var(--m3);font-size:10.5px;
+ font-weight:500;letter-spacing:0;font-family:inherit;cursor:pointer;transition:color .15s,border-color .15s}
+.undo:hover{color:var(--ac-pale);border-color:var(--ac)}
 /* gate */
-.gate{min-height:75vh;display:flex;align-items:center;justify-content:center}
+.gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
+ display:flex;align-items:center;justify-content:center}
 .gbox{width:290px;text-align:center}
 .gbox h1{font-size:26px}
 input{width:100%;margin-top:26px;background:var(--surface2);border:1px solid var(--b1);border-radius:10px;
@@ -904,11 +978,12 @@ button:active{transform:translateY(1px)}
 .setupnote{font-size:10.5px;font-weight:400;color:var(--m7);margin-top:14px;line-height:1.6}
 /* mobile: hide stage labels entirely; only the CURRENT stage is named */
 @media(max-width:640px){.lbl{font-size:0}
+.grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
 .node.now .lbl{font-size:8.5px;white-space:nowrap}
 .ldate{display:none}
 .node.now .ldate{display:block}
 .tl.tld{height:52px}
-.card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}
+.card{padding:20px 18px}.card.tlcard{padding:12px 18px 8px}.num{font-size:18px}.meta{font-size:12.5px}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
@@ -977,6 +1052,27 @@ ICON_OUT = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke=
 ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
 ICON_HOLD = _pic('<path d="M9 5v14M15 5v14"/>')
 
+# carrier tracking pages: substring-matched against the sub's carrier field so
+# tracking numbers become one-click instead of copy-paste
+_CARRIER_URLS = {
+    "fedex": "https://www.fedex.com/fedextrack/?trknbr=",
+    "ups": "https://www.ups.com/track?tracknum=",
+    "usps": "https://tools.usps.com/go/TrackConfirmAction?tLabels=",
+    "canada post": "https://www.canadapost-postescanada.ca/track-reperage/en#/search?searchFor=",
+    "purolator": "https://www.purolator.com/en/shipping/tracking?pin=",
+    "dhl": "https://www.dhl.com/ca-en/home/tracking.html?tracking-id=",
+}
+
+def tracking_html(carrier, tracking):
+    """'FedEx 3822…' as a link to the carrier's tracking page (plain text if
+    the carrier isn't recognized)."""
+    label = html.escape(f"{carrier} {tracking}")
+    base = next((u for k, u in _CARRIER_URLS.items() if k in (carrier or "").lower()), "")
+    if not base:
+        return label
+    return (f'<a class="tlink" href="{base}{urllib.parse.quote(str(tracking))}" '
+            f'target="_blank" rel="noopener">{label}</a>')
+
 def eta_pill(s):
     """Status pill for a sub: return ETA, shipped, hold, or pending."""
     if s["on_hold"]:
@@ -988,16 +1084,28 @@ def eta_pill(s):
     return f'<span class="pill done">{ICON_CLOCK}ETA pending</span>'
 
 def gate_page(error=""):
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    # only advertise email login where it can actually work (email owner tags)
+    ph = "Password or email" if email_login_on() else "Password"
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
-<input type="password" name="password" placeholder="Password or email" autofocus autocomplete="current-password">
+<input type="password" name="password" placeholder="{ph}" autofocus autocomplete="current-password">
 <button type="submit">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
-</div></div></div>{THEME_JS}</body></html>"""
+</div></div></main>{THEME_JS}</body></html>"""
+
+def not_found_page(msg="There's no page at this address."):
+    """Branded 404 so a bad link doesn't drop out of the design."""
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Not found</title>
+{HEAD_HTML}
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
+{logo_tag()}<h1>Not found</h1><div class="sub">{html.escape(msg)}</div>
+<a class="view" style="display:inline-block;margin-top:22px" href="/">&larr; Back to the dashboard</a>
+</div></div></main>{THEME_JS}</body></html>"""
 
 # ---------- settings ----------
 # /settings edits per-account PSA credentials (WRITE-ONLY - existing values are
@@ -1018,12 +1126,12 @@ def env_set(path, updates):
         if k in updates:
             seen.add(k)
             if updates[k] != "":
-                out.append(f"{k}='" + updates[k].replace("'", "") + "'")
+                out.append(f"{k}={shlex.quote(updates[k])}")
         else:
             out.append(ln)
     for k, v in updates.items():
         if k not in seen and v != "":
-            out.append(f"{k}='" + v.replace("'", "") + "'")
+            out.append(f"{k}={shlex.quote(v)}")
     tmp = path + ".tmp"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
@@ -1062,16 +1170,16 @@ def account_env_path(acct_id):
     return os.path.join(ACCOUNTS_DIR, acct_id, "account.env")
 
 def settings_gate(error=""):
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
 <form method="POST" action="/settings/auth">
 <input type="password" name="password" placeholder="Settings password" autofocus autocomplete="off">
 <button type="submit">Open settings</button></form>
 <div class="err">{html.escape(error)}</div>
-</div></div></div>{THEME_JS}</body></html>"""
+</div></div></main>{THEME_JS}</body></html>"""
 
 def settings_page(msg="", err=""):
     """Four panels, styled like the rest of the site. Accounts panel: chips by
@@ -1121,10 +1229,10 @@ def settings_page(msg="", err=""):
             (f'<div class="snote">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
     sbar2 = f'<div class="sbar">{"".join(schips)}</div>' if multi else ""
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
 <div class="sub">Changes apply from the next hourly scan.</div></div></div>
@@ -1205,7 +1313,7 @@ def settings_page(msg="", err=""):
   }});
 }})();
 </script>
-</div>{FX_JS}{THEME_JS}</body></html>"""
+</main>{FX_JS}{THEME_JS}</body></html>"""
 
 GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -1231,17 +1339,26 @@ def gear_html(customer=False):
 # The form stays reachable only until the instance has connected once (a
 # PSA_COOKIE lands or subs exist) - after that it is gone for good.
 
+_SETUP_CLOSED = False
+
 def setup_state():
     """(setup_allowed, existing_account_or_None). Allowed on a fresh instance,
-    or for retrying the single account that has never managed to connect."""
+    or for retrying the single account that has never managed to connect.
+    Setup closes for good once the instance has connected - remember that in
+    process so steady-state requests skip the env/db checks entirely."""
+    global _SETUP_CLOSED
+    if _SETUP_CLOSED:
+        return False, None
     accts = load_accounts()
     if not accts:
         return True, None
     if len(accts) > 1:
+        _SETUP_CLOSED = True
         return False, None
     a = next(iter(accts.values()))
     env = read_env_file(os.path.join(ACCOUNTS_DIR, a["id"], "account.env"))
     if env.get("PSA_COOKIE"):
+        _SETUP_CLOSED = True
         return False, None
     try:
         conn = _ro_conn(a)
@@ -1249,12 +1366,14 @@ def setup_state():
         conn.close()
     except sqlite3.Error:
         n = 0
+    if n:
+        _SETUP_CLOSED = True
     return (n == 0), a
 
 def write_account_env(acct_id, label, site_pw, psa_email, psa_pw):
     base = os.path.join(ACCOUNTS_DIR, acct_id)
     os.makedirs(base, exist_ok=True)
-    q = lambda v: "'" + v.replace("'", "") + "'"  # single-quoted, shell-safe
+    q = shlex.quote  # real shell quoting - apostrophes in passwords survive intact
     body = "\n".join([f"LABEL={q(label)}", f"SITE_PASSWORD={q(site_pw)}",
                       f"PSA_LOGIN_EMAIL={q(psa_email)}", f"PSA_LOGIN_PW={q(psa_pw)}",
                       "PSA_COOKIE=''"]) + "\n"
@@ -1291,10 +1410,10 @@ def first_sync_note(a):
             '<a href="/setup">Re-enter it</a>.')
 
 def setup_page(error="", label="", psa_email=""):
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)} · Setup</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">First-time setup — connect your PSA account</div>
 <form method="POST" action="/setup" class="setupform">
 <input name="label" placeholder="Store or site name" maxlength="40" value="{html.escape(label)}">
@@ -1305,7 +1424,7 @@ def setup_page(error="", label="", psa_email=""):
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
 only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
 <div class="err">{html.escape(error)}</div>
-</div></div></div>{THEME_JS}</body></html>"""
+</div></div></main>{THEME_JS}</body></html>"""
 
 def stage_dates(a, sub):
     """stage label -> 'Jul 20': when the sub ENTERED each stage, for the detail
@@ -1358,9 +1477,9 @@ def card_html(s, archived=False):
     pill = eta_pill(s)
 
     if s["status"] == "Shipped" and s["shipped"]:
-        foot = f'Shipped {html.escape(s["shipped"])}'
+        foot = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
         if s["carrier"] and s["tracking"]:
-            foot += f' · {html.escape(s["carrier"])} {html.escape(s["tracking"])}'
+            foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
     elif s["grades_ready"]:
         foot = "Grades ready"
     else:
@@ -1392,7 +1511,7 @@ def search_box(value="", owner="", ph=None):
             '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>')
     return (f'<div class="searchwrap">{icon}<input class="searchbar" id="q" type="search" '
             f'autocomplete="off" spellcheck="false" placeholder="{html.escape(ph)}" '
-            f'data-owner="{html.escape(owner)}" '
+            f'aria-label="{html.escape(ph)}" data-owner="{html.escape(owner)}" '
             f'value="{html.escape(value)}"><div class="preview" id="preview"></div></div>')
 
 SEARCH_JS = """<script>
@@ -1460,6 +1579,8 @@ LIGHTBOX_JS = """<script>
   links.forEach(function(a){
     a.addEventListener('click', function(e){
       e.preventDefault();
+      var t=a.querySelector('img');
+      im.alt=t?t.alt:'';
       im.src=a.getAttribute('href');
       lb.classList.add('open');
     });
@@ -1473,14 +1594,41 @@ LIGHTBOX_JS = """<script>
 OWNER_JS = """
 <script>
 document.querySelectorAll('.own').forEach(function(i){
+  var prev=i.value;
   function fail(){ i.classList.add('errsave'); setTimeout(function(){i.classList.remove('errsave')},1200); }
-  i.addEventListener('blur', function(){
+  function post(val,done){
     fetch('/owner', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(i.value)})
-     .then(function(r){ if(r.ok){ i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);} else { fail(); } })
-     .catch(fail);
+      body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(val)})
+     .then(function(r){ done(r.ok); }).catch(function(){ done(false); });
+  }
+  i.addEventListener('focus', function(){ prev=i.value; });
+  i.addEventListener('blur', function(){
+    if(i.value===prev) return;             // nothing changed - no POST
+    var old=prev;
+    post(i.value, function(ok){
+      if(!ok){ fail(); return; }
+      prev=i.value;
+      i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},1600);
+      var s=i.nextElementSibling;          // one undo chip at a time
+      if(s&&s.classList.contains('undo')) s.remove();
+      var u=document.createElement('button');
+      u.type='button'; u.className='undo'; u.textContent='Saved \\u00b7 Undo';
+      i.insertAdjacentElement('afterend', u);
+      var t=setTimeout(function(){u.remove()},6000);
+      u.addEventListener('click', function(){
+        clearTimeout(t); u.remove();
+        post(old, function(ok2){
+          if(!ok2){ fail(); return; }
+          i.value=old; prev=old;
+          i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);
+        });
+      });
+    });
   });
-  i.addEventListener('keydown', function(e){ if(e.key==='Enter') i.blur(); });
+  i.addEventListener('keydown', function(e){
+    if(e.key==='Enter') i.blur();
+    else if(e.key==='Escape'){ i.value=prev; i.blur(); }  // revert before saving
+  });
 });
 </script>"""
 
@@ -1495,7 +1643,8 @@ FX_JS = """<script>
     setTimeout(function(){
       var el=document.activeElement;
       var typing=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
-      if(document.hidden||!typing){location.reload();}else{arm();}
+      var lb=document.querySelector('.lb.open');
+      if(document.hidden||(!typing&&!lb)){location.reload();}else{arm();}
     },ms);
   }
   arm();
@@ -1594,7 +1743,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
-        img = f'<a href="{big}">{grade}<img loading="lazy" src="{src}" alt=""></a>'  # grade overlays scan; opens in lightbox
+        img = f'<a href="{big}">{grade}<img loading="lazy" src="{src}" alt="{name}"></a>'  # grade overlays scan; opens in lightbox
     else:
         img = f'<div class="ph">{grade}No image yet</div>'
     if customer:
@@ -1644,26 +1793,26 @@ def dash_page(a, subs):
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
-        pills += ['<span class="f fsort on" data-sort="sub">Newest</span>',
-                  '<span class="f fsort" data-sort="svc">Order type</span>',
-                  '<span class="f fsort" data-sort="eta">Return time</span>']
+        pills += ['<button type="button" class="f fsort on" data-sort="sub">Newest</button>',
+                  '<button type="button" class="f fsort" data-sort="svc">Order type</button>',
+                  '<button type="button" class="f fsort" data-sort="eta">Return time</button>']
     if gone:
-        pills.append(f'<span class="f farch" id="archtoggle">Archived · {len(gone)}</span>')
+        pills.append(f'<button type="button" class="f farch" id="archtoggle">Archived · {len(gone)}</button>')
     untag = untagged_count(a, active)
     if untag:
         pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} need owners</a>')
     filters = f'<div class="filters">{"".join(pills)}</div>' if pills else ""
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 <div class="hrow"><div>{logo_tag()}<h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
 <div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
 {toolbar}
 {filters}
 <div id="list">{body}</div>
-</div>
+</main>
 <script>
 (function(){{var h=document.getElementById('hint');
  if(h&&localStorage.getItem('psa_hint_seen')){{h.style.display='none';}}
@@ -1684,9 +1833,9 @@ def eta_badge(s, extra=""):
     ship date + tracking once shipped. `extra` = additional lbl2/b lines
     (e.g. the sub's estimated value) appended inside the same block."""
     if s["status"] == "Shipped" and s["shipped"]:
-        note = (f'<span class="estnote">{html.escape(s["carrier"])} {html.escape(s["tracking"])}</span>'
+        note = (f'<span class="estnote">{tracking_html(s["carrier"], s["tracking"])}</span>'
                 if s["carrier"] and s["tracking"] else "")
-        return f'<div class="synced">Shipped<b>{html.escape(s["shipped"])}</b>{note}{extra}</div>'
+        return f'<div class="synced">Shipped<b>{html.escape(fmt_mdy(s["shipped"]))}</b>{note}{extra}</div>'
     if s["est_start"]:
         val = html.escape(s["est_start"])
         if s["est_end"]:
@@ -1708,8 +1857,11 @@ def detail_page(a, sub):
         vextra = (f'<span class="lbl2">Est. value</span><b class="num">${vtotal:,.0f}{"+" if vmiss else ""} {vcur}</b>'
                   f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     if cards:
-        body = ('<div class="grid">'
-                + "".join(card_tile(c, owners, archived=archived,
+        # archived treatment on the sub's OWN page greys the scans only (.archdim);
+        # the header already says Archived, so cert numbers/names/values stay legible
+        gcls = "grid archdim" if archived else "grid"
+        body = (f'<div class="{gcls}">'
+                + "".join(card_tile(c, owners,
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cards)
                 + "</div>")
     elif json.loads(sub["cert_ids"] or "[]"):
@@ -1722,21 +1874,20 @@ def detail_page(a, sub):
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1">Archive</button>'
         tag = ""
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" href="/">← All submissions</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
-<div class="card" style="margin-top:18px">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
+<div class="card tlcard" style="margin-top:18px">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
 {body}
-</div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
+</main>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
 
 def grade_summary(cards):
     """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
-    import collections
     g = collections.Counter(c["grade"] for c in cards if c.get("grade"))
     if not g:
         return ""
@@ -1794,8 +1945,8 @@ def people_page(a, owner, customer=False):
                 f'<div class="num">#{html.escape(str(n))}</div></a>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
                 f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div>'
-                f'<div class="foot"><span class="est"></span>'
-                f'<a class="view" href="/sub/{html.escape(str(n))}">Go to sub #{html.escape(str(n))}</a></div></div>')
+                f'<div class="foot"><a class="view" style="margin-left:auto" '
+                f'href="/sub/{html.escape(str(n))}">Go to sub #{html.escape(str(n))}</a></div></div>')
     def grouped(cs):
         gs = {}
         for c in cs:
@@ -1816,7 +1967,7 @@ def people_page(a, owner, customer=False):
                  if customer else
                  f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>')
         archsec = (f'<div class="filters" style="margin:30px 0 0">'
-                   f'<span class="f farch" id="archtoggle">Archived · {len(arc_cards)}</span></div>'
+                   f'<button type="button" class="f farch" id="archtoggle">Archived · {len(arc_cards)}</button></div>'
                    + inner)
     if unassigned or customer:
         est = ""  # store cost/coverage numbers are operator-only
@@ -1849,17 +2000,17 @@ def people_page(a, owner, customer=False):
             else '<a class="view" href="/">← All submissions</a>')
     page_title = "Your cards" if customer else f"{title}'s cards"
     owner_js = "" if customer else OWNER_JS
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 {back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
 {archsec}
-</div>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
+</main>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -1894,21 +2045,21 @@ def customer_page(a, email):
     archsec = ""
     if gone:
         archsec = (f'<div class="filters" style="margin:30px 0 0">'
-                   f'<span class="f farch" id="archtoggle">Archived · {len(gone)}</span></div>'
+                   f'<button type="button" class="f farch" id="archtoggle">Archived · {len(gone)}</button></div>'
                    f'<div id="archgrid" style="display:none">'
                    + "".join(group_html(n, groups[n]) for n in gone) + '</div>')
     total = sum(len(groups[n]) for n in act)
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 <a class="view" href="/logout">Sign out</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Your cards</h1>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div></div>
 <div class="toolbar">{search_box(owner=email, ph="Search your cards…")}</div>
 <div style="margin-top:28px">{body}</div>
 {archsec}
-</div>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{THEME_JS}</body></html>"""
+</main>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{THEME_JS}</body></html>"""
 
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
@@ -1947,16 +2098,16 @@ def search_page(a, q, owner="", customer=False):
                 f'← {html.escape(owner)}\'s cards</a>')
     else:
         back = '<a class="view" href="/">← All submissions</a>'
-    return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
+    return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Search</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
+<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
 {back}
 <h1 style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
 <div class="toolbar">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
-</div>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
+</main>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
 
 # ---------- server ----------
 
@@ -2053,6 +2204,10 @@ class H(BaseHTTPRequestHandler):
         path = parsed.path
         if path == "/logo":
             return self.serve_logo()
+        if path == "/img":  # hot path: skip the setup-state machinery entirely
+            if not self.authed():
+                return self.send(200, gate_page())
+            return self.serve_img(parsed.query)
         s_allowed, s_retry = setup_state()
         if path == "/setup":
             if not s_allowed:
@@ -2070,8 +2225,6 @@ class H(BaseHTTPRequestHandler):
         if not got:
             return self.send(200, gate_page())
         acct, cust = got
-        if path == "/img":
-            return self.serve_img(parsed.query)
         if path == "/logout":
             return self.send(302, "", extra=[("Location", "/"),
                 ("Set-Cookie", "psa_session=; Path=/; Max-Age=0")])
@@ -2112,9 +2265,9 @@ class H(BaseHTTPRequestHandler):
             num = path.split("/sub/", 1)[1].strip("/")
             sub = load_sub(acct, num)
             if not sub:
-                return self.send(404, '<div class="empty">Not found</div>')
+                return self.send(404, not_found_page("That submission isn't here."))
             return self.send(200, detail_page(acct, sub))
-        self.send(404, "not found", "text/plain")
+        self.send(404, not_found_page())
 
     def do_POST(self):
         path = urllib.parse.urlparse(self.path).path
