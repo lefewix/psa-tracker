@@ -1351,16 +1351,16 @@ GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Sett
              'a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.55 1H21'
              'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a>')
 
-# The gear is a STORE-product affordance: there, the site-password holder IS
-# the admin. On a personal instance the password holders are friends - hide it
-# with PSA_SETTINGS_GEAR=0. Settings stay reachable either way: type the
-# settings password at the main gate, or open /settings directly.
+# Store mode vs personal mode (PSA_SETTINGS_GEAR, default 1 = store):
+# STORE - the site-password holder IS the admin, so admin sessions get the
+#   gear AND open /settings directly, no second password (customers never do).
+# PERSONAL (=0, the server) - password holders are friends: no gear, and /settings
+#   always demands the separate settings password (typed there or at the gate).
 SETTINGS_GEAR = os.environ.get("PSA_SETTINGS_GEAR", "1") not in ("0", "false", "no")
 
 def gear_html(customer=False):
-    """Settings gear beside the theme toggle - admin sessions only, only when a
-    settings password is configured, and only where the gear is enabled."""
-    return "" if (customer or not SETTINGS_HASH or not SETTINGS_GEAR) else GEAR_HTML
+    """Settings gear beside the theme toggle - store-mode admin sessions only."""
+    return "" if (customer or not SETTINGS_GEAR) else GEAR_HTML
 
 # ---------- first-run setup ----------
 # A fresh instance (accounts/ empty) serves a one-time setup form instead of the
@@ -2227,6 +2227,17 @@ class H(BaseHTTPRequestHandler):
                         return acct, got[1]
         return None
 
+    def settings_ok(self):
+        """Settings authorization: the settings cookie always works; in store
+        mode any full site-password (admin) session does too - the store's
+        admin login IS the settings credential. Customers never qualify."""
+        if settings_authed(self.headers.get("Cookie", "")):
+            return True
+        if SETTINGS_GEAR:
+            got = self.authed()
+            return bool(got and not got[1])
+        return False
+
     def send(self, code, body, ctype="text/html; charset=utf-8", extra=None):
         data = body.encode()
         self.send_response(code)
@@ -2328,10 +2339,10 @@ class H(BaseHTTPRequestHandler):
         if s_allowed and s_retry is None:  # fresh instance: everything is setup
             return self.send(200, setup_page())
         if path == "/settings":
+            if self.settings_ok():  # store admins walk straight in
+                return self.send(200, settings_page())
             if not SETTINGS_HASH:
                 return self.send(404, "not found", "text/plain")
-            if settings_authed(self.headers.get("Cookie", "")):
-                return self.send(200, settings_page())
             return self.send(200, settings_gate())
         got = self.authed()
         if not got:
@@ -2461,7 +2472,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(302, "", extra=[("Location", "/settings"),
                                              ("Set-Cookie", settings_cookie_hdr())])
         if path == "/settings/password":
-            if not settings_authed(self.headers.get("Cookie", "")):
+            if not self.settings_ok():
                 return self.send(403, "settings auth", "text/plain")
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
@@ -2482,7 +2493,7 @@ class H(BaseHTTPRequestHandler):
                     err=f"Password active for now, but writing {GLOBAL_ENV} failed — it reverts on restart."))
             return self.send(200, settings_page(msg="Settings password changed — it works immediately."))
         if path in ("/settings/account", "/settings/add"):
-            if not settings_authed(self.headers.get("Cookie", "")):
+            if not self.settings_ok():
                 return self.send(403, "settings auth", "text/plain")
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
