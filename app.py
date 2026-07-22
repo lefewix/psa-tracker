@@ -1133,6 +1133,10 @@ def not_found_page(msg="There's no page at this address."):
 # never displayed), per-account Discord webhooks, and adds accounts. Entry:
 # type the settings password on the main gate, or the gear icon (admin pages)
 # -> a settings-password prompt. Session = its own short-lived signed cookie.
+# Both settings templates append @view-transition{navigation:none}: the
+# cross-page transition crossfading the heavy dashboard into this unrelated
+# layout reads as lag + a jolt (scroll offsets differ), so navigations to and
+# from settings are plain loads. Dashboard<->sub<->person transitions keep it.
 
 def env_set(path, updates):
     """Update KEY='value' lines in an env file, preserving all other lines.
@@ -1194,7 +1198,7 @@ def settings_gate(error=""):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}{CSS}@view-transition{{navigation:none}}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
 <form method="POST" action="/settings/auth">
 <input type="password" name="password" placeholder="Settings password" autofocus autocomplete="off">
@@ -1255,7 +1259,7 @@ def settings_page(msg="", err=""):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
+<style>{THEME_VARS}{CSS}@view-transition{{navigation:none}}</style></head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
 <div class="sub">Changes apply from the next hourly scan.</div></div></div>
