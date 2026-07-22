@@ -181,6 +181,13 @@ def short_date(iso):
     except (ValueError, TypeError):
         return iso
 
+def fmt_mdy(mdy):
+    """PSA's '07/21/26' -> 'Jul 21' (their arrived/shipped date format)."""
+    try:
+        return datetime.strptime(mdy, "%m/%d/%y").strftime("%b %d")
+    except (ValueError, TypeError):
+        return mdy
+
 # PSA is inconsistent about card-name casing: some specDescriptions arrive ALL
 # CAPS, most arrive mixed. Tame the shouty ones at render time; leave mixed-case
 # names (PSA's canonical form) untouched.
@@ -677,6 +684,10 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  animation:nowpulse 2.6s ease-in-out infinite}
 @keyframes nowpulse{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--ac) 8%,transparent)}}
 .lbl{font-size:9px;font-weight:500;letter-spacing:.06em;color:var(--m7);display:block;line-height:1.2;text-transform:uppercase}
+/* entered-on date under a reached stage (detail page only; .tld reserves the row) */
+.ldate{display:block;font-size:9px;font-weight:500;letter-spacing:.02em;color:var(--m9);margin-top:3px}
+.node.now .ldate{color:var(--m7)}
+.tl.tld{height:60px}
 .node.done .lbl{color:var(--m8)}
 .node.now .lbl{color:var(--txtstrong);font-weight:600}
 .foot{border-top:1px solid var(--hair2);padding-top:13px;display:flex;justify-content:space-between;
@@ -767,6 +778,9 @@ button:active{transform:translateY(1px)}
 /* mobile: hide stage labels entirely; only the CURRENT stage is named */
 @media(max-width:640px){.lbl{font-size:0}
 .node.now .lbl{font-size:8.5px;white-space:nowrap}
+.ldate{display:none}
+.node.now .ldate{display:block}
+.tl.tld{height:52px}
 .card{padding:20px 18px}.num{font-size:18px}.meta{font-size:12.5px}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
@@ -940,18 +954,47 @@ only on this server (chmod 600) and used by the scanner to sign in on your behal
 <div class="err">{html.escape(error)}</div>
 </div></div></div>{THEME_JS}</body></html>"""
 
-def timeline_html(status):
+def stage_dates(a, sub):
+    """stage label -> 'Jul 20': when the sub ENTERED each stage, for the detail
+    timeline. Arrived/Shipped use PSA's own dates; middle stages use the
+    status_history transitions the scanner actually observed. A sub's initial
+    import row (seen_at == first_seen) is discovery, not a transition - skipped."""
+    d = {}
+    try:
+        conn = _ro_conn(a)
+        rows = conn.execute("""SELECT status, seen_at FROM status_history
+                               WHERE sub_number=? ORDER BY seen_at""",
+                            (sub["sub_number"],)).fetchall()
+        conn.close()
+    except sqlite3.Error:
+        rows = []
+    for r in rows:
+        if r["seen_at"] == (sub["first_seen"] or ""):
+            continue
+        if r["status"] in STAGES and r["status"] not in d:
+            d[r["status"]] = short_date(r["seen_at"])
+    if sub["arrived"]:
+        d["Arrived"] = fmt_mdy(sub["arrived"])
+    if sub["shipped"]:
+        d["Shipped"] = fmt_mdy(sub["shipped"])
+    return d
+
+def timeline_html(status, dates=None):
     """The horizontal stage progress bar (Arrived → … → Shipped). Shared by the
-    dashboard cards and the sub detail page."""
+    dashboard cards and the sub detail page; `dates` (stage -> 'Jul 20', from
+    stage_dates) adds entered-on dates under reached stages - detail page only,
+    so the dashboard stays uncluttered."""
     idx = stage_index(status)
     pct = 90.0 * idx / (len(STAGES) - 1)
     nodes = []
     for i, name in enumerate(STAGES):
         cls = "node now" if i == idx else ("node done" if i < idx else "node")
         left = 5 + 90.0 * i / (len(STAGES) - 1)
+        dt = (dates or {}).get(name, "") if i <= idx else ""
+        dspan = f'<span class="ldate">{html.escape(dt)}</span>' if dt else ""
         nodes.append(f'<div class="{cls}" style="left:{left:.1f}%"><div class="dot"></div>'
-                     f'<span class="lbl">{html.escape(name.upper())}</span></div>')
-    return (f'<div class="tl"><div class="track"></div>'
+                     f'<span class="lbl">{html.escape(name.upper())}</span>{dspan}</div>')
+    return (f'<div class="tl{" tld" if dates is not None else ""}"><div class="track"></div>'
             f'<div class="fill" style="width:{pct:.1f}%"></div>{"".join(nodes)}</div>')
 
 def card_html(s, archived=False):
@@ -1321,7 +1364,7 @@ def detail_page(a, sub):
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
-<div class="card" style="margin-top:18px">{timeline_html(sub['status'])}</div>
+<div class="card" style="margin-top:18px">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
 {body}
 </div>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{THEME_JS}</body></html>"""
 
