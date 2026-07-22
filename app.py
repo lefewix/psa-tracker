@@ -42,6 +42,7 @@ COOKIE_SECURE = os.environ.get("PSA_COOKIE_SECURE", "1") not in ("0", "false", "
 # (or at the gear icon's prompt) opens /settings. Unset -> settings disabled.
 SETTINGS_HASH = os.environ.get("PSA_SETTINGS_PW_HASH", "").lower()
 SETTINGS_MINUTES = int(os.environ.get("PSA_SETTINGS_MINUTES", "60"))
+GLOBAL_ENV = os.environ.get("PSA_GLOBAL_ENV", "/etc/psa-tracker.env")
 SITE_TITLE = os.environ.get("SITE_TITLE", "Submissions")
 SITE_TAGLINE = os.environ.get("SITE_TAGLINE", "PSA GRADING TRACKER")
 
@@ -822,12 +823,21 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  box-shadow:0 4px 14px var(--shc);transition:color .15s,transform .12s;text-decoration:none}
 #gearbtn:hover{color:var(--txt)}
 #gearbtn:active{transform:translateY(1px)}
-.sblock .sform,.spane .sform{max-width:430px}
+.sblock .sform{max-width:430px}
 .sform input{margin-top:8px;text-align:left;font-size:13px;padding:10px 12px}
 .sform button{margin-top:12px}
-.slbl{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--m4);margin-top:16px}
-.schk{display:block;font-size:11.5px;color:var(--m4);margin-top:8px;cursor:pointer}
-.sok{font-size:12px;font-weight:600;color:#5fae78;margin-top:14px}
+.srow{display:flex;gap:8px;margin-top:8px;max-width:460px}
+.srow input{flex:1;margin-top:0;text-align:left;font-size:13px;padding:10px 12px}
+.sbtn{width:auto;margin-top:0;padding:10px 18px;font-size:12.5px;flex-shrink:0}
+.sbtn.sdel{background:transparent;border:1px solid rgba(220,90,90,.35);color:var(--holdtx);margin-top:10px}
+.sbtn.sdel:hover{background:rgba(220,60,60,.14)}
+.srow .sbtn.sdel{margin-top:0}
+.sdanger{margin-top:24px;padding-top:16px;border-top:1px solid var(--hair2)}
+.slbl{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--m4);margin-top:18px;line-height:1.6;max-width:460px}
+.snote{display:inline-block;font-size:12px;font-weight:600;color:var(--ac-pale);margin-top:16px;
+ padding:9px 14px;border-radius:8px;background:color-mix(in srgb,var(--ac) 14%,transparent);
+ border:1px solid color-mix(in srgb,var(--ac-soft) 30%,transparent)}
+.snote.serr{color:var(--holdtx);background:rgba(220,60,60,.12);border-color:rgba(220,90,90,.35)}
 .sbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
 .spane{margin-top:18px}
 .smodal{position:fixed;inset:0;z-index:60;background:rgba(7,7,10,.72);display:none;
@@ -1045,46 +1055,85 @@ def settings_gate(error=""):
 </div></div></div>{THEME_JS}</body></html>"""
 
 def settings_page(msg="", err=""):
-    """One panel: a chip bar of connected PSA accounts (labeled by their PSA
-    email - the only PSA value settings ever displays; passwords stay
-    write-only), the selected account's form below, and an add-account modal."""
+    """Three panels: PSA accounts (chip bar by email -> per-account actions:
+    change PSA password / change site password / unlink), Discord webhook
+    (same chip pattern, Save + Remove buttons), and the settings password.
+    Everything credential-shaped is write-only; the PSA email is the only PSA
+    value settings ever displays."""
     accts = load_accounts()
-    chips, panes = [], []
+    achips, apanes, wchips, wpanes = [], [], [], []
     for i, a in enumerate(accts.values()):
         env = read_env_file(account_env_path(a["id"]))
         email = env.get("PSA_LOGIN_EMAIL", "") or a["id"]
-        hook = "configured" if env.get("DISCORD_WEBHOOK") else "not set"
         # comment-break the @ so Cloudflare's email obfuscation leaves the chip
         # label alone (it would otherwise inject a link inside the button)
         email_html = html.escape(email).replace("@", "<!-- -->@")
-        chips.append(f'<button type="button" class="f schip{" on" if i == 0 else ""}" '
-                     f'data-pane="pane{i}">{email_html}</button>')
-        panes.append(f"""<div class="spane" id="pane{i}"{'' if i == 0 else ' style="display:none"'}>
-<div class="meta">{html.escape(a['label'])} · account id: {html.escape(a['id'])}</div>
-<form method="POST" action="/settings/account" class="sform">
-<input type="hidden" name="acct" value="{html.escape(a['id'])}">
-<div class="slbl">PSA login (write-only — the current password is never shown)</div>
-<input name="psa_email" type="email" placeholder="New PSA email (blank = keep)" autocomplete="off">
-<input name="psa_pw" type="password" placeholder="New PSA password (blank = keep)" autocomplete="new-password">
-<div class="slbl">Discord webhook — {hook}</div>
-<input name="webhook" type="password" placeholder="New webhook URL (blank = keep)" autocomplete="off">
-<label class="schk"><input type="checkbox" name="clear_webhook" value="1"> Remove webhook</label>
-<button type="submit">Save changes</button>
-</form></div>""")
-    note = (f'<div class="err" style="text-align:left">{html.escape(err)}</div>' if err else
-            (f'<div class="sok">{html.escape(msg)}</div>' if msg else ""))
+        on = " on" if i == 0 else ""
+        hide = "" if i == 0 else ' style="display:none"'
+        aid = html.escape(a["id"])
+        achips.append(f'<button type="button" class="f schip{on}" data-group="a" '
+                      f'data-pane="apane{i}">{email_html}</button>')
+        apanes.append(f"""<div class="spane sg-a" id="apane{i}"{hide}>
+<div class="meta">{html.escape(a['label'])} · account id: {aid}</div>
+<div class="slbl">PSA password — write-only; saving forces a fresh PSA sign-in next scan.
+Changed the PSA email? Unlink and re-add the account.</div>
+<form method="POST" action="/settings/account" class="srow">
+<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="psa_pw">
+<input name="value" type="password" placeholder="New PSA password" autocomplete="new-password">
+<button type="submit" class="sbtn">Save</button></form>
+<div class="slbl">Site password — what admins and visitors type at the gate to reach this account</div>
+<form method="POST" action="/settings/account" class="srow">
+<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="site_pw">
+<input name="value" type="password" placeholder="New site password" autocomplete="new-password">
+<button type="submit" class="sbtn">Save</button></form>
+<div class="sdanger"><form method="POST" action="/settings/account"
+ onsubmit="return confirm('Unlink {html.escape(a['label'])}? The site stops tracking it. Its data stays on the server (accounts/{aid}.unlinked-…) and can be restored by hand.')">
+<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="unlink">
+<button type="submit" class="sbtn sdel">Unlink this account</button></form></div>
+</div>""")
+        hook_on = bool(env.get("DISCORD_WEBHOOK"))
+        wchips.append(f'<button type="button" class="f schip{on}" data-group="w" '
+                      f'data-pane="wpane{i}">{email_html}</button>')
+        remove_btn = (f'<form method="POST" action="/settings/account" style="margin:0">'
+                      f'<input type="hidden" name="acct" value="{aid}">'
+                      f'<input type="hidden" name="action" value="webhook_clear">'
+                      f'<button type="submit" class="sbtn sdel">Remove</button></form>' if hook_on else "")
+        wpanes.append(f"""<div class="spane sg-w" id="wpane{i}"{hide}>
+<div class="meta">{'webhook configured — updates for this account ping its channel' if hook_on
+                   else 'no webhook — this account inherits the global one, if any'}</div>
+<form method="POST" action="/settings/account" class="srow">
+<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="webhook">
+<input name="value" type="password" placeholder="discord.com/api/webhooks/… URL" autocomplete="off">
+<button type="submit" class="sbtn">Save</button></form>
+{remove_btn}
+</div>""")
+    note = (f'<div class="snote serr">{html.escape(err)}</div>' if err else
+            (f'<div class="snote">{html.escape(msg)}</div>' if msg else ""))
     return f"""<!DOCTYPE html><html><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><div class="wrap">
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
-<div class="sub">Credential changes are picked up by the next hourly scan — nothing to restart.</div></div></div>
+<div class="sub">Changes are picked up by the next hourly scan — nothing to restart.</div></div></div>
 {note}
 <div class="card sblock" style="margin-top:22px">
 <div class="num">PSA accounts</div>
-<div class="sbar">{"".join(chips)}<button type="button" class="f" id="saddbtn">+ Add account</button></div>
-{"".join(panes)}
+<div class="sbar">{"".join(achips)}<button type="button" class="f" id="saddbtn">+ Add account</button></div>
+{"".join(apanes)}
+</div>
+<div class="card sblock">
+<div class="num">Discord webhook</div>
+<div class="sbar">{"".join(wchips)}</div>
+{"".join(wpanes)}
+</div>
+<div class="card sblock">
+<div class="num">Settings password</div>
+<div class="slbl">The admin door — typed at the gate or the gear. Takes effect immediately.</div>
+<form method="POST" action="/settings/password" class="srow">
+<input name="new_pw" type="password" placeholder="New settings password" autocomplete="new-password">
+<input name="confirm_pw" type="password" placeholder="Repeat it" autocomplete="new-password">
+<button type="submit" class="sbtn">Save</button></form>
 </div>
 <div class="smodal" id="smodal"><div class="card sblock">
 <button type="button" class="sclose" id="sclose" aria-label="Close">✕</button>
@@ -1101,8 +1150,9 @@ def settings_page(msg="", err=""):
 (function(){{
   document.querySelectorAll('.schip').forEach(function(b){{
     b.addEventListener('click',function(){{
-      document.querySelectorAll('.schip').forEach(function(x){{x.classList.toggle('on',x===b);}});
-      document.querySelectorAll('.spane').forEach(function(p){{
+      var g=b.dataset.group;
+      document.querySelectorAll('.schip[data-group="'+g+'"]').forEach(function(x){{x.classList.toggle('on',x===b);}});
+      document.querySelectorAll('.spane.sg-'+g).forEach(function(p){{
         p.style.display=(p.id===b.dataset.pane)?'':'none';}});
     }});
   }});
@@ -1113,7 +1163,7 @@ def settings_page(msg="", err=""):
   document.addEventListener('keydown',function(e){{if(e.key==='Escape')m.classList.remove('on');}});
 }})();
 </script>
-</div>{THEME_JS}</body></html>"""
+</div>{FX_JS}{THEME_JS}</body></html>"""
 
 GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -2105,6 +2155,27 @@ class H(BaseHTTPRequestHandler):
             login_ok(ip)
             return self.send(302, "", extra=[("Location", "/settings"),
                                              ("Set-Cookie", settings_cookie_hdr())])
+        if path == "/settings/password":
+            if not settings_authed(self.headers.get("Cookie", "")):
+                return self.send(403, "settings auth", "text/plain")
+            n = int(self.headers.get("Content-Length", "0") or 0)
+            form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
+            new_pw = (form.get("new_pw") or [""])[0]
+            confirm = (form.get("confirm_pw") or [""])[0]
+            if len(new_pw) < 6:
+                return self.send(200, settings_page(err="Settings password needs at least 6 characters."))
+            if new_pw != confirm:
+                return self.send(200, settings_page(err="The two passwords don't match."))
+            if any(hmac.compare_digest(new_pw, a["password"]) for a in load_accounts().values()):
+                return self.send(200, settings_page(err="That password already routes to an account at the gate."))
+            global SETTINGS_HASH
+            SETTINGS_HASH = hashlib.sha256(new_pw.encode()).hexdigest()
+            try:
+                env_set(GLOBAL_ENV, {"PSA_SETTINGS_PW_HASH": SETTINGS_HASH})
+            except OSError:
+                return self.send(200, settings_page(
+                    err=f"Password active for now, but writing {GLOBAL_ENV} failed — it reverts on restart."))
+            return self.send(200, settings_page(msg="Settings password changed — it works immediately."))
         if path in ("/settings/account", "/settings/add"):
             if not settings_authed(self.headers.get("Cookie", "")):
                 return self.send(403, "settings auth", "text/plain")
@@ -2112,32 +2183,42 @@ class H(BaseHTTPRequestHandler):
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
             get = lambda k: (form.get(k) or [""])[0].strip()
             if path == "/settings/account":
-                acct_id = get("acct")
-                if acct_id not in load_accounts():
+                acct_id, action, value = get("acct"), get("action"), get("value")
+                accts = load_accounts()
+                if acct_id not in accts:
                     return self.send(400, "unknown account", "text/plain")
-                updates, cred_change = {}, False
-                if get("psa_email"):
-                    if "@" not in get("psa_email"):
-                        return self.send(200, settings_page(err="That PSA email doesn't look like an email."))
-                    updates["PSA_LOGIN_EMAIL"] = get("psa_email"); cred_change = True
-                if get("psa_pw"):
-                    updates["PSA_LOGIN_PW"] = get("psa_pw"); cred_change = True
-                if get("clear_webhook"):
-                    updates["DISCORD_WEBHOOK"] = ""
-                elif get("webhook"):
-                    hook = get("webhook")
-                    if not (hook.startswith("https://discord.com/api/webhooks/")
-                            or hook.startswith("https://discordapp.com/api/webhooks/")):
+                if action == "psa_pw":
+                    if not value:
+                        return self.send(200, settings_page(err="Enter the new PSA password first."))
+                    env_set(account_env_path(acct_id), {"PSA_LOGIN_PW": value, "PSA_COOKIE": ""})
+                    return self.send(200, settings_page(
+                        msg="PSA password saved — the next hourly scan signs in fresh with it."))
+                if action == "site_pw":
+                    if len(value) < 4:
+                        return self.send(200, settings_page(err="Site password needs at least 4 characters."))
+                    if is_settings_pw(value):
+                        return self.send(200, settings_page(err="That's the settings password — pick a different one."))
+                    if any(i != acct_id and hmac.compare_digest(value, a["password"])
+                           for i, a in accts.items()):
+                        return self.send(200, settings_page(err="That site password already routes to another account."))
+                    env_set(account_env_path(acct_id), {"SITE_PASSWORD": value})
+                    return self.send(200, settings_page(msg="Site password changed — it works at the gate right away."))
+                if action == "webhook":
+                    if not (value.startswith("https://discord.com/api/webhooks/")
+                            or value.startswith("https://discordapp.com/api/webhooks/")):
                         return self.send(200, settings_page(err="Webhook must be a discord.com/api/webhooks/… URL."))
-                    updates["DISCORD_WEBHOOK"] = hook
-                if not updates:
-                    return self.send(200, settings_page(err="Nothing to save — all fields were blank."))
-                if cred_change:
-                    updates["PSA_COOKIE"] = ""  # force a fresh browser sign-in next run
-                env_set(account_env_path(acct_id), updates)
-                msg = ("Saved — the next hourly scan signs in fresh with the new PSA login."
-                       if cred_change else "Saved — picked up by the next hourly scan.")
-                return self.send(200, settings_page(msg=msg))
+                    env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": value})
+                    return self.send(200, settings_page(msg="Webhook saved — status changes for this account ping it."))
+                if action == "webhook_clear":
+                    env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": ""})
+                    return self.send(200, settings_page(msg="Webhook removed."))
+                if action == "unlink":
+                    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                    os.rename(os.path.join(ACCOUNTS_DIR, acct_id),
+                              os.path.join(ACCOUNTS_DIR, f"{acct_id}.unlinked-{ts}"))
+                    return self.send(200, settings_page(
+                        msg=f"Account unlinked — its data is kept at accounts/{acct_id}.unlinked-{ts}."))
+                return self.send(400, "unknown action", "text/plain")
             label = get("label") or "Account"
             site_pw, psa_email, psa_pw = get("site_pw"), get("psa_email"), get("psa_pw")
             if len(site_pw) < 4:
