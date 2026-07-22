@@ -715,6 +715,8 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
 .logo{display:block;height:52px;width:auto;margin:0 0 10px;mix-blend-mode:var(--logoblend,normal)}
 .logo.chip{background:radial-gradient(var(--chipdots) 1px,transparent 1.4px) 0 0/26px 26px,var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
 .logo.sil{filter:var(--logofx,none)}
+.brand{display:flex;align-items:center;gap:16px}
+.brand .logo{margin:0}
 .gbox .logo{height:104px;margin:0 auto 14px}
 h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
 h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
@@ -998,7 +1000,19 @@ FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='
            "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.75'/>"
            "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' transform='rotate(18 32 56)'/></svg>")
 
-HEAD_HTML = f"""<link rel="icon" type="image/svg+xml" href="{FAVICON}">
+# Safari + iOS ignore SVG favicons entirely and fall back to a domain-letter
+# tile ("F" for example.com). When pre-rendered PNGs sit next to the app
+# (deployed like logo.svg) they get linked and served so every browser and the
+# iOS home screen show the real mark; without the files behavior is unchanged.
+FAV_PNG = os.environ.get("PSA_FAVICON", "/opt/psa-tracker/favicon.png")
+TOUCH_PNG = os.environ.get("PSA_TOUCH_ICON", "/opt/psa-tracker/apple-touch-icon.png")
+_ICONS = f'<link rel="icon" type="image/svg+xml" href="{FAVICON}">'
+if os.path.exists(FAV_PNG):
+    _ICONS += f'\n<link rel="icon" type="image/png" sizes="64x64" href="/favicon.png?v={int(os.path.getmtime(FAV_PNG))}">'
+if os.path.exists(TOUCH_PNG):
+    _ICONS += f'\n<link rel="apple-touch-icon" href="/apple-touch-icon.png?v={int(os.path.getmtime(TOUCH_PNG))}">'
+
+HEAD_HTML = f"""{_ICONS}
 <meta name="description" content="PSA grading submission tracker">
 <script>(function(){{try{{var t=localStorage.getItem('psa_theme');
 if(t&&t!=="{THEME}")document.documentElement.dataset.theme=t;}}catch(e){{}}}})()</script>"""
@@ -1854,7 +1868,7 @@ def dash_page(a, subs):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
-<div class="hrow"><div>{logo_tag()}<h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
+<div class="hrow"><div class="brand">{logo_tag()}<h1 class="big">{html.escape(SITE_TITLE)}</h1></div>
 <div style="display:flex;gap:14px;align-items:flex-start"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div><a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 {hint}
 {toolbar}
@@ -2236,6 +2250,19 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def serve_asset(self, fpath, ctype):
+        """Small pre-auth static file (favicon PNGs); 404s when the instance
+        doesn't ship the file."""
+        if not os.path.exists(fpath):
+            return self.send(404, "not here", "text/plain")
+        data = open(fpath, "rb").read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=3600")
+        self.end_headers()
+        self.wfile.write(data)
+
     def serve_logo(self):
         if not os.path.exists(LOGO_PATH):
             return self.send(404, "no logo", "text/plain")
@@ -2255,6 +2282,10 @@ class H(BaseHTTPRequestHandler):
         path = parsed.path
         if path == "/logo":
             return self.serve_logo()
+        if path in ("/favicon.png", "/favicon.ico"):  # Safari asks for .ico blind
+            return self.serve_asset(FAV_PNG, "image/png")
+        if path == "/apple-touch-icon.png":
+            return self.serve_asset(TOUCH_PNG, "image/png")
         if path == "/img":  # hot path: skip the setup-state machinery entirely
             if not self.authed():
                 return self.send(200, gate_page())
