@@ -311,6 +311,9 @@ def load_accounts():
             "db": os.path.join(base, "psa.db"),
             "own_db": os.path.join(base, "owners.db"),
             "prices": parse_prices(env.get("PSA_PRICES", "")),
+            # unlinked = disconnected from PSA but still served: the site keeps
+            # showing the last known data with a banner; run_scan skips it
+            "unlinked": env.get("UNLINKED", "") == "1",
         }
     with _ACCTS_LOCK:
         _ACCTS_SIG, _ACCTS_VAL = sig, accts
@@ -1211,6 +1214,8 @@ def settings_page(msg="", err=""):
     for i, a in enumerate(accts.values()):
         env = read_env_file(account_env_path(a["id"]))
         email = env.get("PSA_LOGIN_EMAIL", "") or a["id"]
+        if a.get("unlinked"):
+            email += " · unlinked"
         # comment-break the @ so Cloudflare email obfuscation leaves chip text
         # alone (JS reads chip.textContent, which skips the comment)
         email_html = html.escape(email).replace("@", "<!-- -->@")
@@ -1286,7 +1291,7 @@ def settings_page(msg="", err=""):
 <input name="value" type="password" placeholder="New PSA password" autocomplete="new-password">
 <button type="submit" class="sbtn">Save</button></form>
 <div class="sdanger"><form method="POST" action="/settings/account"
- onsubmit="return confirm('Unlink this account? Its data stays on the server and the site stops tracking it.')">
+ onsubmit="return confirm('Unlink this account? The site keeps showing its last known data; scans stop until you save a new PSA password.')">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="unlink">
 <button type="submit" class="sbtn sdel">Unlink account</button></form></div>
 </div></div>
@@ -1619,7 +1624,12 @@ document.querySelectorAll('.own').forEach(function(i){
       body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(val)})
      .then(function(r){ done(r.ok); }).catch(function(){ done(false); });
   }
-  function visit(){ location.href='/cards?owner='+encodeURIComponent(i.value); }
+  function visit(){
+    // already on this person's page? a click shouldn't reload it
+    if(location.pathname==='/cards'
+       && (new URLSearchParams(location.search).get('owner')||'')===i.value) return;
+    location.href='/cards?owner='+encodeURIComponent(i.value);
+  }
   function edit(){
     if(nav){ clearTimeout(nav); nav=null; }
     i.readOnly=false; i.focus(); i.select();
@@ -1660,9 +1670,8 @@ document.querySelectorAll('.own').forEach(function(i){
     });
   });
   i.addEventListener('keydown', function(e){
-    if(i.readOnly){                                 // keyboard: Enter follows the link,
-      if(e.key==='Enter'&&i.value){ visit(); }      // typing starts an edit in place
-      else if(e.key.length===1&&!e.metaKey&&!e.ctrlKey&&!e.altKey){
+    if(i.readOnly){                                 // keyboard: typing starts an edit
+      if(e.key.length===1&&!e.metaKey&&!e.ctrlKey&&!e.altKey){  // (Enter only ever saves)
         if(nav){ clearTimeout(nav); nav=null; }
         i.readOnly=false;
       }
@@ -1693,11 +1702,14 @@ BACK_JS = """
 # page effects: swap the loading shimmer off images once loaded, and track the
 # cursor per card so the spotlight border knows where to glow
 FX_JS = """<script>
-/* refresh on the hour (+2min, after the hourly scan) so open tabs stay
-   current; skipped while someone is typing in a visible input */
+/* self-refresh so open tabs stay current - at a RANDOM :12-:17 past each hour
+   (never the same moment twice, never in the scan's :05-:10 window, and tabs
+   don't stampede together); skipped while someone is typing or the lightbox
+   is open */
 (function(){
   function arm(){
-    var n=new Date(),ms=((60-n.getMinutes())*60-n.getSeconds())*1000+120000;
+    var n=new Date(),off=(12*60+Math.random()*300)*1000,
+        ms=((60-n.getMinutes())*60-n.getSeconds())*1000+off;
     setTimeout(function(){
       var el=document.activeElement;
       var typing=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
@@ -1816,7 +1828,9 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     # a second click (or typing) switches the field into edit mode
     own_input = ("" if customer else
                  f'<input class="own" data-cert="{cid}" value="{owner}" readonly'
-                 + (' title="Click opens their page · click twice to edit"' if owner else "")
+                 + (f' title="Click opens their page · click twice to edit"'
+                    f' aria-label="Owner: {owner} — click opens their page, type to edit"'
+                    if owner else ' aria-label="Add owner name"')
                  + ' placeholder="+ owner name">')
     val = (f'<div class="cval num">${value:,.0f} <span>{vcur}</span></div>'
            if value is not None and not customer else "")
@@ -1853,6 +1867,11 @@ def dash_page(a, subs):
     toolbar = f'<div class="toolbar">{search_box()}</div>'
     hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
+    # unlinked account: keep serving everything, say why it stopped moving
+    if a.get("unlinked"):
+        hint = ('<div class="hint" role="status">This account is unlinked — showing its last '
+                'known status from PSA. Scans are off; save a new PSA password in settings '
+                'to relink.</div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
         pills += ['<button type="button" class="f fsort on" data-sort="sub">Newest</button>',
@@ -2138,6 +2157,9 @@ def search_page(a, q, owner="", customer=False):
             )).lower()
             if ql in hay:
                 res.append(c)
+    total = len(res)
+    res = res[:60]  # a broad query matches most of the collection - don't build
+    #                 a thousand image tiles in one document (phones choke first)
     if res:
         arch = archived_set(a)
         subs_by = {s["sub_number"]: s for s in load_subs(a)}
@@ -2150,7 +2172,9 @@ def search_page(a, q, owner="", customer=False):
         grid = f'<div class="empty">No cards match “{html.escape(q)}”.</div>'
     else:
         grid = '<div class="empty">Type a card name or number to search.</div>'
-    count = f"{len(res)} match" + ("es" if len(res) != 1 else "") if ql else "All cards"
+    count = f"{total} match" + ("es" if total != 1 else "") if ql else "All cards"
+    if total > len(res):
+        count += f" · showing the first {len(res)} — narrow the search"
     if customer:
         count += " · your cards only"
         back = '<a class="view" href="/">← Your cards</a>'
@@ -2465,7 +2489,9 @@ class H(BaseHTTPRequestHandler):
                 if action == "psa_pw":
                     if not value:
                         return self.send(200, settings_page(err="Enter the new PSA password first."))
-                    env_set(account_env_path(acct_id), {"PSA_LOGIN_PW": value, "PSA_COOKIE": ""})
+                    # also clears UNLINKED: saving a fresh PSA password IS the relink
+                    env_set(account_env_path(acct_id),
+                            {"PSA_LOGIN_PW": value, "PSA_COOKIE": "", "UNLINKED": ""})
                     return self.send(200, settings_page(
                         msg="PSA password saved — the next hourly scan signs in fresh with it."))
                 if action == "site_pw":
@@ -2490,11 +2516,15 @@ class H(BaseHTTPRequestHandler):
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": ""})
                     return self.send(200, settings_page(msg="Webhook removed."))
                 if action == "unlink":
-                    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                    os.rename(os.path.join(ACCOUNTS_DIR, acct_id),
-                              os.path.join(ACCOUNTS_DIR, f"{acct_id}.unlinked-{ts}"))
+                    # NOT a rename: the site keeps serving the last known data
+                    # (dashboard shows an unlinked banner); the scanner skips the
+                    # account and its PSA credentials are cleared. Saving a new
+                    # PSA password on the account relinks it.
+                    env_set(account_env_path(acct_id),
+                            {"UNLINKED": "1", "PSA_COOKIE": "", "PSA_LOGIN_PW": ""})
                     return self.send(200, settings_page(
-                        msg=f"Account unlinked — its data is kept at accounts/{acct_id}.unlinked-{ts}."))
+                        msg="Account unlinked — the site keeps showing its last known data; "
+                            "scans stop. Save a new PSA password on it to relink."))
                 return self.send(400, "unknown action", "text/plain")
             # Add: only PSA email + password are asked. The label comes from the
             # email; the required-unique site password is generated and shown

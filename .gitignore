@@ -12,3 +12,7 @@ __pycache__/
 *.pyc
 *.png
 *.b64
+
+# deliberate brand assets (deployed like logo.svg) - exempt from *.png above
+!favicon.png
+!apple-touch-icon.png

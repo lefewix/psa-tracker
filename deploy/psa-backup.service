@@ -1,0 +1,6 @@
+[Unit]
+Description=PSA tracker nightly data snapshot (accounts + env, keep 3)
+
+[Service]
+Type=oneshot
+ExecStart=/opt/psa-tracker/backup.sh

@@ -4,7 +4,14 @@ Description=Hourly PSA scan (cookie reuse; full browser login at PSA_LOGIN_HOURS
 [Timer]
 # run_scan.sh reuses the stored cookie most hours and only does the real
 # browser login at 1am/1pm (PSA_LOGIN_HOURS) or when the cookie dies.
-OnCalendar=*-*-* *:00:00
+# NEVER exactly on the hour: base :05 + a fresh random 0-5min each firing
+# (so PSA sees us anywhere in :05-:10, different every hour, sub-second
+# precision via AccuracySec). Browser tabs self-refresh at :12-:17 (FX_JS),
+# after this window closes.
+OnCalendar=*-*-* *:05:00
+RandomizedDelaySec=300
+FixedRandomDelay=false
+AccuracySec=1us
 Persistent=true
 
 [Install]

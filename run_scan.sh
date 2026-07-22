@@ -29,6 +29,12 @@ for envf in "$ACCTS"/*/account.env; do
   echo "[run_scan] $(date -Is) === account: $id (hour $hour) ==="
   (
     set -a; . "$GLOBAL"; . "$envf"; set +a
+    if [ "${UNLINKED:-}" = "1" ]; then
+      # unlinked via settings: site keeps serving the last known data, we stop
+      # touching PSA for it (and never trip the failure alert)
+      echo "[run_scan] $id: unlinked - skipping"
+      exit 0
+    fi
     export PSA_ENV_FILE="$envf" PSA_ACCT_ID="$id" PSA_DB="$dir/psa.db" PSA_OWN_DB="$dir/owners.db"
 
     alert() {  # $1 = message; uses the layered DISCORD_WEBHOOK, never fatal

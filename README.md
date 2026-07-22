@@ -109,6 +109,28 @@ Each person's page also shows **INSURED COVERAGE** - the sum of the real
 per-card declared values PSA has on file (captured automatically from the
 submission data; no configuration needed).
 
+## Branding
+
+Two accent colors drive the whole palette: `PSA_ACCENT` + `PSA_ACCENT_2`
+(validated hex, global env) plus `PSA_THEME=light|dark` for the default theme
+(visitors can flip it per-browser with the corner toggle).
+
+**Logo**: drop a file at `/opt/psa-tracker/logo.svg` (or `.png`/`.jpg`; path
+override `PSA_LOGO`) and it appears on the gate and beside the dashboard title,
+served at `/logo` - no restart needed. For marks that assume a light
+background: `PSA_LOGO_CHIP=1` renders it on a white rounded backing in dark
+mode, or `PSA_LOGO_DARK=silhouette` recolors it as a white mark.
+
+**Favicon**: an accent-colored SVG favicon is built in and needs no files -
+but Safari and iOS ignore SVG favicons and show a domain-letter tile instead.
+Fix: pre-render two PNGs of your mark and drop them next to the app -
+`favicon.png` (~64px, shown in tabs) and `apple-touch-icon.png` (180px,
+square corners; iOS rounds them itself). When present they're linked and
+served automatically at `/favicon.png`, `/favicon.ico` and
+`/apple-touch-icon.png` (path overrides `PSA_FAVICON` / `PSA_TOUCH_ICON`);
+restart `psa-web` after adding them. Any SVG-to-PNG renderer works
+(macOS: `qlmanage -t -s 64 -o . icon.svg`).
+
 ## Operations
 
 ```bash
@@ -124,8 +146,11 @@ python3 psa_watch.py --once --full  # force full refresh (with account env loade
   `login_debug/` and the scan falls back to the previous cookie. You can always
   paste a fresh browser cookie into the account's `account.env` (`PSA_COOKIE=`)
   as a stopgap.
-- Back up by tarring `/opt/psa-tracker` (minus `.pw-browsers`) +
-  `/etc/psa-tracker.env` + the systemd units.
+- Backups: `deploy/psa-backup.timer` + `backup.sh` snapshot accounts/ (DBs +
+  env), the global env and the unit files nightly at 04:15, keeping the newest
+  3 under `backups/auto-*` (imgcache is excluded - it refetches itself). For
+  bigger one-off snapshots, tar `/opt/psa-tracker` (minus `.pw-browsers`) +
+  `/etc/psa-tracker.env` + the systemd units by hand.
 
 ## Security notes
 
