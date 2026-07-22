@@ -989,14 +989,14 @@ button:active{transform:translateY(1px)}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
-# favicon: accent-colored graded-slab mark (label seam + holo dot), inline SVG
-# so it needs no asset file - matches the logo.svg slab language
+# favicon: accent-colored card-fan mark (three cards, opacity steps for depth),
+# inline SVG so it needs no asset file - matches the logo.svg fan language
 _FAV_FILL = ACCENT.replace("#", "%23")
 FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
            f"<rect width='64' height='64' rx='14' fill='{_FAV_FILL}'/>"
-           "<rect x='20' y='14' width='24' height='36' rx='5' fill='none' stroke='white' stroke-width='4'/>"
-           "<path d='M20 24h24' stroke='white' stroke-width='3.5'/>"
-           "<circle cx='32' cy='37' r='3.5' fill='white'/></svg>")
+           "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.5' transform='rotate(-18 32 56)'/>"
+           "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.75'/>"
+           "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' transform='rotate(18 32 56)'/></svg>")
 
 HEAD_HTML = f"""<link rel="icon" type="image/svg+xml" href="{FAVICON}">
 <meta name="description" content="PSA grading submission tracker">
