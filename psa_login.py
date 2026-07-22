@@ -15,7 +15,7 @@ Env (from /etc/psa-tracker.env):
   PSA_ENV_FILE              default /etc/psa-tracker.env  (where PSA_COOKIE is written)
   PLAYWRIGHT_BROWSERS_PATH  set by the wrapper to /opt/psa-tracker/.pw-browsers
 """
-import os, sys, time
+import os, shlex, sys, time
 from playwright.sync_api import sync_playwright
 
 EMAIL = os.environ.get("PSA_LOGIN_EMAIL", "")
@@ -34,7 +34,7 @@ def log(m):
 
 def write_cookie(cookie):
     """Replace (or add) the PSA_COOKIE line in the env file, preserving everything else."""
-    cookie = cookie.replace("'", "")  # keep the single-quoted env value shell-safe
+    quoted = shlex.quote(cookie)  # real shell quoting - no characters silently dropped
     try:
         lines = open(ENV_FILE).read().splitlines()
     except FileNotFoundError:
@@ -42,11 +42,11 @@ def write_cookie(cookie):
     out, found = [], False
     for ln in lines:
         if ln.startswith("PSA_COOKIE="):
-            out.append("PSA_COOKIE='" + cookie + "'"); found = True
+            out.append("PSA_COOKIE=" + quoted); found = True
         else:
             out.append(ln)
     if not found:
-        out.append("PSA_COOKIE='" + cookie + "'")
+        out.append("PSA_COOKIE=" + quoted)
     tmp = ENV_FILE + ".tmp"
     with open(tmp, "w") as f:
         f.write("\n".join(out) + "\n")

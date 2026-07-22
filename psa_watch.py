@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """psa-watch: poll PSA orders page, upsert sub statuses into SQLite."""
-import json, os, re, sqlite3, sys, time, urllib.request
+import base64, json, os, re, sqlite3, sys, time, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
@@ -14,7 +14,6 @@ def build_url(page_length=100, location=None):
     location = location or LOCATION
     if ORDERS_URL:
         return ORDERS_URL
-    import base64, urllib.parse
     filt = base64.b64encode(json.dumps({"orderFilters": {"start": 0,
         "pageLength": page_length, "sort": "Arrived", "sortOrder": "desc",
         "location": location}}, separators=(",", ":")).encode()).decode().rstrip("=")
@@ -180,7 +179,6 @@ def parse(ctype, body):
     return [s for s in out if s["sub_number"]]
 
 def detail_url(sub_number):
-    import base64, urllib.parse
     blob = base64.b64encode(json.dumps({"submissionNumber": str(sub_number)},
         separators=(",", ":")).encode()).decode().rstrip("=")
     return ("https://www.psacard.com/api/grading/trpc/orders.get?batch=1&input="
@@ -250,14 +248,12 @@ def parse_detail(sub_number, body):
 SPEC_DEPT_ID = int(os.environ.get("PSA_SPEC_DEPT_ID", "10"))  # 10 = TCG/trading cards
 
 def completed_url(sub_number):
-    import base64, urllib.parse
     blob = base64.b64encode(json.dumps({"submissionNumber": int(sub_number)},
         separators=(",", ":")).encode()).decode().rstrip("=")
     return ("https://www.psacard.com/api/grading/trpc/submissions.completed?batch=1&input="
             + urllib.parse.quote(json.dumps({"0": blob}, separators=(",", ":"))))
 
 def images_url(spec_ids):
-    import base64, urllib.parse
     blob = base64.b64encode(json.dumps({"specIds": [int(s) for s in spec_ids],
         "deptId": SPEC_DEPT_ID}, separators=(",", ":")).encode()).decode().rstrip("=")
     return ("https://www.psacard.com/api/grading/trpc/imaging.imagesBySpecIds?batch=1&input="
