@@ -10,8 +10,9 @@ Arrived → Order Prep → Research & ID → Grading → Assembly → QA Check �
 - **Multi-account.** One instance can track any number of PSA accounts
   (`accounts/<id>/`), each with its own data, its own friends password, its own
   owner tags.
-- **Fully automatic.** Twice a day a real headless browser logs into PSA,
-  refreshes the session cookie, and scans. No manual cookie copying, ever.
+- **Fully automatic.** Scans run hourly reusing the stored session; twice a
+  day (and whenever the cookie dies) a real headless browser re-logs into PSA
+  for a fresh one. No manual cookie copying, ever.
 - **Card galleries with images** - including *before* PSA assigns cert numbers
   (pulled from the submission's spec images), duplicate-aware (a line with
   qty 34 renders 34 tiles), with owner tagging, per-person pages, estimated
@@ -23,7 +24,7 @@ Arrived → Order Prep → Research & ID → Grading → Assembly → QA Check �
 ## Architecture
 
 ```
-psa-scan.timer (systemd, 2×/day)
+psa-scan.timer (systemd, hourly)
   └─ run_scan.sh                 for each accounts/<id>/:
        ├─ psa_login.py           real Chromium (xvfb) logs into PSA → fresh cookie → account.env
        └─ psa_watch.py --once    scrape orders + card images → accounts/<id>/psa.db
