@@ -1351,10 +1351,16 @@ GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Sett
              'a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.55 1H21'
              'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a>')
 
+# The gear is a STORE-product affordance: there, the site-password holder IS
+# the admin. On a personal instance the password holders are friends - hide it
+# with PSA_SETTINGS_GEAR=0. Settings stay reachable either way: type the
+# settings password at the main gate, or open /settings directly.
+SETTINGS_GEAR = os.environ.get("PSA_SETTINGS_GEAR", "1") not in ("0", "false", "no")
+
 def gear_html(customer=False):
-    """Settings gear beside the theme toggle - admin sessions only, and only
-    when a settings password is configured."""
-    return "" if (customer or not SETTINGS_HASH) else GEAR_HTML
+    """Settings gear beside the theme toggle - admin sessions only, only when a
+    settings password is configured, and only where the gear is enabled."""
+    return "" if (customer or not SETTINGS_HASH or not SETTINGS_GEAR) else GEAR_HTML
 
 # ---------- first-run setup ----------
 # A fresh instance (accounts/ empty) serves a one-time setup form instead of the

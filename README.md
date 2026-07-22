@@ -98,7 +98,9 @@ tick (or `systemctl start psa-scan.service`).
 Global (`/etc/psa-tracker.env`): `PSA_SECRET` (required), `PSA_BIND`,
 `PSA_PORT`, `SITE_TITLE`, `SITE_TAGLINE`, `PSA_COOKIE_SECURE`, `PSA_DISPLAY_TZ` (IANA name for displayed times, default America/Toronto), `PSA_LOCALE` /
 `PSA_LOCATION` (US accounts: `en-US` / `US`), `DISCORD_WEBHOOK` (optional
-status-change pings).
+status-change pings), `PSA_SETTINGS_GEAR=0` to hide the settings gear from
+site-password sessions (for personal instances where password holders are
+friends, not admins - /settings itself stays reachable).
 
 Per-account (`account.env`): `LABEL`, `SITE_PASSWORD`, `PSA_LOGIN_EMAIL`,
 `PSA_LOGIN_PW`, optional `PSA_PRICES` fee table
