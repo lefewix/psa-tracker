@@ -868,7 +868,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
 .gc .cval{font-size:11.5px;font-weight:600;letter-spacing:.01em;color:var(--ac-pale);margin:-2px 0 6px}
 .gc .cval span{font-size:9.5px;font-weight:500;color:var(--m7)}
-.own{margin-top:auto;background:var(--inp);border:1px solid var(--b1);border-radius:7px;color:var(--txt);font:inherit;font-size:11.5px;font-weight:400;padding:7px 9px;width:100%;outline:none;transition:border-color .15s}
+.own{margin-top:auto;background:var(--inp);border:1px solid var(--b1);border-radius:7px;color:var(--txt);font:inherit;font-size:11.5px;font-weight:400;padding:7px 9px;width:100%;outline:none;transition:border-color .15s;touch-action:manipulation}
+.own[readonly]{cursor:pointer}
+.own[readonly]:hover{border-color:var(--ac-soft)}
 .own::placeholder{color:var(--m10)}
 .own:focus{border-color:var(--ac)}
 .own.saved{border-color:#3a7c4f}
@@ -987,12 +989,14 @@ button:active{transform:translateY(1px)}
 .hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
 """
 
-# favicon: accent-colored card mark, inline SVG so it needs no asset file
+# favicon: accent-colored graded-slab mark (label seam + holo dot), inline SVG
+# so it needs no asset file - matches the logo.svg slab language
 _FAV_FILL = ACCENT.replace("#", "%23")
 FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
            f"<rect width='64' height='64' rx='14' fill='{_FAV_FILL}'/>"
-           "<rect x='20' y='14' width='24' height='36' rx='4' fill='none' stroke='white' stroke-width='4'/>"
-           "<circle cx='32' cy='32' r='3.5' fill='white'/></svg>")
+           "<rect x='20' y='14' width='24' height='36' rx='5' fill='none' stroke='white' stroke-width='4'/>"
+           "<path d='M20 24h24' stroke='white' stroke-width='3.5'/>"
+           "<circle cx='32' cy='37' r='3.5' fill='white'/></svg>")
 
 HEAD_HTML = f"""<link rel="icon" type="image/svg+xml" href="{FAVICON}">
 <meta name="description" content="PSA grading submission tracker">
@@ -1594,15 +1598,31 @@ LIGHTBOX_JS = """<script>
 OWNER_JS = """
 <script>
 document.querySelectorAll('.own').forEach(function(i){
-  var prev=i.value;
+  var prev=i.value, nav=null;
   function fail(){ i.classList.add('errsave'); setTimeout(function(){i.classList.remove('errsave')},1200); }
   function post(val,done){
     fetch('/owner', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(val)})
      .then(function(r){ done(r.ok); }).catch(function(){ done(false); });
   }
+  function visit(){ location.href='/cards?owner='+encodeURIComponent(i.value); }
+  function edit(){
+    if(nav){ clearTimeout(nav); nav=null; }
+    i.readOnly=false; i.focus(); i.select();
+  }
+  // readonly tag = a link to the person: one click visits (after a beat, in
+  // case a second click follows), a quick second click switches to editing.
+  // Untagged fields have nowhere to go, so a single click edits immediately.
+  i.addEventListener('click', function(){
+    if(!i.readOnly) return;                        // already editing - caret clicks
+    if(nav){ clearTimeout(nav); nav=null; edit(); return; }
+    if(!i.value){ edit(); return; }
+    if(i.selectionStart!==i.selectionEnd) return;  // copying the name, not navigating
+    nav=setTimeout(function(){ nav=null; visit(); },280);
+  });
   i.addEventListener('focus', function(){ prev=i.value; });
   i.addEventListener('blur', function(){
+    i.readOnly=true;
     if(i.value===prev) return;             // nothing changed - no POST
     var old=prev;
     post(i.value, function(ok){
@@ -1626,10 +1646,34 @@ document.querySelectorAll('.own').forEach(function(i){
     });
   });
   i.addEventListener('keydown', function(e){
+    if(i.readOnly){                                 // keyboard: Enter follows the link,
+      if(e.key==='Enter'&&i.value){ visit(); }      // typing starts an edit in place
+      else if(e.key.length===1&&!e.metaKey&&!e.ctrlKey&&!e.altKey){
+        if(nav){ clearTimeout(nav); nav=null; }
+        i.readOnly=false;
+      }
+      return;
+    }
     if(e.key==='Enter') i.blur();
     else if(e.key==='Escape'){ i.value=prev; i.blur(); }  // revert before saving
   });
 });
+</script>"""
+
+# top back-link: with same-origin history it steps back one page (person page,
+# search, dashboard - wherever you came from); direct entries and new tabs
+# fall through to the href. Modified clicks (new-tab etc.) are left alone.
+BACK_JS = """
+<script>
+(function(){
+  var b=document.getElementById('backlk'); if(!b) return;
+  b.addEventListener('click', function(e){
+    if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey) return;
+    if(!document.referrer||history.length<2) return;
+    try{ if(new URL(document.referrer).origin!==location.origin) return; }catch(_){ return; }
+    e.preventDefault(); history.back();
+  });
+})();
 </script>"""
 
 # page effects: swap the loading shimmer off images once loaded, and track the
@@ -1754,8 +1798,12 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
         sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))}</a>'
                     if show_sub else "")
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
+    # readonly until OWNER_JS unlocks it: one click opens the person's page,
+    # a second click (or typing) switches the field into edit mode
     own_input = ("" if customer else
-                 f'<input class="own" data-cert="{cid}" value="{owner}" placeholder="+ owner name">')
+                 f'<input class="own" data-cert="{cid}" value="{owner}" readonly'
+                 + (' title="Click opens their page · click twice to edit"' if owner else "")
+                 + ' placeholder="+ owner name">')
     val = (f'<div class="cval num">${value:,.0f} <span>{vcur}</span></div>'
            if value is not None and not customer else "")
     return (f'<div class="gc{" arch" if archived else ""}">{img}{sub_link}{svc}{head}'
@@ -1878,13 +1926,13 @@ def detail_page(a, sub):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
-<div class="foot" style="border:0;padding:0"><a class="view" href="/">← All submissions</a><span class="footacts">{act}</span></div>
+<div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard" style="margin-top:18px">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
 {body}
-</main>{OWNER_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
+</main>{OWNER_JS}{BACK_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
 
 def grade_summary(cards):
     """'3× PSA 10 · 2× PSA 9' from a card list, or '' if none graded."""
@@ -1997,7 +2045,7 @@ def people_page(a, owner, customer=False):
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     back = ('<a class="view" href="/logout">Sign out</a>' if customer
-            else '<a class="view" href="/">← All submissions</a>')
+            else '<a class="view" id="backlk" href="/">← Back</a>')
     page_title = "Your cards" if customer else f"{title}'s cards"
     owner_js = "" if customer else OWNER_JS
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -2010,7 +2058,7 @@ def people_page(a, owner, customer=False):
 <div class="toolbar">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
 {archsec}
-</main>{SEARCH_JS}{owner_js}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
+</main>{SEARCH_JS}{owner_js}{BACK_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -2094,10 +2142,10 @@ def search_page(a, q, owner="", customer=False):
         back = '<a class="view" href="/">← Your cards</a>'
     elif owner:
         count += f" · {html.escape(owner)}'s cards only"
-        back = (f'<a class="view" href="/cards?owner={urllib.parse.quote(owner)}">'
-                f'← {html.escape(owner)}\'s cards</a>')
+        back = (f'<a class="view" id="backlk" href="/cards?owner={urllib.parse.quote(owner)}">'
+                f'← Back</a>')
     else:
-        back = '<a class="view" href="/">← All submissions</a>'
+        back = '<a class="view" id="backlk" href="/">← Back</a>'
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Search</title>
 {HEAD_HTML}
@@ -2107,7 +2155,7 @@ def search_page(a, q, owner="", customer=False):
 <div class="sub">{count}</div>
 <div class="toolbar">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
-</main>{SEARCH_JS}{"" if customer else OWNER_JS}{LIGHTBOX_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
+</main>{SEARCH_JS}{"" if customer else OWNER_JS}{BACK_JS}{LIGHTBOX_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
 
 # ---------- server ----------
 
@@ -2143,7 +2191,10 @@ class H(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Frame-Options", "DENY")
-        self.send_header("Referrer-Policy", "no-referrer")
+        # same-origin (not no-referrer): still sends NOTHING cross-site, but keeps
+        # internal referrers - BACK_JS needs them to tell "came from inside the
+        # site" (history back) apart from a direct/external entry (href fallback)
+        self.send_header("Referrer-Policy", "same-origin")
         for k, v in (extra or []):
             self.send_header(k, v)
         self.end_headers()
