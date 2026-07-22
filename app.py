@@ -826,9 +826,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .sblock .sform{max-width:430px}
 .sform input{margin-top:8px;text-align:left;font-size:13px;padding:10px 12px}
 .sform button{margin-top:12px}
-.srow{display:flex;gap:8px;margin-top:8px;max-width:460px}
-.srow input{flex:1;margin-top:0;text-align:left;font-size:13px;padding:10px 12px}
-.sbtn{width:auto;margin-top:0;padding:10px 18px;font-size:12.5px;flex-shrink:0}
+.srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
+.srow input{flex:1;min-width:150px;margin-top:0;text-align:left;font-size:13px;padding:10px 12px}
+.sbtn{width:auto;margin-top:0;padding:10px 20px;font-size:12.5px;flex-shrink:0}
 .sbtn.sdel{background:transparent;border:1px solid rgba(220,90,90,.35);color:var(--holdtx);margin-top:10px}
 .sbtn.sdel:hover{background:rgba(220,60,60,.14)}
 .srow .sbtn.sdel{margin-top:0}
@@ -1097,6 +1097,7 @@ def settings_page(msg="", err=""):
 <form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="site_pw">
 <input name="value" type="password" placeholder="New site password" autocomplete="new-password">
+<input name="value2" type="password" placeholder="Repeat" autocomplete="new-password">
 <button type="submit" class="sbtn">Save</button></form>
 </div>""")
     note = (f'<div class="snote serr">{html.escape(err)}</div>' if err else
@@ -2220,6 +2221,8 @@ class H(BaseHTTPRequestHandler):
                 if action == "site_pw":
                     if len(value) < 4:
                         return self.send(200, settings_page(err="Site password needs at least 4 characters."))
+                    if value != get("value2"):
+                        return self.send(200, settings_page(err="The two site passwords don't match."))
                     if is_settings_pw(value):
                         return self.send(200, settings_page(err="That's the settings password — pick a different one."))
                     if any(i != acct_id and hmac.compare_digest(value, a["password"])
