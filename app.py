@@ -1139,18 +1139,18 @@ def settings_page(msg="", err=""):
 {"".join(wpanes)}
 </div>
 <div class="card sblock">
-<div class="stitle">Site password</div>
-<div class="meta">what visitors type to enter the site</div>
-{sbar2}
-{"".join(spanes)}
-</div>
-<div class="card sblock">
 <div class="stitle">Admin password</div>
 <div class="meta">opens this settings page</div>
 <form method="POST" action="/settings/password" class="srow">
 <input name="new_pw" type="password" placeholder="New admin password" autocomplete="new-password">
 <input name="confirm_pw" type="password" placeholder="Repeat" autocomplete="new-password">
 <button type="submit" class="sbtn">Save</button></form>
+</div>
+<div class="card sblock">
+<div class="stitle">Site password</div>
+<div class="meta">what visitors type to enter the site</div>
+{sbar2}
+{"".join(spanes)}
 </div>
 <div class="smodal" id="amodal"><div class="card sblock">
 <button type="button" class="sclose" aria-label="Close">✕</button>
