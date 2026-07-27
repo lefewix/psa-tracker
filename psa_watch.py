@@ -172,7 +172,9 @@ def parse(ctype, body):
             "tracking": o.get("trackingNumber") or "",
             "carrier": o.get("carrier") if o.get("carrier") != "None" else "",
             "grades_ready": bool((o.get("progressSummary") or {}).get("gradesReady")),
-            "on_hold": bool(o.get("onHold")),
+            # PSA signals some holds only via status (e.g. "ReceivedHold"
+            # with onHold still false), so treat either as a hold
+            "on_hold": bool(o.get("onHold")) or "hold" in (o.get("status") or "").lower(),
             "thumb": thumb or "",
             "cert_ids": json.dumps(o.get("certIds") or []),
         })
