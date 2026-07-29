@@ -36,16 +36,17 @@ UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like 
 # the stage currently IN PROGRESS -- the step AFTER the last completed one (in the
 # order detail's orderProgressSteps, the first non-completed step is the one PSA
 # highlights). Store that same current stage, else the site reads one stage behind
-# PSA. "Submitted" done = package at PSA, prep not finished -> "Arrived". QA done
-# stays "QA Check": grades_ready flags the grades, "Shipped" waits for the real
-# ship event. Detail-endpoint step names (Arrived/QACheck/GradesReady/Completed)
-# are included in case orders.list ever adopts that vocabulary.
+# PSA. "Submitted" done = package at PSA, prep not finished -> "Arrived".
+# orders.list stops advancing lastCompletedStep at "QACheck" and signals the next
+# step (detail's GradesReady) via progressSummary.gradesReady instead, so parse()
+# promotes QACheck+gradesReady to GradesReady -> "Completing" (psacard.com's
+# "completing soon"). "Shipped" still waits for the real ship event.
 CURRENT_STAGE = {
     "Submitted": "Arrived",       "Arrived": "Order Prep",
     "OrderPrep": "Research & ID", "ResearchAndID": "Grading",
     "Grading": "Assembly",        "Assembly": "QA Check",
     "QA": "QA Check",             "QACheck": "QA Check",
-    "GradesReady": "QA Check",    "Shipped": "Shipped",
+    "GradesReady": "Completing",  "Shipped": "Shipped",
     "Completed": "Shipped",
 }
 
@@ -154,7 +155,11 @@ def parse(ctype, body):
         return []
     out = []
     for o in orders:
-        step = (o.get("progressSummary") or {}).get("lastCompletedStep") or o.get("status") or ""
+        summary = o.get("progressSummary") or {}
+        grades_ready = bool(summary.get("gradesReady"))
+        step = summary.get("lastCompletedStep") or o.get("status") or ""
+        if step in ("QA", "QACheck") and grades_ready:
+            step = "GradesReady"
         imgs = o.get("image") or []
         thumb = next((i.get("thumbnail") for i in imgs if i.get("imageSide") == 1), "")
         out.append({
@@ -171,7 +176,7 @@ def parse(ctype, body):
             "shipped": (o.get("dateShipped") or "").replace("N/A", ""),
             "tracking": o.get("trackingNumber") or "",
             "carrier": o.get("carrier") if o.get("carrier") != "None" else "",
-            "grades_ready": bool((o.get("progressSummary") or {}).get("gradesReady")),
+            "grades_ready": grades_ready,
             # PSA signals some holds only via status (e.g. "ReceivedHold"
             # with onHold still false), so treat either as a hold
             "on_hold": bool(o.get("onHold")) or "hold" in (o.get("status") or "").lower(),

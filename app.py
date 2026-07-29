@@ -156,7 +156,7 @@ def img_url(u, size="large"):
     """Rewrite a stored thumbnail URL to another size (small/medium/large)."""
     return u.replace("/thumbnail/", f"/{size}/") if u else ""
 
-STAGES = ["Arrived", "Order Prep", "Research & ID", "Grading", "Assembly", "QA Check", "Shipped"]
+STAGES = ["Arrived", "Order Prep", "Research & ID", "Grading", "Assembly", "QA Check", "Completing", "Shipped"]
 
 def stage_index(status):
     try:
@@ -2325,6 +2325,25 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def serve_hub_summary(self, query):
+        # Read-only submissions summary for a personal dashboard. Gated on PSA_HUB_KEY
+        # (unset = feature off, 404): the URL is public via Cloudflare, the key
+        # only lives in the two boxes' env files.
+        key = os.environ.get("PSA_HUB_KEY", "")
+        got = urllib.parse.parse_qs(query).get("key", [""])[0]
+        if not key or not hmac.compare_digest(got, key):
+            return self.send(404, "not found", "text/plain")
+        subs = []
+        for a in load_accounts().values():
+            arc = archived_set(a)
+            for s in load_subs(a):
+                subs.append({k: s[k] for k in ("sub_number", "status", "card_count",
+                             "arrived", "est_end", "grades_ready", "on_hold",
+                             "shipped", "updated_at")}
+                            | {"archived": 1 if s["sub_number"] in arc else 0})
+        return self.send(200, json.dumps({"subs": subs}),
+                         "application/json; charset=utf-8")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
@@ -2334,6 +2353,8 @@ class H(BaseHTTPRequestHandler):
             return self.serve_asset(FAV_PNG, "image/png")
         if path == "/apple-touch-icon.png":
             return self.serve_asset(TOUCH_PNG, "image/png")
+        if path == "/api/hub.json":  # LAN summary for the hub (the server), key-gated
+            return self.serve_hub_summary(parsed.query)
         if path == "/img":  # hot path: skip the setup-state machinery entirely
             if not self.authed():
                 return self.send(200, gate_page())
