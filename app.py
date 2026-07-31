@@ -86,57 +86,50 @@ _AC_MIX_L = {"--ac-hot": "85%,black", "--ac-soft": "80%,black",
              "--ac-pale": "68%,black", "--ac-ice": "45%,black", **_AC_MIX_FILL}
 _AC_MIX_D = {"--ac-hot": "82%,white", "--ac-soft": "72%,white",
              "--ac-pale": "45%,white", "--ac-ice": "15%,white", **_AC_MIX_FILL}
-# Neutral system: dark values are the original hand-picked palette (byte-identical
-# default); light values are the store-facing white theme.
-_DARK = {"bg": "#101014", "bgtop": "#13121a", "mix": "#101014", "surface": "#17161c",
- "surface2": "#111116", "surface3": "#17171c", "inp": "#0c0c10", "ph": "#141419",
- "hovrow": "#1a1922", "txt": "#ecebf0", "txtstrong": "#ffffff",
- "m1": "#9b93b3", "m2": "#8d87a0", "m3": "#8d8a9a", "m4": "#8a879d", "m5": "#85829a",
- "m6": "#817e92", "m7": "#8b8899", "m8": "#a79fc0", "m9": "#9d9aab",
- "m10": "#807d8e", "m11": "#807d8e",
- "b1": "#24232c", "b2": "#262530", "b3": "#26252f", "b4": "#2b2a34", "b5": "#3a3849",
- "hair": "rgba(255,255,255,.08)", "hairh": "rgba(255,255,255,.14)",
- "hair2": "rgba(255,255,255,.06)", "track": "rgba(255,255,255,.09)",
- "chipbg": "rgba(255,255,255,.05)", "chipline": "rgba(255,255,255,.12)",
+# Neutral system: the print-ledger world. Light is the flagship "day edition"
+# (warm newsprint paper, near-black ink, the store accent as spot ink); dark is
+# the "night edition" (warm ink-black paper, cream ink). Both hue-warm, never
+# blue-gray - the material is paper, not glass.
+_DARK = {"bg": "#131110", "bgtop": "#171412", "mix": "#131110", "surface": "#1c1917",
+ "surface2": "#171412", "surface3": "#211d1a", "inp": "#0f0d0c", "ph": "#191614",
+ "hovrow": "#242019", "txt": "#eae4d9", "txtstrong": "#fbf7ee",
+ "m1": "#b0a794", "m2": "#a29a89", "m3": "#9e9686", "m4": "#9a9282", "m5": "#948c7d",
+ "m6": "#8d8577", "m7": "#948c7d", "m8": "#c2b7a2", "m9": "#a89f8e",
+ "m10": "#8a8274", "m11": "#8a8274",
+ "b1": "#2e2a24", "b2": "#302c26", "b3": "#302c26", "b4": "#363129", "b5": "#4a443b",
+ "hair": "rgba(234,228,217,.15)", "hairh": "rgba(234,228,217,.34)",
+ "hair2": "rgba(234,228,217,.1)", "track": "rgba(234,228,217,.22)",
+ "chipbg": "rgba(234,228,217,.05)", "chipline": "rgba(234,228,217,.24)",
  "logoblend": "normal", "chipfill": "#ffffff", "chippad": "6px 8px", "chipdots": "color-mix(in srgb,var(--ac) 20%,transparent)", "logofx": "brightness(0) invert(1)",
- "dots": "color-mix(in srgb,var(--ac-pale) 6%,transparent)",
- "glow1": "color-mix(in srgb,var(--ac) 9%,transparent)",
- "glow2": "color-mix(in srgb,var(--ac) 6%,transparent)",
- "glow3": "color-mix(in srgb,var(--ac2) 5%,transparent)",
- "dot0": "#423a4f", "shc": "rgba(8,5,20,.45)", "shc2": "rgba(8,5,20,.7)",
- "shc3": "rgba(8,5,20,.6)", "frost": "rgba(19,18,26,.7)",
- "sh1": "#15141a", "sh2": "#1d1c24", "err": "#ff8b8b", "holdtx": "#ffc9c9",
- "fhov": "#c3c0d0"}
-# light neutrals: surfaces tint from the store accent (brand-aware whites);
-# text/borders stay hue-neutral for contrast
-_LIGHT = {"bg": "color-mix(in srgb,var(--ac) 4%,white)", "bgtop": "#ffffff",
- "mix": "#ffffff", "surface": "#ffffff",
- "surface2": "color-mix(in srgb,var(--ac) 5%,white)",
- "surface3": "color-mix(in srgb,var(--ac) 7%,white)",
- "inp": "color-mix(in srgb,var(--ac) 3%,white)",
- "ph": "color-mix(in srgb,var(--ac) 5%,white)",
- "hovrow": "color-mix(in srgb,var(--ac) 7%,white)",
- "txt": "#1c1c22", "txtstrong": "#0e0e14",
- "m1": "#4e4c58", "m2": "#5c5a68", "m3": "#5c5a68", "m4": "#63616e", "m5": "#686674",
- "m6": "#71707e", "m7": "#6e6c7d", "m8": "#5b5966", "m9": "#6b6975",
- "m10": "#706e7a", "m11": "#706e7a",
- "b1": "#e3e3ea", "b2": "#e3e3ea", "b3": "#e3e3ea", "b4": "#d9d9e2", "b5": "#c7c7d2",
- "hair": "rgba(22,22,45,.09)", "hairh": "rgba(22,22,45,.18)",
- "hair2": "rgba(22,22,45,.07)", "track": "rgba(22,22,45,.12)",
- "chipbg": "rgba(22,22,45,.05)", "chipline": "rgba(22,22,45,.16)",
+ "dots": "color-mix(in srgb,var(--txt) 7%,transparent)",
+ "dot0": "#3d3830", "shc": "rgba(0,0,0,.4)", "shc2": "rgba(0,0,0,.65)",
+ "shc3": "rgba(0,0,0,.5)", "frost": "rgba(19,17,16,.84)",
+ "sh1": "#191613", "sh2": "#221e19", "err": "#ff9b8b", "holdtx": "#ffbfae",
+ "fhov": "#d8d0c1"}
+# day edition: warm paper neutrals; the accent stays pure spot ink (no tinted
+# surfaces - two-color print keeps the paper honest)
+_LIGHT = {"bg": "#f5f2ea", "bgtop": "#faf8f1",
+ "mix": "#ffffff", "surface": "#fdfcf7",
+ "surface2": "#f7f4ec",
+ "surface3": "#f1eee3",
+ "inp": "#fbf9f2",
+ "ph": "#f1eee3",
+ "hovrow": "#f0ecdf",
+ "txt": "#221e18", "txtstrong": "#100d09",
+ "m1": "#544f46", "m2": "#605b51", "m3": "#605b51", "m4": "#676156", "m5": "#6c665b",
+ "m6": "#746e63", "m7": "#716b60", "m8": "#49443c", "m9": "#686257",
+ "m10": "#767065", "m11": "#767065",
+ "b1": "#ddd7c8", "b2": "#ddd7c8", "b3": "#ddd7c8", "b4": "#d1cbbb", "b5": "#b5ae9c",
+ "hair": "rgba(34,30,24,.16)", "hairh": "rgba(34,30,24,.4)",
+ "hair2": "rgba(34,30,24,.11)", "track": "rgba(34,30,24,.22)",
+ "chipbg": "rgba(34,30,24,.05)", "chipline": "rgba(34,30,24,.34)",
  "logoblend": "multiply", "chipfill": "transparent", "chippad": "0", "chipdots": "transparent", "logofx": "none",
- "dots": "color-mix(in srgb,var(--ac) 27%,transparent)",
- "glow1": "color-mix(in srgb,var(--ac) 23%,transparent)",
- "glow2": "color-mix(in srgb,var(--ac) 15%,transparent)",
- "glow3": "color-mix(in srgb,var(--ac2) 19%,transparent)",
- "dot0": "#d7d7e0", "shc": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.12))",
- "shc2": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.14))",
- "shc3": "color-mix(in srgb,var(--ac) 30%,rgba(20,20,35,.12))",
- "frost": "rgba(255,255,255,.78)",
- "sh1": "color-mix(in srgb,var(--ac) 5%,white)",
- "sh2": "color-mix(in srgb,var(--ac) 9%,white)",
- "err": "#c23d3d", "holdtx": "#a03232",
- "fhov": "#2a2833"}
+ "dots": "color-mix(in srgb,var(--ac) 14%,transparent)",
+ "dot0": "#d6d0c0", "shc": "rgba(58,48,30,.08)", "shc2": "rgba(58,48,30,.18)",
+ "shc3": "rgba(58,48,30,.1)", "frost": "rgba(250,248,241,.88)",
+ "sh1": "#efece1", "sh2": "#e7e3d5",
+ "err": "#b03a2e", "holdtx": "#9c3222",
+ "fhov": "#2b261e"}
 def _theme_vars(mode):
     acmix = _AC_MIX_L if mode == "light" else _AC_MIX_D
     neut = _LIGHT if mode == "light" else _DARK
@@ -698,23 +691,43 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
 # ---------- rendering ----------
 
 CSS = """
+/* ============================================================ THE GUIDE =====
+   Design contract - THESIS: a grading tracker rendered as the hobby's own
+   print artifact, the monthly price guide; it refuses the dark glassy SaaS
+   dashboard. OWN-WORLD: two-color print - warm paper ground, near-black ink,
+   the store accent as SPOT INK carrying rules, stamps, fills and prices;
+   Barlow Condensed for mastheads/labels/figures, system sans for body; double
+   rules under headers, dotted leader lines, stamped pills, halftone page
+   tint. Dark = night edition (ink-field inversion). STORY: the operator opens
+   the current issue of their queue and reads status off a checklist rule; a
+   customer reads their grades like guide listings. FIRST VIEWPORT: masthead
+   with double rule, issue line right, boxed search, section tabs, first
+   ledger entry with its stage checklist. FORM: hobby price-guide newsprint
+   ledger, candidate 3 of 7, seed 86ebdb28. FINISH: unreviewed and
+   undocumented is unfinished; this build ends with the finish review, the
+   verdict, and DESIGN.md.
+   ========================================================================= */
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:600;font-display:swap;
+ src:url('/font-600.woff2') format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-style:normal;font-weight:700;font-display:swap;
+ src:url('/font-700.woff2') format('woff2')}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 @view-transition{navigation:auto}
+:root{--cond:'Barlow Condensed','Arial Narrow','Helvetica Neue',-apple-system,sans-serif}
 body{background-color:var(--bg);min-height:100vh;position:relative;
  background-image:
   radial-gradient(var(--dots) 1px, transparent 1.4px),
-  radial-gradient(1100px 540px at 50% -140px, var(--glow1), transparent 62%),
-  radial-gradient(720px 900px at -6% 520px, var(--glow2), transparent 60%),
-  radial-gradient(720px 900px at 106% 880px, var(--glow3), transparent 60%),
-  radial-gradient(800px 560px at 88% 104%, var(--glow3), transparent 62%),
-  linear-gradient(180deg,var(--bgtop) 0%,var(--bg) 460px);
- background-size:26px 26px,auto,auto,auto,auto,auto;
- background-repeat:repeat,no-repeat,no-repeat,no-repeat,no-repeat,no-repeat;
+  linear-gradient(180deg,var(--bgtop) 0%,var(--bg) 420px);
+ background-size:26px 26px,auto;
+ background-repeat:repeat,no-repeat;
  color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
- -webkit-font-smoothing:antialiased;padding:44px 20px 80px;font-variant-numeric:tabular-nums}
-/* faint grain so large dark surfaces don't read as flat vector fill */
-body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.04;background:
+ -webkit-font-smoothing:antialiased;padding:40px 20px 80px;font-variant-numeric:tabular-nums}
+/* the spot-ink band along the page top: the issue's cover stripe */
+body::before{content:"";position:fixed;top:0;left:0;right:0;height:6px;z-index:2;
+ background:var(--ac-fill)}
+/* newsprint tooth so paper never reads as flat vector fill */
+body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.05;background:
  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E") repeat}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
@@ -722,93 +735,90 @@ body::after{content:"";position:fixed;inset:0;z-index:1;pointer-events:none;opac
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 .wrap{max-width:820px;margin:0 auto}
 .logo{display:block;height:52px;width:auto;margin:0 0 10px;mix-blend-mode:var(--logoblend,normal)}
-.logo.chip{background:radial-gradient(var(--chipdots) 1px,transparent 1.4px) 0 0/26px 26px,var(--chipfill);padding:var(--chippad);border-radius:10px;box-sizing:content-box;height:44px}
+.logo.chip{background:radial-gradient(var(--chipdots) 1px,transparent 1.4px) 0 0/26px 26px,var(--chipfill);padding:var(--chippad);border-radius:6px;box-sizing:content-box;height:44px}
 .logo.sil{filter:var(--logofx,none)}
 .brand{display:flex;align-items:center;gap:16px}
 .brand .logo{margin:0}
 .brand.sm{gap:13px}
 .brand.sm .logo{height:40px}
 .gbox .logo{height:104px;margin:0 auto 14px}
-h1{font-size:30px;font-weight:700;letter-spacing:-.02em}
-h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
-.sub{font-size:12px;font-weight:400;color:var(--m4);margin-top:6px}
-.hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
-.synced{text-align:right;flex-shrink:0;font-size:11px;font-weight:400;
- color:var(--m5);line-height:1.5;padding-top:5px;white-space:nowrap}
-.synced b{display:block;font-size:12.5px;font-weight:600;letter-spacing:0;color:var(--ac-pale);margin-top:2px}
-.synced .estnote{display:block;font-size:10px;font-weight:400;color:var(--m7);margin-top:3px;line-height:1.6}
+/* masthead type: the guide's nameplate - condensed caps, tight leading */
+h1{font-family:var(--cond);font-size:34px;font-weight:700;letter-spacing:.005em;
+ text-transform:uppercase;line-height:.95}
+h1.big{font-size:clamp(46px,9.5vw,68px);letter-spacing:.005em}
+.sub{font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:.14em;
+ text-transform:uppercase;color:var(--ac-pale);margin-top:7px}
+/* header row wears the classic thick-thin double rule of a printed masthead */
+.hrow{display:flex;justify-content:space-between;align-items:flex-end;gap:14px;
+ position:relative;padding-bottom:14px;border-bottom:3px solid var(--txt);margin-bottom:5px}
+.hrow::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:1px;background:var(--txt)}
+.synced{text-align:right;flex-shrink:0;font-family:var(--cond);font-size:12px;font-weight:600;
+ letter-spacing:.08em;text-transform:uppercase;color:var(--m5);line-height:1.55;padding-bottom:3px;white-space:nowrap}
+.synced b{display:block;font-size:14px;font-weight:700;letter-spacing:.03em;color:var(--txt);margin-top:1px}
+.synced .estnote{display:block;font-size:10.5px;font-weight:600;color:var(--m7);margin-top:3px;line-height:1.6}
 .synced .lbl2{display:block;margin-top:8px}
-.lgout{color:var(--m5);display:inline-flex;padding:6px 0 0 2px;transition:color .15s}
-.lgout:hover{color:var(--ac-pale)}
+.lgout{color:var(--m5);display:inline-flex;padding:6px 0 6px 2px;transition:color .15s}
 .lgout:active{transform:translateY(1px)}
+/* margin note: a pencilled aside, dashed like a proof-reader's mark */
 .hint{display:flex;align-items:center;gap:10px;margin:18px 0 2px;padding:11px 15px;font-size:13px;font-weight:400;
- color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 10%,transparent);
- border:1px solid color-mix(in srgb,var(--ac-soft) 28%,transparent);border-radius:12px}
+ color:var(--m2);background:transparent;
+ border:1px dashed color-mix(in srgb,var(--ac-soft) 55%,transparent);border-radius:4px}
 .hintx{width:auto;margin:0 0 0 auto;padding:0 4px;background:transparent;border:0;color:var(--m2);
  font-size:13px;cursor:pointer;letter-spacing:0;transition:color .15s,transform .12s ease-out}
-.hintx:hover{color:var(--ac-ice)}
-.toolbar{display:flex;gap:10px;margin:22px -14px 4px;flex-wrap:wrap;align-items:stretch;position:sticky;top:0;z-index:20;padding:12px 14px;border-radius:12px;
- background:var(--frost);
- backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);
- box-shadow:0 10px 30px -12px var(--shc3)}
+.toolbar{display:flex;gap:10px;margin:22px -14px 4px;flex-wrap:wrap;align-items:stretch;position:sticky;top:0;z-index:20;padding:12px 14px;
+ background:var(--bg);
+ border-bottom:1px solid var(--hairh);
+ box-shadow:0 8px 20px -16px var(--shc3)}
 .searchwrap{position:relative;flex:1;min-width:220px}
 .searchwrap .sicon{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--m5);pointer-events:none}
 .searchbar{width:100%;margin:0;text-align:left;padding:10px 13px 10px 36px;font-size:13px;font-weight:400}
-.preview{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:var(--surface2);
- border:1px solid var(--b2);border-radius:12px;padding:6px;max-height:64vh;overflow:auto;overscroll-behavior:contain;
- box-shadow:0 14px 44px var(--shc2);
- opacity:0;visibility:hidden;transform:scale(.98) translateY(-4px);transform-origin:top center;
+.preview{position:absolute;z-index:30;top:calc(100% + 6px);left:0;right:0;background:var(--surface);
+ border:1px solid var(--b5);border-radius:6px;padding:6px;max-height:64vh;overflow:auto;overscroll-behavior:contain;
+ box-shadow:0 14px 40px var(--shc2);
+ opacity:0;visibility:hidden;transform:scale(.985) translateY(-4px);transform-origin:top center;
  transition:opacity .15s ease-out,transform .15s cubic-bezier(.23,1,.32,1),visibility 0s .15s}
 .preview.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
-.pvsec{font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--m7);padding:9px 10px 4px}
-.pvrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;text-decoration:none;
+.pvsec{font-family:var(--cond);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+ color:var(--m7);padding:9px 10px 4px;border-bottom:1px solid var(--hair2);margin-bottom:3px}
+.pvrow{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:4px;text-decoration:none;
  color:var(--txt);font-size:12.5px;font-weight:500}
 .pvrow small{display:block;color:var(--m4);font-size:10.5px;font-weight:400;margin-top:1px}
-.pvtag{font-size:9px;font-weight:500;letter-spacing:.02em;color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 19%,var(--mix));border:1px solid color-mix(in srgb,var(--ac) 37%,var(--mix));
- border-radius:6px;padding:3px 7px;flex-shrink:0}
-.pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--b3);flex-shrink:0;background:var(--surface3)}
+.pvtag{font-family:var(--cond);font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;
+ color:var(--ac-pale);border:1.5px solid color-mix(in srgb,var(--ac) 55%,var(--mix));
+ border-radius:3px;padding:2px 6px;flex-shrink:0}
+.pvimg{width:26px;height:36px;object-fit:cover;border-radius:2px;border:1px solid var(--b3);flex-shrink:0;background:var(--surface3)}
 .pvempty{padding:14px 10px;color:var(--m6);font-size:12px}
+/* section tabs: condensed caps; the live one is a solid spot-ink tab */
 .filters{display:flex;gap:7px;flex-wrap:wrap;margin:26px 0 22px}
-.f{font-size:11.5px;font-weight:500;color:var(--m3);background:var(--surface3);
- border:1px solid var(--b1);padding:6px 13px;border-radius:7px;cursor:pointer;
+.f{font-family:var(--cond);font-size:12.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+ color:var(--m3);background:transparent;
+ border:1px solid var(--b5);padding:6px 13px;border-radius:3px;cursor:pointer;
  transition:border-color .15s,color .15s,background .15s,transform .12s ease-out;
- width:auto;margin:0;font-family:inherit;text-decoration:none;display:inline-block}
+ width:auto;margin:0;text-decoration:none;display:inline-block}
 .f.on{background:var(--ac-fill);border-color:var(--ac-fill);color:#fff}
-.f.farch.on{background:#4d4b59;border-color:#4d4b59;color:#fff}
-/* flat cards: solid surface + faint hairline */
-.card{background:var(--surface);
- border:1px solid var(--hair);border-radius:18px;
- padding:26px 30px;margin-bottom:20px;
- box-shadow:0 4px 16px var(--shc);
- transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
-/* spotlight border: the card edge lights up under the cursor (JS sets --mx/--my) */
-.card,.gc{position:relative}
-.card::before,.gc::before{content:"";position:absolute;inset:-2px;border-radius:inherit;pointer-events:none;
- background:radial-gradient(340px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--ac-soft) 75%,transparent),color-mix(in srgb,var(--ac-soft) 20%,transparent) 45%,transparent 80%);
- padding:2px;-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- -webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .25s}
-@media(hover:hover){.card:hover::before,.gc:hover::before{opacity:1}
-.card:hover .bloom,.gc:hover .bloom{opacity:1}
-/* every state that paints on hover lives in here: on touch these all used to
-   stick to whatever was last tapped until something else was tapped */
-.card:hover,.gc:hover{transform:translateY(-2px);border-color:var(--hairh)}
+.f.farch.on{background:var(--m8);border-color:var(--m8);color:var(--mix)}
+/* ledger entry: a ruled ROW on the page's own paper - no floating card.
+   Entries separate with hairline rules; the list closes with a bottom rule. */
+.card{background:transparent;
+ border:0;border-top:1px solid var(--chipline);border-radius:0;
+ padding:24px 6px 22px;margin-bottom:0;
+ box-shadow:none;
+ transition:background .18s,opacity .18s,filter .18s}
+#list{border-bottom:1px solid var(--chipline)}
+/* the few places that still need a real surface: modals */
+.smodal .card{background:var(--surface);border:1px solid var(--chipline);border-radius:6px;
+ padding:26px 28px;box-shadow:0 14px 44px var(--shc2)}
+@media(hover:hover){
+.card:hover{background:color-mix(in srgb,var(--hovrow) 55%,transparent)}
+.gc:hover{border-color:var(--hairh)}
 .card.arch:hover,.gc.arch:hover{opacity:.9;filter:grayscale(.15)}
 .archdim .gc:hover img{filter:grayscale(.1);opacity:1}
-.f:hover{border-color:var(--b5);color:var(--fhov)}
+.f:hover{border-color:var(--ac-soft);color:var(--fhov)}
 .pvrow:hover{background:var(--hovrow)}
-.own[readonly]:hover{border-color:var(--ac-soft)}}
-/* bloom: a blurred copy of the lit ring (element injected by FX_JS). blurring
-   the real ring makes the glow cursor-local, fade outward, and hug the corner
-   radius exactly - the three things the masked band and box-shadow each missed */
-.bloom{position:absolute;inset:-3px;border-radius:inherit;pointer-events:none;z-index:-1;
- filter:blur(22px);opacity:0;transition:opacity .25s}
-.bloom::before{content:"";position:absolute;inset:0;border-radius:inherit;padding:3px;
- background:radial-gradient(circle 340px at calc(var(--mx,50%) + 3px) calc(var(--my,50%) + 3px),color-mix(in srgb,var(--ac) 70%,transparent),transparent 70%);
- -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
- -webkit-mask-composite:xor;mask-composite:exclude}
-/* staggered entry: cards rise in with slight delays instead of mounting all at once */
+.own[readonly]:hover{border-bottom-color:var(--ac-soft)}
+.lgout:hover{color:var(--txt)}
+.hintx:hover{color:var(--txt)}}
+/* staggered entry: entries settle onto the page like laid type */
 @media(prefers-reduced-motion:no-preference){
  .card,.gc{animation:rise .38s cubic-bezier(.2,.7,.3,1) both}
  .card:nth-child(2),.gc:nth-child(2){animation-delay:.04s}
@@ -820,96 +830,114 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  .card:nth-child(8),.gc:nth-child(8){animation-delay:.28s}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
-.num{font-size:20px;font-weight:700;letter-spacing:-.02em;
- font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
-.meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
-.pill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;
- padding:7px 13px;border-radius:7px;white-space:nowrap;
- color:var(--ac-pale);background:color-mix(in srgb,var(--ac) 16%,transparent);border:1px solid color-mix(in srgb,var(--ac-soft) 32%,transparent)}
-.pill.done{color:var(--m9);background:var(--chipbg);border-color:var(--chipline)}
-.pill.hold{color:var(--holdtx);background:rgba(220,60,60,.14);border-color:rgba(220,90,90,.35)}
-.pill.arch{color:var(--m9);background:var(--chipbg);border-color:var(--chipline)}
-/* -3px: optically seat the first pill's center on the sub-number line beside it
-   (measured 3px low with top-aligned columns) */
-.pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end;margin-top:-3px}
-/* progress timeline */
+/* index price line: label ... dotted leader ... figure, the guide's namesake */
+.ledline{display:flex;align-items:baseline;gap:10px;margin-top:14px}
+.ll-lab{font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.09em;
+ text-transform:uppercase;color:var(--m7)}
+.ledline .lead{flex:1;border-bottom:2px dotted var(--track);transform:translateY(-3px)}
+.ll-val{font-family:var(--cond);font-size:16px;font-weight:700;letter-spacing:.02em;color:var(--ac-pale)}
+.ll-val span{font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--m7)}
+/* lot number: condensed 700, like a listing header */
+.num{font-family:var(--cond);font-size:24px;font-weight:700;letter-spacing:.01em}
+.meta{font-size:13.5px;font-weight:400;color:var(--m1);margin-top:3px}
+/* stamps: bordered condensed caps, transparent field - inked, not glowing */
+.pill{display:inline-flex;align-items:center;gap:6px;transform:rotate(-.8deg);
+ font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+ padding:5px 11px;border-radius:3px;white-space:nowrap;
+ color:var(--ac-pale);background:transparent;border:1.5px solid color-mix(in srgb,var(--ac) 60%,var(--mix))}
+.pill.done{color:var(--m9);border-color:var(--chipline);transform:rotate(.6deg)}
+.pill.hold{color:var(--holdtx);border-color:color-mix(in srgb,var(--holdtx) 55%,var(--mix))}
+.pill.arch{color:var(--m9);border-color:var(--chipline)}
+.pills{display:flex;flex-direction:column;gap:5px;align-items:flex-end;margin-top:-2px}
+/* progress: a checklist rule - dotted leader, punched squares, spot-ink fill */
 .tl{position:relative;height:46px;margin:22px 0 12px}
-/* pixel-exact vertical geometry: track center y=7 == every dot's center
-   (10px dot at y=2..12, 14px active dot at y=0..14, labels all start y=21) */
-.track{position:absolute;top:6px;left:5%;right:5%;height:2px;background:var(--track);border-radius:2px}
-.fill{position:absolute;top:6px;left:5%;height:2px;border-radius:2px;transition:width .4s;
- background:linear-gradient(90deg,color-mix(in srgb,var(--ac) 38%,var(--track)),var(--ac))}
+.track{position:absolute;top:7px;left:5%;right:5%;height:0;border-top:2px dotted var(--track);background:none;border-radius:0}
+.fill{position:absolute;top:6px;left:5%;height:2px;border-radius:0;transition:width .4s;
+ background:var(--ac)}
 .node{position:absolute;top:0;transform:translateX(-50%);text-align:center}
-/* dots are OPAQUE so the line disappears behind them instead of showing through */
-.dot{width:10px;height:10px;border-radius:50%;background:var(--dot0);border:0;margin:2px auto 9px}
-.node.done .dot{background:var(--ac)}
-.node.now .dot{width:14px;height:14px;margin:0 auto 7px;background:var(--ac);
- box-shadow:0 0 0 4px color-mix(in srgb,var(--ac) 18%,transparent);
+/* punched squares: undone hollow, done solid spot ink, current ringed in ink */
+.dot{width:9px;height:9px;border-radius:2px;background:var(--surface);
+ border:1.5px solid var(--dot0);margin:2px auto 9px}
+.node.done .dot{background:var(--ac);border-color:var(--ac)}
+.node.now .dot{width:13px;height:13px;border-radius:3px;margin:0 auto 7px;background:var(--ac);
+ border:2px solid var(--txt);
+ box-shadow:0 0 0 3px color-mix(in srgb,var(--ac) 22%,transparent);
  animation:nowpulse 2.6s ease-in-out infinite}
-@keyframes nowpulse{50%{box-shadow:0 0 0 7px color-mix(in srgb,var(--ac) 8%,transparent)}}
-.lbl{font-size:9px;font-weight:500;letter-spacing:.06em;color:var(--m7);display:block;line-height:1.2;text-transform:uppercase}
-/* entered-on date under a reached stage (detail page only; .tld reserves the row) */
-.ldate{display:block;font-size:9px;font-weight:500;letter-spacing:.02em;color:var(--m9);margin-top:3px}
+@keyframes nowpulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--ac) 10%,transparent)}}
+.lbl{font-family:var(--cond);font-size:9.5px;font-weight:600;letter-spacing:.09em;color:var(--m7);
+ display:block;line-height:1.2;text-transform:uppercase}
+.ldate{display:block;font-family:var(--cond);font-size:9.5px;font-weight:600;letter-spacing:.04em;
+ color:var(--m9);margin-top:3px}
 .node.now .ldate{color:var(--m7)}
 .tl.tld{height:60px}
 .node.done .lbl{color:var(--m8)}
-.node.now .lbl{color:var(--txtstrong);font-weight:600}
+.node.now .lbl{color:var(--txtstrong);font-weight:700}
 .foot{border-top:1px solid var(--hair2);padding-top:13px;display:flex;justify-content:space-between;
  align-items:center;gap:10px;flex-wrap:wrap}
-/* group cards: the tile grid has no bottom margin of its own - give the
-   Go-to-sub foot real separation from the tiles */
 .grp .foot{margin-top:22px}
 .footacts{display:flex;gap:13px;align-items:center;flex-wrap:wrap}
 .est{font-size:13px;font-weight:400;color:var(--m2)}
-.view{font-size:13px;font-weight:500;color:var(--ac-soft);text-decoration:none;transition:color .15s}
-.view:hover{color:var(--ac-pale)}
-.archbtn{font-size:11.5px;font-weight:500;color:var(--m3);background:transparent;border:0;padding:0;cursor:pointer;
- width:auto;margin:0;font-family:inherit;transition:color .15s,transform .12s ease-out}
+.view{font-family:var(--cond);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+ color:var(--ac-pale);text-decoration:none;border-bottom:1.5px solid color-mix(in srgb,var(--ac) 50%,transparent);
+ padding-bottom:1px;transition:color .15s,border-color .15s}
+.view:hover{color:var(--txt);border-bottom-color:var(--txt)}
+.archbtn{font-family:var(--cond);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+ color:var(--m3);background:transparent;border:0;padding:0;cursor:pointer;
+ width:auto;margin:0;transition:color .15s,transform .12s ease-out}
 .f:active,.archbtn:active,.hintx:active{transform:scale(.97)}
 .archbtn:hover{color:var(--fhov)}
 .empty{color:var(--m6);font-size:13px;padding:40px 0;text-align:center}
-.cover{width:44px;height:60px;object-fit:cover;border-radius:5px;border:1px solid var(--b3);background:var(--surface3);flex-shrink:0}
+.cover{width:44px;height:60px;object-fit:cover;border-radius:3px;border:1px solid var(--b3);background:var(--surface3);flex-shrink:0}
 .hd{display:flex;gap:13px;align-items:flex-start;flex:1}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px;margin-top:24px}
-.grid img{width:100%;border-radius:8px;border:1px solid var(--b3);background:var(--surface3);aspect-ratio:1.72/2.4;object-fit:cover;display:block}
+.grid img{width:100%;border-radius:4px;border:1px solid var(--b3);background:var(--surface3);aspect-ratio:1.72/2.4;object-fit:cover;display:block}
+/* listing cell: one card of the guide's grid */
 .gc{background:var(--surface);
- border:1px solid var(--hair);border-radius:14px;padding:11px;
+ border:1px solid var(--chipline);border-radius:3px;padding:11px;
  display:flex;flex-direction:column;gap:2px;
- box-shadow:0 4px 16px var(--shc);
- transition:transform .18s,border-color .18s,opacity .18s,filter .18s}
+ transition:border-color .18s,opacity .18s,filter .18s}
 .gc>a,.gc .ph{position:relative}
-.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:8px;border:1px dashed var(--b4);background:var(--ph);display:flex;align-items:center;justify-content:center;color:var(--m11);font-size:11px;font-weight:500}
-.gradebadge{position:absolute;top:7px;left:7px;z-index:2;font-size:11px;font-weight:800;letter-spacing:.02em;
- color:#0c0a12;background:#f5b73d;padding:3px 8px;border-radius:7px;
- box-shadow:0 2px 8px rgba(10,6,20,.55);border:1px solid rgba(255,255,255,.35)}
-.gc .cn{font-size:13.5px;font-weight:600;color:var(--txt);margin-top:9px;letter-spacing:-.01em;line-height:19px;
+.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:4px;border:1px dashed var(--b4);background:var(--ph);display:flex;align-items:center;justify-content:center;color:var(--m11);font-size:11px;font-weight:500}
+/* grade sticker: paper label with an ink frame, like the top of a slab */
+.gradebadge{position:absolute;top:7px;left:7px;z-index:2;transform:rotate(-1.4deg);
+ font-family:var(--cond);font-size:12px;font-weight:700;letter-spacing:.05em;
+ color:var(--txtstrong);background:var(--surface);padding:2px 7px;border-radius:3px;
+ box-shadow:0 2px 6px var(--shc2);border:1.5px solid var(--txtstrong)}
+.gc .cn{font-size:13px;font-weight:600;color:var(--txt);margin-top:9px;letter-spacing:-.01em;line-height:19px;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{color:var(--m3);font-size:11px;letter-spacing:.02em;font-family:inherit;line-height:19px}
 .gc .nm{font-size:10.5px;font-weight:400;color:var(--m4);line-height:1.4;margin-top:3px;height:56px;
  display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;margin-bottom:6px}
-.gc .cval{font-size:11.5px;font-weight:600;color:var(--ac-pale);margin:-2px 0 6px}
-.gc .cval span{font-size:9.5px;font-weight:500;color:var(--m7)}
-.own{margin-top:auto;background:var(--inp);border:1px solid var(--b1);border-radius:7px;color:var(--txt);font:inherit;font-size:11.5px;font-weight:400;padding:7px 9px;width:100%;outline:none;transition:border-color .15s;touch-action:manipulation}
+/* guide price: the number the reader came for - condensed, spot ink */
+.gc .cval{font-family:var(--cond);font-size:15px;font-weight:700;letter-spacing:.02em;color:var(--ac-pale);margin:-2px 0 6px}
+.gc .cval span{font-family:var(--cond);font-size:10px;font-weight:600;letter-spacing:.06em;color:var(--m7)}
+/* owner: written into the ledger on a pencil rule, boxed only while editing */
+.own{margin-top:auto;background:transparent;border:0;border-bottom:1px dashed var(--b5);
+ border-radius:0;color:var(--txt);font:inherit;font-size:11.5px;font-weight:500;
+ padding:7px 2px;width:100%;outline:none;transition:border-color .15s,background .15s;touch-action:manipulation}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m10)}
-.own:focus{border-color:var(--ac)}
-.own.saved{border-color:#3a7c4f}
-.own.errsave{border-color:#b25555}
-.sublink{display:block;text-align:center;font-size:10.5px;font-weight:500;color:var(--ac-pale);
- background:color-mix(in srgb,var(--ac) 13%,var(--mix));border:1px solid color-mix(in srgb,var(--ac) 32%,var(--mix));border-radius:7px;padding:6px 10px;text-decoration:none;margin-top:8px;
+.own:focus{border-bottom:1.5px solid var(--ac);background:var(--inp)}
+.own.saved{border-bottom-color:#3a7c4f}
+.own.errsave{border-bottom-color:#b25555}
+.sublink{display:block;text-align:center;
+ font-family:var(--cond);font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+ color:var(--ac-pale);background:transparent;
+ border:1px solid color-mix(in srgb,var(--ac) 45%,var(--mix));border-radius:3px;padding:5px 10px;text-decoration:none;margin-top:8px;
  transition:background .15s,color .15s,transform .12s ease-out}
-.sublink:hover{background:color-mix(in srgb,var(--ac) 21%,var(--mix));color:var(--ac-ice)}
+.sublink:hover{background:var(--ac-fill);border-color:var(--ac-fill);color:#fff}
 .sublink:active{transform:scale(.97)}
-.svc{text-align:center;font-size:10px;font-weight:400;color:var(--m4);margin-top:6px}
+.svc{text-align:center;font-family:var(--cond);font-size:10.5px;font-weight:600;letter-spacing:.06em;
+ text-transform:uppercase;color:var(--m4);margin-top:6px}
 /* lightbox for card scans */
-.lb{position:fixed;inset:0;z-index:50;background:rgba(7,7,10,.84);display:flex;
+.lb{position:fixed;inset:0;z-index:50;background:rgba(12,10,7,.86);display:flex;
  align-items:center;justify-content:center;cursor:zoom-out;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
  transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
   -webkit-backdrop-filter .2s ease-out,visibility 0s .2s}
 .lb.open{opacity:1;visibility:visible;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
  transition-delay:0s}
-.lb img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 20px 80px rgba(4,2,12,.8);
+.lb img{max-width:92vw;max-height:92vh;border-radius:6px;box-shadow:0 20px 80px rgba(5,3,0,.8);
  transform:scale(.96);transition:transform .2s cubic-bezier(.23,1,.32,1)}
 .lb.open img{transform:none}
 .grid a{cursor:zoom-in}
@@ -918,9 +946,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  animation:shimmer 1.1s linear infinite}
 .grid img.ld,.cover.ld{background:var(--surface3);animation:none}
 @keyframes shimmer{to{background-position:-200% 0}}
-/* day/night corner toggle */
+/* corner controls: settings + day/night, small paper buttons */
 #gearbtn{position:fixed;right:68px;bottom:18px;z-index:40;width:42px;height:42px;
- border-radius:50%;background:var(--frost);border:1px solid var(--hair);color:var(--m2);
+ border-radius:6px;background:var(--frost);border:1px solid var(--chipline);color:var(--m2);
  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  box-shadow:0 4px 14px var(--shc);transition:color .15s,transform .12s ease-out;text-decoration:none}
@@ -932,21 +960,21 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
 .srow input{flex:1;min-width:150px;margin-top:0;text-align:left;font-size:13px;padding:10px 12px}
 .sbtn{width:auto;margin-top:0;padding:10px 20px;font-size:12.5px;flex-shrink:0}
-.sbtn.sdel{background:transparent;border:1px solid rgba(220,90,90,.35);color:var(--holdtx);margin-top:10px}
-.sbtn.sdel:hover{background:rgba(220,60,60,.14)}
+.sbtn.sdel{background:transparent;border:1px solid color-mix(in srgb,var(--err) 45%,var(--mix));color:var(--holdtx);margin-top:10px}
+.sbtn.sdel:hover{background:color-mix(in srgb,var(--err) 12%,transparent)}
 .srow .sbtn.sdel{margin-top:0}
-.stitle{font-size:16px;font-weight:600;letter-spacing:-.01em;color:var(--txt)}
+.stitle{font-family:var(--cond);font-size:17px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--txt)}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
 .slbl{font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--m4);margin-top:18px;line-height:1.6;max-width:460px}
 .snote{display:inline-block;font-size:12px;font-weight:600;color:var(--ac-pale);margin-top:16px;
- padding:9px 14px;border-radius:8px;background:color-mix(in srgb,var(--ac) 14%,transparent);
- border:1px solid color-mix(in srgb,var(--ac-soft) 30%,transparent)}
-.snote.serr{color:var(--holdtx);background:rgba(220,60,60,.12);border-color:rgba(220,90,90,.35)}
+ padding:9px 14px;border-radius:4px;background:transparent;
+ border:1px dashed color-mix(in srgb,var(--ac-soft) 55%,transparent)}
+.snote.serr{color:var(--holdtx);background:transparent;border-color:color-mix(in srgb,var(--err) 50%,transparent)}
 .sbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
-.sbar .f{padding:12px 20px;font-size:13px;border-radius:9px}
+.sbar .f{padding:12px 20px;font-size:13px;border-radius:4px}
 .spane{margin-top:18px}
-.smodal{position:fixed;inset:0;z-index:60;background:rgba(7,7,10,.72);display:none;
+.smodal{position:fixed;inset:0;z-index:60;background:rgba(12,10,7,.72);display:none;
  align-items:center;justify-content:center;padding:18px}
 .smodal.on{display:flex}
 .smodal .card{width:min(460px,94vw);margin:0}
@@ -954,7 +982,7 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
  width:auto;margin:0;padding:2px 6px}
 .sclose:hover{color:var(--txt)}
 #themeflip{position:fixed;right:18px;bottom:18px;z-index:40;width:42px;height:42px;
- border-radius:50%;background:var(--frost);border:1px solid var(--hair);color:var(--m2);
+ border-radius:6px;background:var(--frost);border:1px solid var(--chipline);color:var(--m2);
  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  box-shadow:0 4px 14px var(--shc);transition:color .15s,transform .12s ease-out}
@@ -962,12 +990,9 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 #themeflip:active{transform:scale(.97)}
 /* archived grey-out */
 .card.arch,.gc.arch{opacity:.42;filter:grayscale(.72)}
-.card.arch .fill{background:#4d4b59;box-shadow:none}
-.card.arch .node.now .dot,.card.arch .node.done .dot{background:#5b5968;border-color:#5b5968;box-shadow:none;animation:none}
-/* detail-page timeline card: one dot row, so it doesn't need dashboard-card padding */
-.card.tlcard{padding:16px 30px 10px;margin-bottom:0}
-/* archived sub DETAIL page: the header already says Archived - grey the scans
-   only, keep cert numbers/names/values fully legible (dashboard grey-out unchanged) */
+.card.arch .fill{background:var(--m9);box-shadow:none}
+.card.arch .node.now .dot,.card.arch .node.done .dot{background:var(--m10);border-color:var(--m10);box-shadow:none;animation:none}
+.card.tlcard{padding:16px 6px 10px;border-top:0}
 .archdim img{filter:grayscale(.72);opacity:.85;transition:filter .18s,opacity .18s}
 /* carrier tracking link: quiet inline affordance on muted footer text */
 .tlink{color:inherit;text-decoration:none;border-bottom:1px dotted var(--m7);
@@ -975,24 +1000,28 @@ h1.big{font-size:clamp(40px,9vw,56px);line-height:1.02;letter-spacing:-.03em}
 .tlink:hover{color:var(--ac-pale);border-bottom-color:var(--ac-pale)}
 /* owner-save undo chip (OWNER_JS injects it for a few seconds after a save) */
 .undo{width:auto;margin:6px 0 0;padding:4px 9px;background:transparent;
- border:1px dashed var(--b4);border-radius:6px;color:var(--m3);font-size:10.5px;
+ border:1px dashed var(--b5);border-radius:3px;color:var(--m3);font-size:10.5px;
  font-weight:500;letter-spacing:0;font-family:inherit;cursor:pointer;transition:color .15s,border-color .15s}
 .undo:hover{color:var(--ac-pale);border-color:var(--ac)}
-/* gate */
+/* gate: the issue's cover */
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
-.gbox{width:290px;text-align:center}
-.gbox h1{font-size:26px}
-input{width:100%;margin-top:26px;background:var(--surface2);border:1px solid var(--b1);border-radius:10px;
- color:var(--txt);font-size:14px;font-weight:400;text-align:center;padding:12px;font-family:inherit;outline:none}
+.gbox{width:300px;text-align:center}
+.gbox h1{font-size:34px;padding-bottom:12px;border-bottom:3px solid var(--txt);position:relative}
+.gbox h1::after{content:"";position:absolute;left:0;right:0;bottom:-5px;height:1px;background:var(--txt)}
+input{width:100%;margin-top:26px;background:var(--inp);border:1px solid var(--b5);border-radius:4px;
+ color:var(--txt);font-size:14px;font-weight:400;text-align:center;padding:12px;font-family:inherit;outline:none;
+ transition:border-color .15s}
 input:focus{border-color:var(--ac)}
-button{width:100%;margin-top:10px;background:var(--ac-fill);border:0;border-radius:10px;color:#fff;
- font-size:13px;font-weight:600;letter-spacing:.02em;padding:12px;cursor:pointer;font-family:inherit;
+input:focus-visible{outline:none} /* the border carries focus; no double ring */
+button{width:100%;margin-top:10px;background:var(--ac-fill);border:0;border-radius:4px;color:#fff;
+ font-family:var(--cond);font-size:14.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
+ padding:12px;cursor:pointer;
  transition:background .15s,transform .12s ease-out}
 button:hover{background:var(--ac-fill-hot)}
 button:active{transform:scale(.97)}
 .err{color:var(--err);font-size:11px;font-weight:600;margin-top:12px;min-height:14px}
-.dbtn{margin-top:12px;padding:12px 20px;font-size:13px;border-radius:9px}
+.dbtn{margin-top:12px;padding:12px 20px;font-size:13px;border-radius:4px}
 .dstate{font-size:12.5px;font-weight:600;color:var(--ac-pale);flex:1}
 .dhint{font-size:10.5px;font-weight:400;color:var(--m7);line-height:1.7;margin-top:12px}
 .numlink{text-decoration:none;color:inherit;display:inline-block}
@@ -1004,16 +1033,18 @@ button:active{transform:scale(.97)}
 /* mobile: hide stage labels entirely; only the CURRENT stage is named */
 @media(max-width:640px){.lbl{font-size:0}
 .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
-.node.now .lbl{font-size:8.5px;white-space:nowrap}
+.node.now .lbl{font-size:9px;white-space:nowrap}
 .ldate{display:none}
 .node.now .ldate{display:block}
 .tl.tld{height:52px}
-.card{padding:20px 18px}.card.tlcard{padding:12px 18px 8px}.num{font-size:18px}.meta{font-size:12.5px}
-.hrow{flex-wrap:wrap}.synced{white-space:normal;text-align:left;padding-top:2px}}
+.card{padding:18px 2px 16px}.card.tlcard{padding:12px 2px 8px}.num{font-size:21px}.meta{font-size:12.5px}
+h1{font-size:29px}
+.hrow{flex-wrap:wrap;align-items:flex-start}.synced{white-space:normal;text-align:left;padding-bottom:0;padding-top:2px}
+body{padding:32px 14px 80px}}
 /* frost the glass instead of blurring the page through it */
 @media(prefers-reduced-transparency:reduce){
- .toolbar,#gearbtn,#themeflip{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}
- .lb,.lb.open{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(7,7,10,.96)}}
+ #gearbtn,#themeflip{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--surface)}
+ .lb,.lb.open{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(12,10,7,.96)}}
 """
 
 # favicon: accent-colored card-fan mark (three cards, opacity steps for depth),
@@ -1031,6 +1062,11 @@ FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='
 # iOS home screen show the real mark; without the files behavior is unchanged.
 FAV_PNG = os.environ.get("PSA_FAVICON", "/opt/psa-tracker/favicon.png")
 TOUCH_PNG = os.environ.get("PSA_TOUCH_ICON", "/opt/psa-tracker/apple-touch-icon.png")
+# The guide's display face, self-hosted next to app.py (deploy.sh ships them);
+# missing files just 404 and the condensed system fallbacks carry the masthead.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+FONT_600 = os.path.join(_HERE, "barlowcond-600.woff2")
+FONT_700 = os.path.join(_HERE, "barlowcond-700.woff2")
 _ICONS = f'<link rel="icon" type="image/svg+xml" href="{FAVICON}">'
 if os.path.exists(FAV_PNG):
     _ICONS += f'\n<link rel="icon" type="image/png" sizes="64x64" href="/favicon.png?v={int(os.path.getmtime(FAV_PNG))}">'
@@ -1039,6 +1075,8 @@ if os.path.exists(TOUCH_PNG):
 
 HEAD_HTML = f"""{_ICONS}
 <meta name="description" content="PSA grading submission tracker">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/font-700.woff2">
+<link rel="preload" as="font" type="font/woff2" crossorigin href="/font-600.woff2">
 <script>(function(){{try{{var t=localStorage.getItem('psa_theme');
 if(t&&t!=="{THEME}")document.documentElement.dataset.theme=t;}}catch(e){{}}}})()</script>"""
 
@@ -1524,7 +1562,7 @@ def timeline_html(status, dates=None):
     return (f'<div class="tl{" tld" if dates is not None else ""}"><div class="track"></div>'
             f'<div class="fill" style="width:{pct:.1f}%"></div>{"".join(nodes)}</div>')
 
-def card_html(s, archived=False):
+def card_html(s, archived=False, value=None, vcur="CAD"):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
@@ -1549,10 +1587,12 @@ def card_html(s, archived=False):
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
                 f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
+    led = (f'<div class="ledline"><span class="ll-lab">Est. value</span><i class="lead"></i>'
+           f'<b class="ll-val">${value:,.0f} <span>{vcur}</span></b></div>') if value else ""
     return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd">{cover}<div><div class="num">#{sub}</div>
 <div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{pill}</div></div>
-{timeline_html(s['status'])}
+{led}{timeline_html(s['status'])}
 <div class="foot"><span class="est">{foot}</span>
 <a class="view" href="/sub/{sub}">View cards</a></div></div>"""
 
@@ -1761,34 +1801,8 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
   if(m.complete){done();}
   else{m.addEventListener('load',done);m.addEventListener('error',done);}
 });
-// The ring and the bloom are both revealed only under @media(hover:hover), so on
-// a touch device we inject nothing and never listen - the bloom is a blur(22px)
-// layer per card and would cost paint without ever showing. On pointer devices
-// the position is coalesced to one write per frame: unthrottled, every move
-// repainted a masked radial gradient AND its blurred copy, per card, at pointer
-// rate rather than display rate.
-if(window.matchMedia('(hover:hover)').matches){
-  document.querySelectorAll('.card,.gc').forEach(function(c){
-    var b=document.createElement('div');b.className='bloom';c.appendChild(b);
-  });
-  var pend=null;
-  document.addEventListener('pointermove',function(e){
-    var el=e.target.closest&&e.target.closest('.card,.gc');
-    if(!el) return;
-    if(pend){pend.el=el;pend.x=e.clientX;pend.y=e.clientY;return;}
-    pend={el:el,x:e.clientX,y:e.clientY};
-    requestAnimationFrame(function(){
-      var q=pend;pend=null;
-      // a .gc tile sits inside a .card.grp on customer pages and both rings are
-      // lit at once, so walk the whole chain - not just the innermost match
-      for(var c=q.el;c;c=c.parentElement&&c.parentElement.closest('.card,.gc')){
-        var r=c.getBoundingClientRect();
-        c.style.setProperty('--mx',(q.x-r.left)+'px');
-        c.style.setProperty('--my',(q.y-r.top)+'px');
-      }
-    });
-  });
-}
+// (the old cursor-spotlight ring + bloom are gone with the print redesign:
+// paper doesn't glow. Hover states live in CSS alone now.)
 </script>"""
 
 # person page: fold archived-sub cards behind a toggle below the active grid
@@ -1912,8 +1926,17 @@ def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
     gone = [s for s in subs if s["sub_number"] in arch]
+    # per-sub estimated totals: the index's price column (PSA estimates)
+    vals, _vas, vcur = load_values(a)
+    tot = {}
+    if vals:
+        for c in load_all_cards(a):
+            v = vals.get(c["cert_no"] or "")
+            if v:
+                tot[c["sub_number"]] = tot.get(c["sub_number"], 0) + v
     if subs:
-        body = "".join(card_html(s) for s in active) + "".join(card_html(s, archived=True) for s in gone)
+        body = ("".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur) for s in active)
+                + "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur) for s in gone))
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
@@ -2398,6 +2421,10 @@ class H(BaseHTTPRequestHandler):
             return self.serve_asset(FAV_PNG, "image/png")
         if path == "/apple-touch-icon.png":
             return self.serve_asset(TOUCH_PNG, "image/png")
+        if path == "/font-600.woff2":  # pre-auth: the gate sets type in it too
+            return self.serve_asset(FONT_600, "font/woff2")
+        if path == "/font-700.woff2":
+            return self.serve_asset(FONT_700, "font/woff2")
         if path == "/api/hub.json":  # LAN summary for the hub (the server), key-gated
             return self.serve_hub_summary(parsed.query)
         if path == "/img":  # hot path: skip the setup-state machinery entirely
