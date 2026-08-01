@@ -486,7 +486,7 @@ def discord_widget(a, owner):
                  f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
     return (btn + f'<div class="smodal" id="dmodal" role="dialog" aria-modal="true" '
                   f'aria-labelledby="dmtitle"><div class="card sblock">'
-                  f'<button type="button" class="sclose" id="dclose" aria-label="Close">✕</button>'
+                  f'<button type="button" class="sclose" id="dclose" aria-label="Close">{ICON_X}</button>'
                   f'<h2 class="stitle" id="dmtitle">Discord pings</h2>{inner}</div></div>')
 
 DISCORD_JS = """<script>
@@ -847,8 +847,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  transition:background .18s,color .18s,transform .14s ease-out}
 /* the pill LOOKS 33px tall and stays that way - the hit area is grown
    invisibly past the capsule instead (33 + 12 = 45 >= the 44px HIG floor).
-   On mobile the capsule is a scroller, so the pseudo is clipped to the
-   capsule's own 39px there - still the full capsule, just not 45.
+   On mobile the capsule is a scroller and clips the pseudo, so the CAPSULE
+   grows to 45 there instead - see the 640px block.
    Vertical only: inset 0 left/right so a pill never steals its neighbour.
    z-index:-1 keeps it BEHIND every real box, so when the capsule wraps to a
    second row the lower pill's pad can't shadow the upper pill's live edge. */
@@ -954,10 +954,27 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1)}
 .lb.open img{transform:none}
 .grid a{cursor:zoom-in;position:relative;display:block}
-.grid img,.cover{background:linear-gradient(100deg,var(--sh1) 40%,var(--sh2) 50%,var(--sh1) 60%) 0 0/200% 100%;
- animation:shimmer 1.1s linear infinite}
-.grid img.ld,.cover.ld{background:var(--surface3);animation:none}
-@keyframes shimmer{to{background-position:-200% 0}}
+/* The loading sweep used to animate background-position ON THE IMG: a full
+   repaint of every unloaded tile, every frame. It is now ONE overlay on the
+   scan's anchor moved with transform - compositor only, no paint. The ground
+   beneath it stays the img's own var(--surface3), which never animated.
+   [href^="/img"] is the same selector the lightbox uses to pick out scan links,
+   so .sublink (also an `a` inside .grid) is untouched. overflow is clipped so
+   the band has somewhere to start and end; the anchor box IS the img box, so
+   nothing visible is cut, and an element's own focus outline is not clipped by
+   its own overflow. */
+.grid a[href^="/img"]{overflow:hidden;border-radius:6px}
+.grid a[href^="/img"]::after{content:'';position:absolute;inset:0;border-radius:6px;
+ pointer-events:none;
+ background:linear-gradient(100deg,transparent 20%,var(--sh2) 50%,transparent 80%);
+ animation:sweep 1.15s linear infinite}
+/* FX_JS tags the ANCHOR when its img settles, so this is a plain class match
+   rather than :has(img.ld) - :has() is unsupported in older Safari/Firefox and
+   there the sweep would never stop. */
+.grid a.ld::after{display:none}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+/* .cover is a 42x58 thumb: too small for a sweep to read as anything but noise.
+   It keeps the flat var(--surface3) placeholder it already declares. */
 /* ---- corner controls: glass orbs ----------------------------------------- */
 /* 44x44 is the HIG touch floor; the 8px gap between the orbs is preserved by
    pushing the gear out to 20 + 44 + 8 = 72. Icon glyphs are unchanged. */
@@ -1127,8 +1144,16 @@ button:active{transform:scale(.97)}
  /* the segmented control never breaks into a second row - it scrolls.
     overflow-y is pinned to hidden so the pills' -6px hit pseudo can never
     open a phantom vertical scroll on the capsule. */
+ /* the capsule is a scroller here, so the pills' -6px hit pseudo is CLIPPED to
+    the capsule box - the 45px target the desktop capsule gets for free is cut
+    back to the capsule's own height. So the capsule itself grows instead: 6px
+    vertical pad (from 3) puts its box at 33 + 12 = 45, and the pseudo's -6px
+    now runs exactly to the new padding edge. Horizontal pad stays 3px so the
+    end caps read the same. This is the one deliberate visual delta on mobile.
+    .sbar is NOT a scroller (no rule here), so its pseudo still overflows
+    freely and it already clears 44 - it is left alone. */
  .filters{display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;overflow-y:hidden;
-  overscroll-behavior-x:contain;scrollbar-width:none}
+  overscroll-behavior-x:contain;scrollbar-width:none;padding:7px 3px;align-items:center}
  .filters::-webkit-scrollbar{display:none}
  .filters .f{flex:0 0 auto}
  /* scroll cue: the scrollbar is hidden, so nothing would say there are more
@@ -1165,10 +1190,13 @@ button:active{transform:scale(.97)}
    Lives after the mobile block so it out-orders the capsule cue transition. */
 @media(prefers-reduced-motion:reduce){
  html{scroll-behavior:auto}
- /* travel: the row settle, the bar running out, the loading shimmer */
+ /* travel: the row settle, the bar running out, the loading sweep */
  .card,.gc{animation:none}
  .bar i{transition:none}
- .grid img,.cover{animation:none;background:var(--surface3)}
+ /* the sweep overlay goes entirely - what is left is the flat var(--surface3)
+    placeholder the img/.cover already carry, which is what this block gave
+    before the sweep moved off background-position. */
+ .grid a[href^="/img"]::after{display:none}
  /* press-scale on every control that has one */
  .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
  /* the toolbar still EARNS its shadow, it just arrives without the ramp */
@@ -1277,6 +1305,14 @@ ICON_OUT = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke=
             'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
             '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>'
             '<path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>')
+# the one close affordance, shared by every dismiss control (hint, modals).
+# 14px: the flip/out icons sit at 15-17, a close reads a step quieter.
+# Deliberately left INLINE with vertical-align:middle - an inline child keeps
+# the button's font strut, so the line box (and therefore the hover circle and
+# hit area) stays exactly the height it was under the text glyph.
+ICON_X = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+          'stroke-width="2" stroke-linecap="round" style="vertical-align:middle">'
+          '<path d="M6 6l12 12M18 6L6 18"/></svg>')
 ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
 ICON_HOLD = _pic('<path d="M9 5v14M15 5v14"/>')
 
@@ -1503,7 +1539,7 @@ def settings_page(msg="", err=""):
 </div>
 <div class="smodal" id="amodal" role="dialog" aria-modal="true" aria-labelledby="amtitle">
 <div class="card sblock">
-<button type="button" class="sclose" aria-label="Close">✕</button>
+<button type="button" class="sclose" aria-label="Close">{ICON_X}</button>
 <h2 class="stitle" id="amtitle"></h2>
 <form method="POST" action="/settings/account" class="srow" style="margin-top:16px">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="psa_pw">
@@ -1517,7 +1553,7 @@ def settings_page(msg="", err=""):
 </div></div>
 <div class="smodal" id="addmodal" role="dialog" aria-modal="true" aria-labelledby="addtitle">
 <div class="card sblock">
-<button type="button" class="sclose" aria-label="Close">✕</button>
+<button type="button" class="sclose" aria-label="Close">{ICON_X}</button>
 <h2 class="stitle" id="addtitle">Add PSA account</h2>
 <form method="POST" action="/settings/add" class="sform">
 <input name="psa_email" type="email" placeholder="PSA email"
@@ -1979,7 +2015,7 @@ BACK_JS = """
 })();
 </script>"""
 
-# page effects: swap the loading shimmer off images once loaded, and track the
+# page effects: swap the loading sweep off images once loaded, and track the
 # cursor per card so the spotlight border knows where to glow
 FX_JS = """<script>
 /* self-refresh so open tabs stay current - at a RANDOM :12-:17 past each hour
@@ -1999,8 +2035,16 @@ FX_JS = """<script>
   }
   arm();
 })();
+/* .ld on the img keeps the existing mechanism; .ld on its ANCHOR is what kills
+   the sweep overlay (see .grid a.ld::after). Cached images report .complete
+   here synchronously - this script runs after the grid markup - so a warm tile
+   never flashes the sweep. */
 document.querySelectorAll('.grid img,.cover').forEach(function(m){
-  var done=function(){m.classList.add('ld');};
+  var done=function(){
+    m.classList.add('ld');
+    var p=m.parentNode;
+    if(p&&p.tagName==='A')p.classList.add('ld');
+  };
   if(m.complete){done();}
   else{m.addEventListener('load',done);m.addEventListener('error',done);}
 });
@@ -2141,6 +2185,7 @@ SORT_JS = """<script>
     btns.forEach(function(b){
       var on=b.dataset.sort===m;
       b.classList.toggle('on',on);
+      b.setAttribute('aria-pressed',on?'true':'false');
       b.textContent=on?DIR[m][d?1:0]:BASE[b.dataset.sort];
     });
     cur=m; rev=d;
@@ -2257,8 +2302,8 @@ def dash_page(a, subs):
                f'<div class="tbend"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div>'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
                f'</div></div>{search_box()}</header>')
-    hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
-            '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
+    hint = (f'<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
+            f'<button type="button" class="hintx" id="hintx" aria-label="Dismiss hint">{ICON_X}</button></div>')
     # unlinked account: keep serving everything, say why it stopped moving
     if a.get("unlinked"):
         hint = ('<div class="hint" role="status">This account is unlinked — showing its last '
@@ -2266,15 +2311,19 @@ def dash_page(a, subs):
                 'to relink.</div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
-        pills += ['<button type="button" class="f fsort on" data-sort="sub">Newest</button>',
-                  '<button type="button" class="f fsort" data-sort="svc">Order type</button>',
-                  '<button type="button" class="f fsort" data-sort="eta">Return time</button>']
+        pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
+                  '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>',
+                  '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return time</button>']
     if gone:
         pills.append(f'<button type="button" class="f farch" id="archtoggle">Archived · {len(gone)}</button>')
     untag = untagged_count(a, active)
     if untag:
         pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} need owners</a>')
-    filters = f'<div class="filters">{"".join(pills)}</div>' if pills else ""
+    # role, not <nav>: .filters is styled and queried by CLASS everywhere, and a
+    # role keeps the tag swap out of it entirely. Label so the landmark list
+    # says which navigation this is.
+    filters = (f'<div class="filters" role="navigation" aria-label="Filters">'
+               f'{"".join(pills)}</div>') if pills else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
@@ -2402,7 +2451,10 @@ def people_page(a, owner, customer=False):
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
-                f'<div class="num">#{html.escape(str(n))}</div></a>'
+                # h2, not div: this IS the group's heading. Zero visual delta -
+                # the global reset zeroes h2 margins and .num supplies every
+                # type value (17/650/-.012em/1.3), so nothing is inherited.
+                f'<h2 class="num">#{html.escape(str(n))}</h2></a>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
                 f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div></div>')
     def grouped(cs):
@@ -2500,7 +2552,7 @@ def customer_page(a, email):
                 ft += f' · {tracking_html(s["carrier"], s["tracking"])}'
             foot = f'<div class="foot"><span class="est">{ft}</span></div>'
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
-                f'<div class="top"><div><div class="num">#{html.escape(str(n))}</div>'
+                f'<div class="top"><div><h2 class="num">#{html.escape(str(n))}</h2>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
                 f'{tl}<div class="grid" style="margin-top:14px">{tiles}</div>{foot}</div>')
 

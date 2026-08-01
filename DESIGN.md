@@ -62,9 +62,27 @@ typography:
     fontWeight: 650
     lineHeight: 1.3
     letterSpacing: "-0.012em"
+  large-title-compact:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    fontSize: "22px"
+    fontWeight: 700
+    lineHeight: 1.15
+    letterSpacing: "-0.017em"
+  gate-title:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    fontSize: "24px"
+    fontWeight: 700
+    lineHeight: 1.15
+    letterSpacing: "-0.02em"
   field:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "15px"
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: "normal"
+  field-mobile:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.45
     letterSpacing: "normal"
@@ -101,6 +119,7 @@ typography:
     letterSpacing: "normal"
 rounded:
   none: "0"
+  bar: "2px"
   xs: "4px"
   sm: "6px"
   md: "8px"
