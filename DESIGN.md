@@ -602,12 +602,15 @@ the search preview panel (14px, 6px padding, solid `--surface`) and the modal sh
 Navigation is the sticky glass toolbar: brand/logo and the 26px large title on the left, sync
 status and controls on the right, search below. Back links are plain accent-as-text with a `←`
 character and are history-aware. Under 640px the toolbar wraps, the logo drops to 26px, and
-the sync block collapses to a single inline 11px line. Cross-page view transitions are on by
-default (`@view-transition { navigation: auto }`) with `view-transition-name: toolbar` on
-mastheads and `toolbar-q` on compact search bars — named separately so a compact bar never
-morphs into a tall one mid-navigation; like-for-like pages get real continuity, mismatched
-pages cross-fade. Settings pages disable navigation transitions entirely, where the layout
-differs enough that a crossfade reads as lag.
+the sync block collapses to a single inline 11px line. Cross-page view transitions are the
+root crossfade only (`@view-transition { navigation: auto }`), desktop-only: under 640px the
+root is unnamed (`:root{view-transition-name:none}`) so phone navigations are instant swaps.
+**The Unnamed-Glass Rule.** Never put a `view-transition-name` on a backdrop-filter surface:
+when the destination page lacks its twin (detail pages have no toolbar; masthead and compact
+bars are different bars), the glass snapshot floats through the navigation as a blurred
+rectangle — shipped as a blur-flash on iPhone before this rule existed. Settings pages
+disable navigation transitions entirely, where the layout differs enough that a crossfade
+reads as lag.
 
 ### Stage Bar (signature)
 The product's signature component: one text line — current stage in accent-as-text at the
