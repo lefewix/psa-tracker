@@ -786,8 +786,13 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  border:1px solid var(--hair);
  box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 10px 26px var(--shc)}
 .toolbar{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:10px;
- margin:16px 0 4px;padding:12px 14px;border-radius:16px;
- view-transition-name:toolbar}
+ margin:16px 0 4px;padding:12px 14px;border-radius:16px}
+/* NO view-transition-name on glass: a named backdrop-filter panel gets
+   snapshotted and floats through the navigation as a blurred rectangle
+   whenever the far page lacks its twin (detail pages have no toolbar at all,
+   and masthead/compact bars are different bars) - on iPhone it read as a
+   blur FLASH before every page. Cross-page continuity is the root crossfade
+   alone, and 640px kills even that below. */
 /* elevation is EARNED: at rest the bar sits nearly flush on the sheet, and it
    lifts only once content is actually passing underneath it (FX_JS flips
    .raised off a 1px sentinel above the bar). Named separately from the
@@ -797,7 +802,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  transition:box-shadow .25s ease-out}
 .toolbar.raised{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),
  0 10px 26px var(--shc)}
-.toolbar.tbq{padding:7px 8px;border-radius:14px;view-transition-name:toolbar-q}
+.toolbar.tbq{padding:7px 8px;border-radius:14px}
 .tbsentinel{height:1px;pointer-events:none}
 .tbtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .tbend{display:flex;gap:12px;align-items:center}
@@ -1099,6 +1104,10 @@ button:active{transform:scale(.97)}
 @property --cuer{syntax:'<color>';inherits:false;initial-value:transparent}
 /* ---- mobile: only the CURRENT stage is ever named ------------------------- */
 @media(max-width:640px){
+ /* phone navigations are instant swaps: the cross-document crossfade shows a
+    stale snapshot (often mid-scroll, glass baked in) for ~a quarter second
+    before the real page - on a phone that reads as flash+lag, not continuity */
+ :root{view-transition-name:none}
  body{padding:12px 14px 88px}
  .tbtop{flex-wrap:wrap;gap:10px}
  .brand{gap:10px;min-width:0}
