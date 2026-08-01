@@ -96,12 +96,18 @@ _DARK = {"bg": "#17181a", "surface": "#1c1d20", "surface2": "#202124",
  "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)",
  "logoblend": "normal", "chipfill": "#ffffff", "chippad": "5px 7px",
  "logofx": "brightness(0) invert(1)",
- # Liquid Glass chrome: translucent ground, specular top rim, one soft cast shadow
+ # Liquid Glass chrome: translucent ground, one soft cast shadow, and a LENS -
+ # --rim is the specular catch along the top edge, --rimb the falloff along the
+ # bottom. Both are felt, not seen: the pair is what separates a lens from a
+ # frosted card. Dark needs a heavier --rimb because the ground is already dark,
+ # so a light-alpha edge would vanish.
  "glass": "rgba(30,31,35,.62)", "glasssolid": "#212226", "rim": "rgba(255,255,255,.16)",
+ "rimb": "rgba(0,0,0,.35)",
  "segtrack": "rgba(255,255,255,.05)", "segon": "rgba(255,255,255,.1)",
  "shc": "rgba(0,0,0,.34)", "shc2": "rgba(0,0,0,.5)", "shc3": "rgba(0,0,0,.28)",
  "sh1": "rgba(255,255,255,.06)", "sh2": "rgba(255,255,255,.11)",
- "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff"}
+ "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff",
+ "ok": "#43c383"}
 _LIGHT = {"bg": "#ffffff", "surface": "#ffffff", "surface2": "#f7f7f8",
  "surface3": "#f2f2f4", "inp": "#f2f2f4", "ph": "#f2f2f4",
  "hovrow": "rgba(0,0,0,.028)",
@@ -110,10 +116,12 @@ _LIGHT = {"bg": "#ffffff", "surface": "#ffffff", "surface2": "#f7f7f8",
  "hair2": "rgba(0,0,0,.07)", "track": "#ececef",
  "logoblend": "normal", "chipfill": "transparent", "chippad": "0", "logofx": "none",
  "glass": "rgba(255,255,255,.72)", "glasssolid": "#ffffff", "rim": "rgba(255,255,255,.85)",
+ "rimb": "rgba(15,20,30,.06)",
  "segtrack": "rgba(0,0,0,.045)", "segon": "#ffffff",
  "shc": "rgba(20,25,35,.1)", "shc2": "rgba(20,25,35,.18)", "shc3": "rgba(20,25,35,.08)",
  "sh1": "#f2f2f4", "sh2": "#e8e8ec",
- "err": "#b03a2e", "holdtx": "#b03a2e", "grade": "#b12b2b", "fhov": "#1d1d1f"}
+ "err": "#b03a2e", "holdtx": "#b03a2e", "grade": "#b12b2b", "fhov": "#1d1d1f",
+ "ok": "#2f9e68"}
 def _theme_vars(mode):
     acmix = _AC_MIX_L if mode == "light" else _AC_MIX_D
     neut = _LIGHT if mode == "light" else _DARK
@@ -454,21 +462,25 @@ def discord_widget(a, owner):
     else:
         inner = (f'<div class="srow" style="margin-top:16px">'
                  f'<input type="password" id="did" placeholder="Discord user ID" '
+                 f'aria-label="Discord user ID" '
                  f'autocomplete="off" inputmode="numeric" maxlength="20">'
                  f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Enable</button></div>'
                  f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a sub with '
                  f'your cards updates. Discord: Settings &rarr; Advanced &rarr; Developer Mode, then '
                  f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
-    return (btn + f'<div class="smodal" id="dmodal"><div class="card sblock">'
+    return (btn + f'<div class="smodal" id="dmodal" role="dialog" aria-modal="true" '
+                  f'aria-labelledby="dmtitle"><div class="card sblock">'
                   f'<button type="button" class="sclose" id="dclose" aria-label="Close">✕</button>'
-                  f'<div class="stitle">Discord pings</div>{inner}</div></div>')
+                  f'<h2 class="stitle" id="dmtitle">Discord pings</h2>{inner}</div></div>')
 
 DISCORD_JS = """<script>
 (function(){
   var dm=document.getElementById('dmodal'),db=document.getElementById('dopen');
   if(db&&dm){
     db.addEventListener('click',function(){dm.classList.add('on');
-      var f=document.getElementById('did');if(f)f.focus();});
+      // focus after the sheet is visible - a hidden field can't take focus
+      var f=document.getElementById('did');
+      if(f)requestAnimationFrame(function(){f.focus();});});
     document.getElementById('dclose').addEventListener('click',function(){dm.classList.remove('on');});
     dm.addEventListener('click',function(e){if(e.target===dm)dm.classList.remove('on');});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')dm.classList.remove('on');});
@@ -717,24 +729,43 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
 .synced .estnote{display:block;font-size:11.5px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
 .synced .lbl2{display:block;margin-top:8px}
-.lgout{color:var(--m1);display:inline-flex;padding:4px;border-radius:8px;transition:color .15s}
+.lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:8px;
+ transition:color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
+/* the dual rim is what makes this read as a LENS rather than a frosted card:
+   light catches the top edge (--rim) and falls off at the bottom (--rimb).
+   Both are sub-threshold on purpose - you should feel the curvature, not see
+   an outline. The drop shadow is separate and is what carries elevation. */
 .toolbar,.filters,.sbar,#gearbtn,#themeflip{
  background:var(--glass);
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
  border:1px solid var(--hair);
- box-shadow:inset 0 1px 1px var(--rim),0 10px 26px var(--shc)}
+ box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 10px 26px var(--shc)}
 .toolbar{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:10px;
- margin:16px 0 4px;padding:12px 14px;border-radius:14px}
-.toolbar.tbq{padding:7px 8px;border-radius:12px}
+ margin:16px 0 4px;padding:12px 14px;border-radius:16px;
+ view-transition-name:toolbar}
+/* elevation is EARNED: at rest the bar sits nearly flush on the sheet, and it
+   lifts only once content is actually passing underneath it (FX_JS flips
+   .raised off a 1px sentinel above the bar). Named separately from the
+   masthead bar so a compact bar never morphs into a tall one mid-navigation -
+   like-for-like pages get real continuity, mismatched ones cross-fade. */
+.toolbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 1px 2px var(--shc3);
+ transition:box-shadow .25s ease-out}
+.toolbar.raised{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),
+ 0 10px 26px var(--shc)}
+.toolbar.tbq{padding:7px 8px;border-radius:14px;view-transition-name:toolbar-q}
+.tbsentinel{height:1px;pointer-events:none}
 .tbtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .tbend{display:flex;gap:12px;align-items:center}
 .searchwrap{position:relative;flex:1;min-width:200px}
-.searchwrap .sicon{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+.searchwrap .sicon{position:absolute;left:14px;top:50%;transform:translateY(-50%);
  color:var(--tert);pointer-events:none}
-.searchbar{width:100%;margin:0;padding:10px 12px 10px 34px;font-size:15px;font-weight:400}
+/* capsule: chrome and controls are pills in this era, not 8px rounded rects.
+   The icon moves out with the left inset so it stays clear of the curve. */
+.searchbar{width:100%;margin:0;padding:10px 16px 10px 36px;font-size:15px;font-weight:400;
+ border-radius:999px}
 .preview{position:absolute;z-index:30;top:calc(100% + 8px);left:0;right:0;background:var(--surface);
- border:1px solid var(--hair);border-radius:12px;padding:6px;max-height:64vh;overflow:auto;
+ border:1px solid var(--hair);border-radius:14px;padding:6px;max-height:64vh;overflow:auto;
  overscroll-behavior:contain;box-shadow:0 14px 40px var(--shc2);
  opacity:0;visibility:hidden;transform:scale(.985) translateY(-4px);transform-origin:top center;
  transition:opacity .18s ease-out,transform .18s cubic-bezier(.23,1,.32,1),visibility 0s .18s}
@@ -743,6 +774,8 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .pvrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
  text-decoration:none;color:var(--txt);font-size:13px;font-weight:500}
 .pvrow small{display:block;color:var(--m1);font-size:11.5px;font-weight:400;margin-top:1px}
+/* keyboard travel through the preview reads exactly like the pointer does */
+.pvrow.act{background:var(--hovrow)}
 .pvtag{font-size:11.5px;font-weight:500;color:var(--ac-pale);flex-shrink:0}
 .pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--hair);
  flex-shrink:0;background:var(--surface3)}
@@ -754,8 +787,16 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .sbar{margin-top:12px}
 .f{font-size:13px;font-weight:500;color:var(--m1);background:transparent;border:0;
  padding:7px 14px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;
- width:auto;margin:0;font-family:inherit;letter-spacing:0;
+ width:auto;margin:0;font-family:inherit;letter-spacing:0;position:relative;
  transition:background .18s,color .18s,transform .14s ease-out}
+/* the pill LOOKS 33px tall and stays that way - the hit area is grown
+   invisibly past the capsule instead (33 + 12 = 45 >= the 44px HIG floor).
+   On mobile the capsule is a scroller, so the pseudo is clipped to the
+   capsule's own 39px there - still the full capsule, just not 45.
+   Vertical only: inset 0 left/right so a pill never steals its neighbour.
+   z-index:-1 keeps it BEHIND every real box, so when the capsule wraps to a
+   second row the lower pill's pad can't shadow the upper pill's live edge. */
+.f::before{content:'';position:absolute;inset:-6px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
 .f.farch.on{color:var(--txt)}
 .f:active{transform:scale(.97)}
@@ -778,17 +819,23 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .stage>span{min-width:0}
 .stage b{color:var(--ac-pale);font-weight:600}
 .bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
+/* the one considered moment: on load FX_JS drops every bar to 0 and lets it
+   run out to its served width, staggered onto the row settle (see FX_JS) */
 .bar i{display:block;height:100%;border-radius:2px;background:var(--ac);
- transition:width .35s cubic-bezier(.23,1,.32,1)}
+ transition:width .55s cubic-bezier(.23,1,.32,1)}
 .card.arch .bar i{background:var(--m1)}
 .foot{padding:0;border:0;margin-top:9px;display:flex;justify-content:space-between;
  align-items:center;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:13px;font-weight:400;color:var(--m1)}
+/* bare 13px text actions: pad the hit box out to ~43px and cancel the growth
+   with an equal negative margin, so the resting layout is byte-identical.
+   As flex items (.stage, .foot, .footacts) the margins cancel exactly; as
+   inline anchors the vertical padding never touched line layout to begin with. */
 .view{font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
- transition:color .15s}
+ padding:12px 8px;margin:-12px -8px;transition:color .15s}
 .archbtn{font-size:13px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
- padding:0;cursor:pointer;width:auto;margin:0;font-family:inherit;
+ padding:12px 8px;cursor:pointer;width:auto;margin:-12px -8px;font-family:inherit;
  transition:color .15s,transform .14s ease-out}
 .archbtn:active{transform:scale(.97)}
 .empty{color:var(--m1);font-size:13px;padding:48px 0;text-align:center;line-height:1.7}
@@ -796,8 +843,8 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
  background:var(--surface3);flex-shrink:0}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:11px 0;font-size:13px;
  color:var(--m1);background:transparent;border-bottom:1px solid var(--hair)}
-.hintx{width:auto;margin:0 0 0 auto;padding:0 2px;background:transparent;border:0;color:var(--m1);
- font-size:13px;cursor:pointer;transition:color .15s}
+.hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
+ color:var(--m1);font-size:13px;cursor:pointer;transition:color .15s}
 /* ---- scans: image, 6px radius, hairline, no shadow ------------------------ */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:20px}
 .grid img{width:100%;border-radius:6px;border:1px solid var(--hair);background:var(--surface3);
@@ -815,20 +862,22 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .gc .cval{font-size:16.5px;font-weight:600;color:var(--txt);margin-top:4px}
 .gc .cval span{font-size:11.5px;font-weight:400;color:var(--m1)}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
+/* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
- margin-top:6px}
+ padding:10px 6px;margin:-4px -6px -10px}
 .sublink[style]{color:var(--m1);font-weight:400}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
 .own{margin-top:auto;background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:13px;font-weight:400;
- padding:7px 0 5px;width:100%;outline:none;transition:border-color .15s;touch-action:manipulation}
+ padding:11px 0 10px;width:100%;outline:none;transition:border-color .15s;touch-action:manipulation}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
 .own:focus,.own:focus-visible{border-bottom-color:var(--ac);outline:none}
-.own.saved{border-bottom-color:#2f9e68}
+.own.saved{border-bottom-color:var(--ok)}
 .own.errsave{border-bottom-color:var(--err)}
-.undo{width:auto;margin:6px 0 0;padding:0;background:transparent;border:0;color:var(--ac-pale);
- font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;transition:color .15s}
+.undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
+ color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
+ transition:color .15s}
 /* ---- lightbox ------------------------------------------------------------ */
 .lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.4);display:flex;
  align-items:center;justify-content:center;cursor:zoom-out;
@@ -846,20 +895,25 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .grid img.ld,.cover.ld{background:var(--surface3);animation:none}
 @keyframes shimmer{to{background-position:-200% 0}}
 /* ---- corner controls: glass orbs ----------------------------------------- */
-#gearbtn,#themeflip{position:fixed;bottom:20px;z-index:40;width:40px;height:40px;
+/* 44x44 is the HIG touch floor; the 8px gap between the orbs is preserved by
+   pushing the gear out to 20 + 44 + 8 = 72. Icon glyphs are unchanged. */
+#gearbtn,#themeflip{position:fixed;bottom:20px;z-index:40;width:44px;height:44px;
  border-radius:50%;color:var(--m1);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  transition:color .15s,transform .14s ease-out;text-decoration:none}
 #themeflip{right:20px}
-#gearbtn{right:68px}
+#gearbtn{right:72px}
 #gearbtn:active,#themeflip:active{transform:scale(.94)}
 /* ---- forms --------------------------------------------------------------- */
-input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:8px;
- color:var(--txt);font-size:15px;font-weight:400;text-align:left;padding:11px 13px;
+/* every single-line control is a capsule; the extra 3px of side padding buys
+   the curve back so text never crowds the round end. Content-side radii
+   (covers, scans, preview rows, sheet cards) stay square-ish on purpose. */
+input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:999px;
+ color:var(--txt);font-size:15px;font-weight:400;text-align:left;padding:11px 16px;
  font-family:inherit;outline:none}
 input:focus,input:focus-visible{outline:2px solid var(--ac);outline-offset:0}
 input::placeholder{color:var(--m1)}
-button{width:100%;margin-top:12px;background:var(--ac-fill);border:0;border-radius:8px;color:#fff;
+button{width:100%;margin-top:12px;background:var(--ac-fill);border:0;border-radius:999px;color:#fff;
  font-family:inherit;font-size:15px;font-weight:600;padding:12px;cursor:pointer;
  transition:background .18s,transform .14s ease-out}
 button:active{transform:scale(.97)}
@@ -870,7 +924,7 @@ button:active{transform:scale(.97)}
 .sform button{margin-top:14px}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
 .srow input{flex:1;min-width:150px;margin-top:0}
-.sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:14px;flex-shrink:0}
+.sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
 .sbtn.sdel{background:transparent;color:var(--err);padding:11px 0;margin-top:10px}
 .srow .sbtn.sdel{margin-top:0}
 .stitle{font-size:16.5px;font-weight:600;letter-spacing:-.01em;color:var(--txt)}
@@ -881,22 +935,35 @@ button:active{transform:scale(.97)}
 .snote.serr{color:var(--err)}
 .sbar .f{padding:8px 15px}
 .spane{margin-top:16px}
-.smodal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.4);display:none;
- align-items:center;justify-content:center;padding:18px}
-.smodal.on{display:flex}
+/* settings/discord sheets materialize like the lightbox: stays mounted, scrim
+   fades up with the same blur(8px), sheet lands from .97. Exit is quicker. */
+.smodal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.4);display:flex;
+ align-items:center;justify-content:center;padding:18px;
+ opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
+ transition:opacity .14s ease-out,backdrop-filter .14s ease-out,
+  -webkit-backdrop-filter .14s ease-out,visibility 0s .14s}
+.smodal.on{opacity:1;visibility:visible;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+ transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
+  -webkit-backdrop-filter .2s ease-out,visibility 0s}
 .smodal .card{width:min(460px,94vw);margin:0;background:var(--surface);border:1px solid var(--hair);
- border-radius:14px;padding:24px 24px 26px;box-shadow:0 24px 60px var(--shc2)}
+ border-radius:14px;padding:24px 24px 26px;box-shadow:0 24px 60px var(--shc2);
+ animation:none;transform:scale(.97);
+ transition:background .18s,opacity .18s,filter .18s,transform .16s ease-out}
+.smodal.on .card{transform:none;
+ transition:background .18s,opacity .18s,filter .18s,transform .25s cubic-bezier(.23,1,.32,1)}
 .sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:15px;cursor:pointer;
- width:auto;margin:0;padding:2px 6px}
-.dbtn{width:auto;margin-top:10px;padding:0;background:transparent;color:var(--ac-pale);
+ width:auto;margin:-10px -12px;padding:12px 18px}
+.dbtn{width:auto;margin:-1px -8px -11px;padding:11px 8px;background:transparent;color:var(--ac-pale);
  font-size:13px;font-weight:500}
+.dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
 .dstate{font-size:13px;font-weight:500;color:var(--txt);flex:1}
 .dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
 .card.arch,.gc.arch{opacity:.5;filter:grayscale(.6)}
 .card.tlcard{padding:6px 0 2px;border-top:0;margin:0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
-.tlink{color:var(--ac-pale);text-decoration:none;transition:color .15s}
+.tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
+ transition:color .15s}
 .numlink{text-decoration:none;color:inherit;display:inline-block}
 .numlink .num{transition:color .15s}
 .setupform{margin-top:18px}
@@ -931,10 +998,10 @@ button:hover{background:var(--ac-fill-hot)}
  .card:nth-child(7),.gc:nth-child(7){animation-delay:.24s}
  .card:nth-child(8),.gc:nth-child(8){animation-delay:.28s}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}}
-@media(prefers-reduced-motion:reduce){
- *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;
-  transition-duration:.01ms !important;scroll-behavior:auto !important}
- ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
+/* registered so the mobile filter-capsule scroll cue can FADE rather than pop;
+   where @property is unsupported the vars still resolve, the fade just skips */
+@property --cuel{syntax:'<color>';inherits:false;initial-value:transparent}
+@property --cuer{syntax:'<color>';inherits:false;initial-value:transparent}
 /* ---- mobile: only the CURRENT stage is ever named ------------------------- */
 @media(max-width:640px){
  body{padding:12px 14px 88px}
@@ -947,22 +1014,79 @@ button:hover{background:var(--ac-fill-hot)}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
  .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:11.5px}
- /* the segmented control never breaks into a second row - it scrolls */
- .filters{display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;
+ /* the segmented control never breaks into a second row - it scrolls.
+    overflow-y is pinned to hidden so the pills' -6px hit pseudo can never
+    open a phantom vertical scroll on the capsule. */
+ .filters{display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;overflow-y:hidden;
   overscroll-behavior-x:contain;scrollbar-width:none}
  .filters::-webkit-scrollbar{display:none}
  .filters .f{flex:0 0 auto}
+ /* scroll cue: the scrollbar is hidden, so nothing would say there are more
+    pills off the edge. A 22px shade rides each edge that still has content
+    beyond it; FX_JS flips .sl/.sr off the scroll position, so both vanish at
+    their end and neither appears when the capsule already fits.
+    The pure-CSS local-attachment trick can't be used here: it needs an OPAQUE
+    cover layer to hide the shadow at the ends, which would print a solid patch
+    across translucent glass. Default (scroll) attachment pins the shade to the
+    capsule instead, so pills slide under it. --segtrack stays the bottom
+    layer, cues stack above it, all above the glass background-color - which is
+    why the reduced-transparency fallback must swap background-COLOR only.
+    --shc3 makes it theme-aware and keeps it whisper-quiet in light. */
+ .filters{--cuel:transparent;--cuer:transparent;
+  background-image:linear-gradient(90deg,var(--cuel),transparent),
+   linear-gradient(270deg,var(--cuer),transparent),
+   linear-gradient(var(--segtrack),var(--segtrack));
+  background-position:left center,right center,0 0;
+  background-size:22px 100%,22px 100%,auto;
+  background-repeat:no-repeat,no-repeat,repeat;
+  transition:--cuel .18s ease-out,--cuer .18s ease-out}
+ .filters.sl{--cuel:var(--shc3)}
+ .filters.sr{--cuer:var(--shc3)}
  .grid{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:14px}
  .card{padding:15px 10px;margin:0 -10px}
  input,.searchbar,.own{font-size:16px}
  .gc .nm{height:auto;-webkit-line-clamp:2}}
+/* ---- reduced motion: named, not blanket ---------------------------------- */
+/* The old `*{transition-duration:.01ms}` sledgehammer also killed the feedback
+   that TELLS you something happened - hover tints, focus rings, a sheet
+   arriving. What actually causes trouble is travel: things flying in, sliding,
+   scaling, looping. So: kill the travel, keep the feedback, and let overlays
+   still fade (opacity alone, no scale, no animated blur).
+   Lives after the mobile block so it out-orders the capsule cue transition. */
+@media(prefers-reduced-motion:reduce){
+ html{scroll-behavior:auto}
+ /* travel: the row settle, the bar running out, the loading shimmer */
+ .card,.gc{animation:none}
+ .bar i{transition:none}
+ .grid img,.cover{animation:none;background:var(--surface3)}
+ /* press-scale on every control that has one */
+ .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
+ /* the toolbar still EARNS its shadow, it just arrives without the ramp */
+ .toolbar{transition:none}
+ /* the mobile capsule cue still appears, it just doesn't cross-fade */
+ .filters{transition:none}
+ /* overlays: a short opacity fade survives (it says "this is on top of that");
+    the scale landing and the blur ramp do not. Blur jumps straight to final. */
+ .preview{transform:none;transition:opacity .12s ease-out,visibility 0s .12s}
+ .preview.on{transform:none;transition:opacity .12s ease-out,visibility 0s}
+ .lb,.smodal{backdrop-filter:none;-webkit-backdrop-filter:none;
+  transition:opacity .12s ease-out,visibility 0s .12s}
+ .lb.open{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:opacity .12s ease-out,visibility 0s}
+ .smodal.on{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+  transition:opacity .12s ease-out,visibility 0s}
+ .lb img,.lb.open img,.smodal .card,.smodal.on .card{transform:none;transition:none}
+ ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 /* ---- glass fallbacks ----------------------------------------------------- */
+/* background-COLOR, never the shorthand: the shorthand would wipe the capsule's
+   segtrack layer and the mobile scroll cue along with the translucency */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .toolbar,.filters,.sbar,#gearbtn,#themeflip{background:var(--glasssolid)}}
+ .toolbar,.filters,.sbar,#gearbtn,#themeflip{background-color:var(--glasssolid)}}
 @media(prefers-reduced-transparency:reduce){
  .toolbar,.filters,.sbar,#gearbtn,#themeflip{backdrop-filter:none;-webkit-backdrop-filter:none;
-  background:var(--glasssolid)}
- .lb,.lb.open{backdrop-filter:none;-webkit-backdrop-filter:none;background:rgba(0,0,0,.72)}}
+  background-color:var(--glasssolid)}
+ .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
+  background:rgba(0,0,0,.72)}}
 """
 
 # favicon: accent-colored card-fan mark (three cards, opacity steps for depth),
@@ -1075,7 +1199,8 @@ def gate_page(error=""):
 <style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
-<input type="password" name="password" placeholder="{ph}" autofocus autocomplete="current-password">
+<input type="password" name="password" placeholder="{ph}" aria-label="{ph}"
+ autofocus autocomplete="current-password">
 <button type="submit">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
@@ -1087,7 +1212,7 @@ def not_found_page(msg="There's no page at this address."):
 {HEAD_HTML}
 <style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Not found</h1><div class="sub">{html.escape(msg)}</div>
-<a class="view" style="display:inline-block;margin-top:22px" href="/">&larr; Back to the dashboard</a>
+<a class="view" style="display:inline-block;margin-top:10px" href="/">&larr; Back to the dashboard</a>
 </div></div></main>{THEME_JS}</body></html>"""
 
 # ---------- settings ----------
@@ -1163,7 +1288,8 @@ def settings_gate(error=""):
 <style>{THEME_VARS}{CSS}@view-transition{{navigation:none}}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
 <form method="POST" action="/settings/auth">
-<input type="password" name="password" placeholder="Settings password" autofocus autocomplete="off">
+<input type="password" name="password" placeholder="Settings password"
+ aria-label="Settings password" autofocus autocomplete="off">
 <button type="submit">Open settings</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
@@ -1203,15 +1329,18 @@ def settings_page(msg="", err=""):
 <div class="meta">{"configured" if hook_on else "not set"}</div>
 <form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="webhook">
-<input name="value" type="password" placeholder="discord.com/api/webhooks/… URL" autocomplete="off">
+<input name="value" type="password" placeholder="discord.com/api/webhooks/… URL"
+ aria-label="Discord webhook URL" autocomplete="off">
 <button type="submit" class="sbtn">Save</button></form>
 {remove_btn}
 </div>""")
         spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
 <form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="site_pw">
-<input name="value" type="password" placeholder="New site password" autocomplete="new-password">
-<input name="value2" type="password" placeholder="Repeat" autocomplete="new-password">
+<input name="value" type="password" placeholder="New site password"
+ aria-label="New site password" autocomplete="new-password">
+<input name="value2" type="password" placeholder="Repeat"
+ aria-label="Repeat new site password" autocomplete="new-password">
 <button type="submit" class="sbtn">Save</button></form>
 </div>""")
     note = (f'<div class="snote serr">{html.escape(err)}</div>' if err else
@@ -1227,46 +1356,53 @@ def settings_page(msg="", err=""):
 <div class="sub">Changes apply from the next hourly scan.</div></div></div>
 {note}
 <div class="card sblock" style="margin-top:22px">
-<div class="stitle">PSA accounts</div>
+<h2 class="stitle">PSA accounts</h2>
 <div class="sbar">{"".join(achips)}<button type="button" class="f" id="saddbtn">Add account</button></div>
 </div>
 <div class="card sblock">
-<div class="stitle">Discord webhook</div>
+<h2 class="stitle">Discord webhook</h2>
 {wbar}
 {"".join(wpanes)}
 </div>
 <div class="card sblock">
-<div class="stitle">Admin password</div>
+<h2 class="stitle">Admin password</h2>
 <div class="meta">opens this settings page</div>
 <form method="POST" action="/settings/password" class="srow">
-<input name="new_pw" type="password" placeholder="New admin password" autocomplete="new-password">
-<input name="confirm_pw" type="password" placeholder="Repeat" autocomplete="new-password">
+<input name="new_pw" type="password" placeholder="New admin password"
+ aria-label="New admin password" autocomplete="new-password">
+<input name="confirm_pw" type="password" placeholder="Repeat"
+ aria-label="Repeat new admin password" autocomplete="new-password">
 <button type="submit" class="sbtn">Save</button></form>
 </div>
 <div class="card sblock">
-<div class="stitle">Site password</div>
+<h2 class="stitle">Site password</h2>
 <div class="meta">what visitors type to enter the site</div>
 {sbar2}
 {"".join(spanes)}
 </div>
-<div class="smodal" id="amodal"><div class="card sblock">
+<div class="smodal" id="amodal" role="dialog" aria-modal="true" aria-labelledby="amtitle">
+<div class="card sblock">
 <button type="button" class="sclose" aria-label="Close">✕</button>
-<div class="stitle" id="amtitle"></div>
+<h2 class="stitle" id="amtitle"></h2>
 <form method="POST" action="/settings/account" class="srow" style="margin-top:16px">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="psa_pw">
-<input name="value" type="password" placeholder="New PSA password" autocomplete="new-password">
+<input name="value" type="password" placeholder="New PSA password"
+ aria-label="New PSA password" autocomplete="new-password">
 <button type="submit" class="sbtn">Save</button></form>
 <div class="sdanger"><form method="POST" action="/settings/account"
  onsubmit="return confirm('Unlink this account? The site keeps showing its last known data; scans stop until you save a new PSA password.')">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="unlink">
 <button type="submit" class="sbtn sdel">Unlink account</button></form></div>
 </div></div>
-<div class="smodal" id="addmodal"><div class="card sblock">
+<div class="smodal" id="addmodal" role="dialog" aria-modal="true" aria-labelledby="addtitle">
+<div class="card sblock">
 <button type="button" class="sclose" aria-label="Close">✕</button>
-<div class="stitle">Add PSA account</div>
+<h2 class="stitle" id="addtitle">Add PSA account</h2>
 <form method="POST" action="/settings/add" class="sform">
-<input name="psa_email" type="email" placeholder="PSA email" autocomplete="off">
-<input name="psa_pw" type="password" placeholder="PSA password" autocomplete="new-password">
+<input name="psa_email" type="email" placeholder="PSA email"
+ aria-label="PSA email" autocomplete="off">
+<input name="psa_pw" type="password" placeholder="PSA password"
+ aria-label="PSA password" autocomplete="new-password">
 <button type="submit">Add</button>
 </form></div></div>
 <script>
@@ -1286,11 +1422,17 @@ def settings_page(msg="", err=""):
       document.getElementById('amtitle').textContent=b.textContent.trim();
       am.querySelectorAll('.amacct').forEach(function(x){{x.value=b.dataset.acct;}});
       am.classList.add('on');
-      var f=am.querySelector('input[name=value]');if(f){{f.value='';f.focus();}}
+      // focus after the sheet is visible - a hidden field can't take focus
+      var f=am.querySelector('input[name=value]');
+      if(f){{f.value='';requestAnimationFrame(function(){{f.focus();}});}}
     }});
   }});
   document.getElementById('saddbtn').addEventListener('click',function(){{
-    document.getElementById('addmodal').classList.add('on');
+    var m=document.getElementById('addmodal');
+    m.classList.add('on');
+    // focus after the sheet is visible - a hidden field can't take focus
+    var f=m.querySelector('input[name=psa_email]');
+    if(f)requestAnimationFrame(function(){{f.focus();}});
   }});
   document.querySelectorAll('.schip[data-group]').forEach(function(b){{
     b.addEventListener('click',function(){{
@@ -1411,10 +1553,14 @@ def setup_page(error="", label="", psa_email=""):
 <style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">First-time setup — connect your PSA account</div>
 <form method="POST" action="/setup" class="setupform">
-<input name="label" placeholder="Store or site name" maxlength="40" value="{html.escape(label)}">
-<input type="password" name="site_pw" placeholder="Choose a site password (for visitors)" autocomplete="new-password">
-<input type="email" name="psa_email" placeholder="PSA account email" value="{html.escape(psa_email)}">
-<input type="password" name="psa_pw" placeholder="PSA account password" autocomplete="new-password">
+<input name="label" placeholder="Store or site name" aria-label="Store or site name"
+ maxlength="40" value="{html.escape(label)}">
+<input type="password" name="site_pw" placeholder="Choose a site password (for visitors)"
+ aria-label="Choose a site password (for visitors)" autocomplete="new-password">
+<input type="email" name="psa_email" placeholder="PSA account email"
+ aria-label="PSA account email" value="{html.escape(psa_email)}">
+<input type="password" name="psa_pw" placeholder="PSA account password"
+ aria-label="PSA account password" autocomplete="new-password">
 <button type="submit">Connect PSA</button></form>
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
 only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
@@ -1504,7 +1650,11 @@ def search_box(value="", owner="", ph=None):
     return (f'<div class="searchwrap">{icon}<input class="searchbar" id="q" type="search" '
             f'autocomplete="off" spellcheck="false" placeholder="{html.escape(ph)}" '
             f'aria-label="{html.escape(ph)}" data-owner="{html.escape(owner)}" '
-            f'value="{html.escape(value)}"><div class="preview" id="preview"></div></div>')
+            f'role="combobox" aria-expanded="false" aria-autocomplete="list" '
+            f'aria-controls="preview" '
+            f'value="{html.escape(value)}">'
+            f'<div class="preview" id="preview" role="listbox" '
+            f'aria-label="Search suggestions"></div></div>')
 
 SEARCH_JS = """<script>
 (function(){
@@ -1512,41 +1662,76 @@ SEARCH_JS = """<script>
   if(!q) return;
   var own=q.dataset.owner||'';
   var scope=own?('&owner='+encodeURIComponent(own)):'';
+  // the preview is a combobox listbox: `rows` is the option list the arrow keys
+  // walk, `ai` the active index (-1 = nothing active, Enter falls through to
+  // the full search page). Every re-render drops the active row.
+  var rows=[], ai=-1;
   function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
+  function act(n){
+    var p=rows[ai];
+    if(p){p.classList.remove('act');p.removeAttribute('aria-selected');}
+    ai=n;
+    var r=rows[ai];
+    if(r){
+      r.classList.add('act'); r.setAttribute('aria-selected','true');
+      r.scrollIntoView({block:'nearest'});
+      q.setAttribute('aria-activedescendant',r.id);
+    }else{
+      q.removeAttribute('aria-activedescendant');
+    }
+  }
+  function open(on){
+    pv.classList.toggle('on',on);
+    q.setAttribute('aria-expanded',on?'true':'false');
+    if(!on) act(-1);
+  }
   function render(data){
-    var h='';
+    var h='',n=0;
     if(data.names&&data.names.length){
-      h+='<div class="pvsec">People</div>';
-      data.names.forEach(function(n){
-        h+='<a class="pvrow" href="/cards?owner='+encodeURIComponent(n)+'"><span class="pvtag">Person</span><span>'+esc(n)+'</span></a>';
+      h+='<div class="pvsec" role="presentation">People</div>';
+      data.names.forEach(function(nm){
+        h+='<a class="pvrow" role="option" id="pvo'+(n++)+'" href="/cards?owner='+encodeURIComponent(nm)+'"><span class="pvtag">Person</span><span>'+esc(nm)+'</span></a>';
       });
     }
     if(data.cards&&data.cards.length){
-      h+='<div class="pvsec">Cards</div>';
+      h+='<div class="pvsec" role="presentation">Cards</div>';
       data.cards.forEach(function(c){
         var img=c.img?'<img class="pvimg" src="'+c.img+'" alt="">':'';
         var sub=esc(c.cert?('#'+c.cert):('sub #'+c.sub))+(c.owner?(' · '+esc(c.owner)):'');
-        h+='<a class="pvrow" href="/sub/'+encodeURIComponent(c.sub)+'">'+img+'<span>'+esc(c.name||'Card')+'<small>'+sub+'</small></span></a>';
+        h+='<a class="pvrow" role="option" id="pvo'+(n++)+'" href="/sub/'+encodeURIComponent(c.sub)+'">'+img+'<span>'+esc(c.name||'Card')+'<small>'+sub+'</small></span></a>';
       });
     }
     if(!h) h='<div class="pvempty">No matches</div>';
-    pv.innerHTML=h; pv.classList.add('on');
+    ai=-1; q.removeAttribute('aria-activedescendant');
+    pv.innerHTML=h;
+    rows=[].slice.call(pv.querySelectorAll('.pvrow'));
+    open(true);
   }
   function go(){
     clearTimeout(t);
     t=setTimeout(function(){
-      if(!pv.classList.contains('on')){pv.innerHTML='<div class="pvempty">Searching…</div>';pv.classList.add('on');}
+      if(!pv.classList.contains('on')){pv.innerHTML='<div class="pvempty">Searching…</div>';rows=[];ai=-1;open(true);}
       fetch('/suggest?q='+encodeURIComponent(q.value.trim())+scope,{headers:{'X-Requested-With':'fetch'}})
-        .then(function(r){return r.json();}).then(render).catch(function(){pv.classList.remove('on');});
+        .then(function(r){return r.json();}).then(render).catch(function(){rows=[];open(false);});
     },110);
   }
   q.addEventListener('input',go);
   q.addEventListener('focus',go);
   q.addEventListener('keydown',function(e){
-    if(e.key==='Enter'){e.preventDefault();location.href='/search?q='+encodeURIComponent(q.value.trim())+scope;}
-    else if(e.key==='Escape'){pv.classList.remove('on');}
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      if(!pv.classList.contains('on')||!rows.length) return;
+      e.preventDefault();
+      var d=e.key==='ArrowDown'?1:-1, n=rows.length;
+      act(ai<0 ? (d>0?0:n-1) : (ai+d+n)%n);
+    }
+    else if(e.key==='Enter'){
+      e.preventDefault();
+      if(rows[ai]){location.href=rows[ai].href;return;}
+      location.href='/search?q='+encodeURIComponent(q.value.trim())+scope;
+    }
+    else if(e.key==='Escape'){open(false);}
   });
-  document.addEventListener('click',function(e){ if(!pv.contains(e.target)&&e.target!==q) pv.classList.remove('on'); });
+  document.addEventListener('click',function(e){ if(!pv.contains(e.target)&&e.target!==q) open(false); });
 })();
 </script>"""
 
@@ -1698,8 +1883,106 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
   if(m.complete){done();}
   else{m.addEventListener('load',done);m.addEventListener('error',done);}
 });
-// (no cursor-spotlight, no glow: this world's only motion is the row settle
-// and the progress bar. Hover states live in CSS alone.)
+/* the stage bar runs out: each bar is knocked back to 0, then released to the
+   width the server rendered, delayed onto the same .04s row-settle stagger so
+   it lands with its row instead of after it. Reduced motion returns early, so
+   the served width is never touched and there is no 0-width frame. */
+(function(){
+  var bars=document.querySelectorAll('.bar i');
+  if(!bars.length)return;
+  try{if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;}catch(e){}
+  var held=[];
+  bars.forEach(function(b,i){
+    var w=b.style.width;
+    if(!w||b.dataset.fx)return;          // no target, or already run
+    b.dataset.fx='1';
+    b.style.transitionDelay=Math.min(i,7)*40+'ms';
+    b.style.width='0%';
+    held.push([b,w]);
+  });
+  if(!held.length)return;
+  void document.body.offsetWidth;        // commit the 0 so the width transition fires
+  held.forEach(function(p){p[0].style.width=p[1];});
+})();
+/* mobile filter capsule: its scrollbar is hidden, so nothing would say there
+   are more pills past the edge. Flag which side still has content (.sl/.sr)
+   and let the CSS shade that edge; a capsule that fits gets neither class,
+   and each class drops the moment you reach that end. */
+(function(){
+  document.querySelectorAll('.filters').forEach(function(f){
+    function cue(){
+      var max=f.scrollWidth-f.clientWidth;
+      f.classList.toggle('sl',max>1&&f.scrollLeft>1);
+      f.classList.toggle('sr',max>1&&f.scrollLeft<max-1);
+    }
+    f.addEventListener('scroll',cue,{passive:true});
+    addEventListener('resize',cue);
+    cue();
+  });
+})();
+/* scroll-edge elevation. A sticky bar that casts a full shadow while sitting
+   at the top of an unscrolled page is claiming a depth it hasn't got. A 1px
+   sentinel is dropped in just above the bar; while it is still on screen the
+   bar sits nearly flush, and the moment it passes out of view - which is the
+   moment content starts sliding underneath - .raised lifts it.
+   rootMargin 6px is the bar's own sticky offset (10px) minus the sentinel box
+   (1px + the 16px margin that follows it), so the class flips on the exact
+   frame the bar goes sticky. Pages with no toolbar simply return. */
+(function(){
+  var tb=document.querySelector('.toolbar');
+  if(!tb||!window.IntersectionObserver)return;
+  var s=document.createElement('div');
+  s.className='tbsentinel';
+  s.setAttribute('aria-hidden','true');
+  tb.parentNode.insertBefore(s,tb);
+  new IntersectionObserver(function(e){
+    tb.classList.toggle('raised',!e[0].isIntersecting);
+  },{rootMargin:'6px 0px 0px 0px',threshold:0}).observe(s);
+})();
+/* sheets are dialogs: while one is open, Tab must not walk out the back of it,
+   and closing must hand focus back to whatever opened it. Each sheet's own
+   open/close code just toggles .on, so this watches that class instead of
+   wiring into three different handlers. */
+(function(){
+  var sheets=document.querySelectorAll('.smodal');
+  if(!sheets.length)return;
+  var SEL='a[href],button:not([disabled]),input:not([type=hidden]):not([disabled]),'+
+          'select,textarea,[tabindex]:not([tabindex="-1"])';
+  var opener=null;
+  function tabbable(m){
+    return [].slice.call(m.querySelectorAll(SEL)).filter(function(el){
+      return el.offsetWidth||el.offsetHeight||el.getClientRects().length;});
+  }
+  document.addEventListener('keydown',function(e){
+    if(e.key!=='Tab')return;
+    var m=document.querySelector('.smodal.on');
+    if(!m)return;
+    var f=tabbable(m);
+    if(!f.length){e.preventDefault();return;}
+    var first=f[0],last=f[f.length-1],a=document.activeElement;
+    if(!m.contains(a)){e.preventDefault();(e.shiftKey?last:first).focus();}
+    else if(e.shiftKey&&a===first){e.preventDefault();last.focus();}
+    else if(!e.shiftKey&&a===last){e.preventDefault();first.focus();}
+  },true);
+  if(!window.MutationObserver)return;
+  var mo=new MutationObserver(function(recs){
+    recs.forEach(function(r){
+      var m=r.target,on=m.classList.contains('on');
+      if(on&&!m.dataset.mopen){
+        m.dataset.mopen='1';
+        // runs as a microtask, before the sheet's own rAF focus call
+        opener=document.activeElement;
+      }else if(!on&&m.dataset.mopen){
+        delete m.dataset.mopen;
+        if(opener&&opener.focus&&document.contains(opener))opener.focus();
+        opener=null;
+      }
+    });
+  });
+  sheets.forEach(function(m){mo.observe(m,{attributes:true,attributeFilter:['class']});});
+})();
+// (no cursor-spotlight, no glow: this world's motion is the row settle, the
+// stage bar running out, and overlays materializing. Hover lives in CSS alone.)
 </script>"""
 
 # person page: fold archived-sub cards behind a toggle below the active grid
@@ -1844,12 +2127,15 @@ def dash_page(a, subs):
     stamp = fmt_local(updated) if updated else "n/a"
     # the masthead lives IN the sticky glass toolbar: title, store, freshness,
     # sign-out and search travel together as the page's one piece of chrome
-    toolbar = (f'<div class="toolbar"><div class="tbtop">'
+    # <header> because this one really is the page masthead; the .tbq bars on the
+    # other pages stay <div> (they carry a search field, not a page header).
+    # Every selector and the FX_JS query use the .toolbar class, so it's a swap.
+    toolbar = (f'<header class="toolbar"><div class="tbtop">'
                f'<div class="brand">{logo_tag()}<div><h1>{html.escape(SITE_TITLE)}</h1>'
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
                f'<div class="tbend"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div>'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
-               f'</div></div>{search_box()}</div>')
+               f'</div></div>{search_box()}</header>')
     hint = ('<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
             '<button class="hintx" id="hintx" aria-label="dismiss">✕</button></div>')
     # unlinked account: keep serving everything, say why it stopped moving
