@@ -90,7 +90,19 @@ _AC_MIX_D = {"--ac-hot": "82%,white", "--ac-pale": "45%,white", **_AC_MIX_FILL}
 # secondary (neutral gray ground - never blue-gray, never pure black).
 _DARK = {"bg": "#17181a", "surface": "#1c1d20", "surface2": "#202124",
  "surface3": "rgba(255,255,255,.08)", "inp": "rgba(255,255,255,.08)",
- "ph": "rgba(255,255,255,.06)", "hovrow": "rgba(255,255,255,.045)",
+ "ph": "rgba(255,255,255,.06)", "hovrow": "rgba(255,255,255,.07)",
+ # search-preview tag chip: dark grounds swallow a low-alpha accent wash, so the
+ # same chip needs a heavier mix here than in light to read at all.
+ "tagmix": "18%",
+ # AMBIENT GROUND (see body::before): two soft radials pooled at the top edge,
+ # behind the sticky glass toolbar, so the lens has something to refract. Dark
+ # needs more alpha (11/8 vs 6/4) because #17181a eats it - but the ellipses are
+ # SHORTER and stop sooner (55%/52%) so the tint stays a halo at the top and the
+ # field below stays neutral graphite. Never blue-gray the whole sheet.
+ "amb": ("radial-gradient(110% 54% at 84% -20%,color-mix(in srgb,var(--ac2) 11%,transparent),"
+         "transparent 55%),"
+         "radial-gradient(88% 46% at -14% -6%,color-mix(in srgb,var(--ac) 8%,transparent),"
+         "transparent 52%)"),
  "txt": "#f2f2f4", "m1": "#98989f", "m9": "#98989f", "tert": "#8a8a92",
  "hair": "rgba(255,255,255,.12)", "hairh": "rgba(255,255,255,.3)",
  "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)",
@@ -110,7 +122,11 @@ _DARK = {"bg": "#17181a", "surface": "#1c1d20", "surface2": "#202124",
  "ok": "#43c383"}
 _LIGHT = {"bg": "#ffffff", "surface": "#ffffff", "surface2": "#f7f7f8",
  "surface3": "#f2f2f4", "inp": "#f2f2f4", "ph": "#f2f2f4",
- "hovrow": "rgba(0,0,0,.028)",
+ "hovrow": "rgba(0,0,0,.05)", "tagmix": "12%",
+ "amb": ("radial-gradient(120% 62% at 84% -22%,color-mix(in srgb,var(--ac2) 6%,transparent),"
+         "transparent 60%),"
+         "radial-gradient(96% 52% at -14% -6%,color-mix(in srgb,var(--ac) 4%,transparent),"
+         "transparent 56%)"),
  "txt": "#1d1d1f", "m1": "#6e6e73", "m9": "#6e6e73", "tert": "#86868b",
  "hair": "rgba(0,0,0,.1)", "hairh": "rgba(0,0,0,.28)",
  "hair2": "rgba(0,0,0,.07)", "track": "#ececef",
@@ -706,18 +722,46 @@ CSS = """
    finish review, the verdict, and DESIGN.md
    ========================================================================= */
 *{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+/* --bg lives on <html> so the CANVAS (and therefore overscroll rubber-banding)
+   is always the flat ground colour - no white flash, no gradient smearing when
+   the page bounces. body is transparent over it. */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg)}
 @view-transition{navigation:auto}
-body{background:var(--bg);min-height:100vh;color:var(--txt);
+/* ---- ambient ground ------------------------------------------------------ */
+/* The sheet is white/graphite edge to edge, which gives the Liquid Glass chrome
+   nothing to refract - a lens over flat paint reads as a frosted rectangle.
+   This lays two very wide, very soft radials derived ONLY from --ac/--ac2 (so a
+   white-label swap re-tints them for free) in the top corners: a whisper of the
+   accent pooling exactly where the sticky toolbar sits, dissolved back to plain
+   --bg by roughly mid-viewport. It must read as air in the room, not as a
+   gradient - if you can name where it stops, it's too strong.
+   position:fixed on a PSEUDO, not background-attachment:fixed on body: mobile
+   Safari repaints an attached background on every scroll frame.
+   z-index:-1 puts it behind all in-flow content but still above the canvas. The
+   only other negative-z box is .f::before, which is a later descendant in the
+   same root stacking context, so it still paints above this. */
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
+ background:var(--amb)}
+body{background:transparent;min-height:100vh;color:var(--txt);
  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
  -webkit-font-smoothing:antialiased;padding:14px 20px 96px;
  font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px}
 .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .wrap{max-width:820px;margin:0 auto}
-/* ---- type: system stack, sentence case, no tracking above the large title -- */
-h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
+/* ---- type: system stack, sentence case, tracking scaled to size ----------- */
+/* Hierarchy is weight+size+leading as a SET, never size alone. Three rungs:
+   26/700 large title, 17/650 data values and section titles, 13/400 body.
+   Tracking is optical, so it is a function of size, never a style: 26 = -.021em,
+   24 = -.020, 22 = -.017, 17 = -.012, and 13px/below sits at 0. Nothing here
+   ever tracks POSITIVE - no uppercase, no letterspaced labels.
+   700 (not 600) on the large title: at 26px the extra weight is what separates
+   the masthead from the 650 data rung, which size alone no longer does. */
+h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
+/* the masthead subtitle carries the store name under a 26/700 title - a half
+   pixel is all it needs to stop reading as a caption. Body stays 13. */
+.toolbar .sub{font-size:12.5px}
 .logo{display:block;height:30px;width:auto;mix-blend-mode:var(--logoblend,normal)}
 .logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:6px;
  box-sizing:content-box;height:26px}
@@ -729,8 +773,8 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
 .synced .estnote{display:block;font-size:11.5px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
 .synced .lbl2{display:block;margin-top:8px}
-.lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:8px;
- transition:color .15s}
+.lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
+ transition:color .15s,background-color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
 /* the dual rim is what makes this read as a LENS rather than a frosted card:
    light catches the top edge (--rim) and falls off at the bottom (--rimb).
@@ -776,7 +820,14 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .pvrow small{display:block;color:var(--m1);font-size:11.5px;font-weight:400;margin-top:1px}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
-.pvtag{font-size:11.5px;font-weight:500;color:var(--ac-pale);flex-shrink:0}
+/* the tag is a category, not a sentence - as bare accent text it competed with
+   the row's own title. A quiet capsule demotes it to a label. The fill is mixed
+   from --ac-pale (already theme-adaptive AND white-label driven) so it never
+   hardcodes an accent-derived colour; --tagmix carries the per-theme strength.
+   line-height:1 keeps the 6px of vertical padding from growing the row. */
+.pvtag{font-size:11px;font-weight:500;line-height:1;color:var(--ac-pale);flex-shrink:0;
+ padding:3px 9px;border-radius:999px;
+ background:color-mix(in srgb,var(--ac-pale) var(--tagmix),transparent)}
 .pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--hair);
  flex-shrink:0;background:var(--surface3)}
 .pvempty{padding:14px 10px;color:var(--m1);font-size:13px}
@@ -806,18 +857,26 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 #list{border-bottom:1px solid var(--hair)}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
-.num{font-size:16.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+/* the data rung: 17/650. 650 is a real weight on the system face (SF supports
+   the full optical range); Segoe/Roboto have no 650 and snap to 600 or 700 -
+   both acceptable, since the rung only has to out-weigh 13px/400 body. */
+.num{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .meta{font-size:13px;font-weight:400;color:var(--m1);margin-top:2px}
 .pills{display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
-.ledval{font-size:16.5px;font-weight:600;color:var(--txt);white-space:nowrap}
-.ledval span{display:block;font-size:11.5px;font-weight:400;color:var(--m1)}
+.ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
+/* the caption under a value drops back to the small-text rung, so it must also
+   drop the value's optical tracking - tracking is inherited, size is not. */
+.ledval span{display:block;font-size:11.5px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 /* ---- stage: one text line above a 4px capsule bar ------------------------- */
 .stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
  font-size:13px;color:var(--m1);margin:13px 0 7px}
 .stage>span{min-width:0}
-.stage b{color:var(--ac-pale);font-weight:600}
+/* 650, matching .num/.ledval: the stage name is a DATA value, not emphasis in a
+   sentence. The operator sweeps the column of stage names the same way they
+   sweep the column of lot numbers, so both sit on the same weight rung. */
+.stage b{color:var(--ac-pale);font-weight:650}
 .bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
 /* the one considered moment: on load FX_JS drops every bar to 0 and lets it
    run out to its served width, staggered onto the row settle (see FX_JS) */
@@ -833,10 +892,10 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
    As flex items (.stage, .foot, .footacts) the margins cancel exactly; as
    inline anchors the vertical padding never touched line layout to begin with. */
 .view{font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
- padding:12px 8px;margin:-12px -8px;transition:color .15s}
+ padding:12px 8px;margin:-12px -8px;transition:color .15s,background-color .15s}
 .archbtn{font-size:13px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
  padding:12px 8px;cursor:pointer;width:auto;margin:-12px -8px;font-family:inherit;
- transition:color .15s,transform .14s ease-out}
+ transition:color .15s,background-color .15s,transform .14s ease-out}
 .archbtn:active{transform:scale(.97)}
 .empty{color:var(--m1);font-size:13px;padding:48px 0;text-align:center;line-height:1.7}
 .cover{width:42px;height:58px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
@@ -844,7 +903,7 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:11px 0;font-size:13px;
  color:var(--m1);background:transparent;border-bottom:1px solid var(--hair)}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
- color:var(--m1);font-size:13px;cursor:pointer;transition:color .15s}
+ color:var(--m1);font-size:13px;cursor:pointer;transition:color .15s,background-color .15s}
 /* ---- scans: image, 6px radius, hairline, no shadow ------------------------ */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:20px}
 .grid img{width:100%;border-radius:6px;border:1px solid var(--hair);background:var(--surface3);
@@ -859,12 +918,12 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .cn.pre{font-family:inherit;font-size:12px}
 .gc .nm{font-size:13px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;height:54px;
  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.gc .cval{font-size:16.5px;font-weight:600;color:var(--txt);margin-top:4px}
-.gc .cval span{font-size:11.5px;font-weight:400;color:var(--m1)}
+.gc .cval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);margin-top:4px}
+.gc .cval span{font-size:11.5px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
- padding:10px 6px;margin:-4px -6px -10px}
+ padding:10px 6px;margin:-4px -6px -10px;transition:color .15s,background-color .15s}
 .sublink[style]{color:var(--m1);font-weight:400}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
 .own{margin-top:auto;background:transparent;border:0;border-bottom:1px solid transparent;
@@ -877,7 +936,7 @@ h1{font-size:21px;font-weight:600;letter-spacing:-.015em;line-height:1.25}
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
  color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
- transition:color .15s}
+ transition:color .15s,background-color .15s}
 /* ---- lightbox ------------------------------------------------------------ */
 .lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.4);display:flex;
  align-items:center;justify-content:center;cursor:zoom-out;
@@ -913,9 +972,24 @@ input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:99
  font-family:inherit;outline:none}
 input:focus,input:focus-visible{outline:2px solid var(--ac);outline-offset:0}
 input::placeholder{color:var(--m1)}
-button{width:100%;margin-top:12px;background:var(--ac-fill);border:0;border-radius:999px;color:#fff;
- font-family:inherit;font-size:15px;font-weight:600;padding:12px;cursor:pointer;
- transition:background .18s,transform .14s ease-out}
+/* BUTTONS ARE NOT FILLED BY DEFAULT. The filled accent capsule used to live on
+   the `button` ELEMENT selector, which meant every text action, pill and orb in
+   the app was fighting it - and losing to `button:hover`, so hovering "Archive"
+   or a filter pill flashed a blue capsule. Specificity patches only move the
+   fight around. So the filled identity is opt-in via .fillbtn, and the element
+   rule keeps nothing but neutral resets: no background, no colour, no radius,
+   no width, no margin. Typography (family/size/weight) stays here on purpose -
+   it is a reset, not an identity, and every classed button already overrides
+   what it needs to, so the cascade for them is byte-identical. */
+button{background:transparent;border:0;color:inherit;
+ font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
+/* filled primary: form submits and modal saves. Carries the width:100% and
+   margin-top:12px the element rule used to hand out, because those are exactly
+   the sites that relied on them. */
+.fillbtn{width:100%;margin-top:12px;background:var(--ac-fill);border-radius:999px;color:#fff;
+ padding:12px;transition:background .18s,transform .14s ease-out}
+/* press-scale stays element-level: it is feedback every button deserves, and it
+   sets no colour so it cannot leak a fill. */
 button:active{transform:scale(.97)}
 .err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:14px}
 /* ---- settings ------------------------------------------------------------ */
@@ -925,9 +999,13 @@ button:active{transform:scale(.97)}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
 .srow input{flex:1;min-width:150px;margin-top:0}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
-.sbtn.sdel{background:transparent;color:var(--err);padding:11px 0;margin-top:10px}
+/* .sdel never takes .fillbtn - it is a destructive TEXT action, not a primary.
+   The radius is restated because the element rule no longer hands one out and
+   the focus ring follows it. */
+.sbtn.sdel{background:transparent;color:var(--err);padding:11px 0;margin-top:10px;
+ border-radius:999px}
 .srow .sbtn.sdel{margin-top:0}
-.stitle{font-size:16.5px;font-weight:600;letter-spacing:-.01em;color:var(--txt)}
+.stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt)}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
 .slbl{font-size:12px;color:var(--m1);margin-top:18px;line-height:1.6;max-width:460px}
@@ -952,7 +1030,7 @@ button:active{transform:scale(.97)}
 .smodal.on .card{transform:none;
  transition:background .18s,opacity .18s,filter .18s,transform .25s cubic-bezier(.23,1,.32,1)}
 .sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:15px;cursor:pointer;
- width:auto;margin:-10px -12px;padding:12px 18px}
+ width:auto;margin:-10px -12px;padding:12px 18px;transition:color .15s,background-color .15s}
 .dbtn{width:auto;margin:-1px -8px -11px;padding:11px 8px;background:transparent;color:var(--ac-pale);
  font-size:13px;font-weight:500}
 .dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
@@ -963,7 +1041,7 @@ button:active{transform:scale(.97)}
 .card.tlcard{padding:6px 0 2px;border-top:0;margin:0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
- transition:color .15s}
+ transition:color .15s,background-color .15s}
 .numlink{text-decoration:none;color:inherit;display:inline-block}
 .numlink .num{transition:color .15s}
 .setupform{margin-top:18px}
@@ -971,6 +1049,11 @@ button:active{transform:scale(.97)}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
 .gbox{width:300px;text-align:center}
+/* the gate is a 300px centred card, not a page - a large title sized for a
+   820px sheet overpowers it and wraps a two-word site name onto two lines.
+   One step down, same weight, tracking re-scaled to the new size. The card is
+   the same 300px on phones, so this size does NOT change at the breakpoint. */
+.gbox h1{font-size:24px;letter-spacing:-.02em}
 .gbox input{text-align:center}
 .gbox .sub{margin-top:6px}
 /* ---- hover: pointer devices only ----------------------------------------- */
@@ -982,9 +1065,21 @@ button:active{transform:scale(.97)}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
-.view:hover,.archbtn:hover,.sublink:hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
+.view:hover,.archbtn:hover,.sublink:not([style]):hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
+/* The text actions already carry an invisible padded hit box (the negative-
+   margin trick above). On hover that box becomes VISIBLE as a quiet fill - the
+   iOS/macOS toolbar highlight - so you can see the target you're about to hit
+   instead of guessing from a colour shift. --surface3 is the neutral quiet fill
+   (light #f2f2f4, dark rgba(255,255,255,.08)); against --ac-hot text it clears
+   contrast in both themes with room to spare.
+   8px, NOT a capsule: these are inline actions inside a sentence of layout, and
+   a capsule would read as a control sitting there permanently. */
+.view:hover,.archbtn:hover,.sublink:not([style]):hover,.undo:hover,.tlink:hover,.dbtn:hover{
+ background:var(--surface3);border-radius:8px}
+/* the glyph actions ARE square-ish targets, so theirs is a circle */
+.hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
 .numlink:hover .num{color:var(--ac-pale)}
-button:hover{background:var(--ac-fill-hot)}
+.fillbtn:hover{background:var(--ac-fill-hot)}
 .sbtn.sdel:hover{background:transparent;color:var(--err)}
 #gearbtn:hover,#themeflip:hover{color:var(--txt)}}
 /* ---- motion: one settle on the rows, nothing decorative ------------------- */
@@ -1008,6 +1103,12 @@ button:hover{background:var(--ac-fill-hot)}
  .tbtop{flex-wrap:wrap;gap:10px}
  .brand{gap:10px;min-width:0}
  .logo{height:26px}
+ /* the large title tracks the sheet, not the type scale: on a 347px sheet a
+    26px title beside a 26px logo eats the row and pushes .tbend to a second
+    line. 22px keeps the masthead on one row and still clears the 17px rung.
+    Tracking follows the size down (-.021 -> -.017). .gbox h1 is deliberately
+    not touched - see .gbox. */
+ h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
  .tbend .synced{display:flex;gap:5px;align-items:baseline;font-size:11px}
  .tbend .synced b{display:inline;font-size:11px;white-space:nowrap}
@@ -1082,11 +1183,22 @@ button:hover{background:var(--ac-fill-hot)}
    segtrack layer and the mobile scroll cue along with the translucency */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
  .toolbar,.filters,.sbar,#gearbtn,#themeflip{background-color:var(--glasssolid)}}
+/* no color-mix, no ambient: the pseudo just goes empty and the flat --bg on
+   <html> shows through, which is exactly the pre-ambient look */
+@supports not (background:color-mix(in srgb,red 5%,transparent)){
+ body::before{background:none}}
 @media(prefers-reduced-transparency:reduce){
  .toolbar,.filters,.sbar,#gearbtn,#themeflip{backdrop-filter:none;-webkit-backdrop-filter:none;
   background-color:var(--glasssolid)}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
-  background:rgba(0,0,0,.72)}}
+  background:rgba(0,0,0,.72)}
+ /* the ambient exists to be refracted by the glass; with the glass gone it is
+    just haze over a flat sheet, so it goes too */
+ body::before{background:none}}
+/* max contrast means max separation between ink and ground - a tinted ground
+   works against that, so the sheet goes back to flat --bg */
+@media(prefers-contrast:more){
+ body::before{background:none}}
 """
 
 # favicon: accent-colored card-fan mark (three cards, opacity steps for depth),
@@ -1201,7 +1313,7 @@ def gate_page(error=""):
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="{ph}" aria-label="{ph}"
  autofocus autocomplete="current-password">
-<button type="submit">Enter</button></form>
+<button type="submit" class="fillbtn">Enter</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
@@ -1290,7 +1402,7 @@ def settings_gate(error=""):
 <form method="POST" action="/settings/auth">
 <input type="password" name="password" placeholder="Settings password"
  aria-label="Settings password" autofocus autocomplete="off">
-<button type="submit">Open settings</button></form>
+<button type="submit" class="fillbtn">Open settings</button></form>
 <div class="err">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
@@ -1331,7 +1443,7 @@ def settings_page(msg="", err=""):
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="webhook">
 <input name="value" type="password" placeholder="discord.com/api/webhooks/… URL"
  aria-label="Discord webhook URL" autocomplete="off">
-<button type="submit" class="sbtn">Save</button></form>
+<button type="submit" class="fillbtn sbtn">Save</button></form>
 {remove_btn}
 </div>""")
         spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
@@ -1341,7 +1453,7 @@ def settings_page(msg="", err=""):
  aria-label="New site password" autocomplete="new-password">
 <input name="value2" type="password" placeholder="Repeat"
  aria-label="Repeat new site password" autocomplete="new-password">
-<button type="submit" class="sbtn">Save</button></form>
+<button type="submit" class="fillbtn sbtn">Save</button></form>
 </div>""")
     note = (f'<div class="snote serr">{html.escape(err)}</div>' if err else
             (f'<div class="snote">{html.escape(msg)}</div>' if msg else ""))
@@ -1372,7 +1484,7 @@ def settings_page(msg="", err=""):
  aria-label="New admin password" autocomplete="new-password">
 <input name="confirm_pw" type="password" placeholder="Repeat"
  aria-label="Repeat new admin password" autocomplete="new-password">
-<button type="submit" class="sbtn">Save</button></form>
+<button type="submit" class="fillbtn sbtn">Save</button></form>
 </div>
 <div class="card sblock">
 <h2 class="stitle">Site password</h2>
@@ -1388,7 +1500,7 @@ def settings_page(msg="", err=""):
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="psa_pw">
 <input name="value" type="password" placeholder="New PSA password"
  aria-label="New PSA password" autocomplete="new-password">
-<button type="submit" class="sbtn">Save</button></form>
+<button type="submit" class="fillbtn sbtn">Save</button></form>
 <div class="sdanger"><form method="POST" action="/settings/account"
  onsubmit="return confirm('Unlink this account? The site keeps showing its last known data; scans stop until you save a new PSA password.')">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="unlink">
@@ -1403,7 +1515,7 @@ def settings_page(msg="", err=""):
  aria-label="PSA email" autocomplete="off">
 <input name="psa_pw" type="password" placeholder="PSA password"
  aria-label="PSA password" autocomplete="new-password">
-<button type="submit">Add</button>
+<button type="submit" class="fillbtn">Add</button>
 </form></div></div>
 <script>
 (function(){{
@@ -1561,7 +1673,7 @@ def setup_page(error="", label="", psa_email=""):
  aria-label="PSA account email" value="{html.escape(psa_email)}">
 <input type="password" name="psa_pw" placeholder="PSA account password"
  aria-label="PSA account password" autocomplete="new-password">
-<button type="submit">Connect PSA</button></form>
+<button type="submit" class="fillbtn">Connect PSA</button></form>
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
 only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
 <div class="err">{html.escape(error)}</div>
