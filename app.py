@@ -131,17 +131,21 @@ _FILL = _share(_AC_RGB, _BLACK, _WHITE, 4.5, 86)
 _AC_MIX_FILL = {"--ac-fill": f"{_FILL}%,black",
                 "--ac-fill-hot": f"{max(_FILL - 8, 0)}%,black"}
 # --bar: the stage bar's fill vs its track (1.4.11 non-text, 3:1) - raw --ac
-# fails it in dark even for the default accent. --ring: focus indicators vs
-# the sheet (3:1), which a light store accent would otherwise sink below.
+# fails it in dark even for the default accent. --ring: focus indicators, and
+# it is clamped against --inp, NOT the sheet: inputs take the ring at
+# outline-offset:0, so it rides the quiet input fill rather than the ground
+# behind it. --inp and --surface3 are the same value in both palettes, and it
+# is the harder ground in each (lighter in light, lighter in dark), so
+# clamping there is correct everywhere the ring is actually painted.
 _AC_MIX_L = {"--ac-hot": f"{_share(_AC_RGB, _BLACK, _S3_LIGHT, 4.5, 82)}%,black",
              "--ac-pale": f"{_share(_AC_RGB, _BLACK, _WHITE, 4.5, 92)}%,black",
              "--bar": f"{_share(_AC_RGB, _BLACK, _TRACK_LIGHT, 3.0, 100)}%,black",
-             "--ring": f"{_share(_AC_RGB, _BLACK, _WHITE, 3.0, 100)}%,black",
+             "--ring": f"{_share(_AC_RGB, _BLACK, _S3_LIGHT, 3.0, 100)}%,black",
              **_AC_MIX_FILL}
 _AC_MIX_D = {"--ac-hot": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 4.5, 82)}%,white",
              "--ac-pale": f"{_share(_AC_RGB, _WHITE, _BG_DARK, 4.5, 45)}%,white",
              "--bar": f"{_share(_AC_RGB, _WHITE, _TRACK_DARK, 3.0, 100)}%,white",
-             "--ring": f"{_share(_AC_RGB, _WHITE, _BG_DARK, 3.0, 100)}%,white",
+             "--ring": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 3.0, 100)}%,white",
              **_AC_MIX_FILL}
 # Neutral system: one edge-to-edge sheet, hairline rules, no tinted grounds.
 # Light is the flagship (white paper-white sheet, near-black ink); dark is the
@@ -962,6 +966,12 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.5}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
 .synced .estnote{display:block;font-size:11.5px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
+/* the held-sub figure: alert red, same token as the pill, so the detail page
+   states the alarm at the value rung instead of hiding it */
+.synced b.holdb{color:var(--holdtx)}
+/* the hold sentence needs a measure - as a right-aligned .synced note it would
+   otherwise set to the full column width */
+.synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
  transition:color .15s,background-color .15s}
@@ -1728,6 +1738,12 @@ def tracking_html(carrier, tracking):
     return (f'<a class="tlink" href="{base}{urllib.parse.quote(str(tracking))}" '
             f'target="_blank" rel="noopener">{label}</a>')
 
+# The one thing that can actually go wrong in this product used to be a single
+# red word with no body text anywhere - the detail page didn't even render it.
+# One sentence, one wording, every surface that can show a held sub.
+HOLD_NOTE = ("PSA has paused this submission — the store is following up. "
+             "Grading resumes once it clears; the return estimate will update then.")
+
 def eta_pill(s):
     """Status pill for a sub: return ETA, shipped, hold, or pending.
     Shipped reads at ink level, everything in flight at muted, so the column
@@ -1746,9 +1762,30 @@ def eta_pill(s):
 # and REMOVED by the owner's call on 2026-08-02. Grades-ready stays a muted footer
 # line; red belongs to the grade on the tile, holds, and alerts only.
 
+# The gate is ONE field on purpose (the account chooser is invisible by design),
+# but that field was always type=password - so a customer typing a 20-character
+# email address on a phone in the evening typed it entirely blind, with the
+# password manager offering the wrong entry. The moment the value looks like an
+# email it becomes a plain email field; delete the @ and it masks again. The
+# caret jumps to the end on a type swap, which is where it already is mid-typing.
+GATE_JS = """<script>
+(function(){
+  var i=document.querySelector('.gbox input[name=password]');
+  if(!i)return;
+  i.addEventListener('input',function(){
+    var mail=i.value.indexOf('@')>-1;
+    if(mail===(i.type==='email'))return;
+    i.type=mail?'email':'password';
+    i.setAttribute('inputmode',mail?'email':'text');
+    i.setAttribute('autocomplete',mail?'email':'current-password');
+  });
+})();
+</script>"""
+
 def gate_page(error=""):
     # only advertise email login where it can actually work (email owner tags)
-    ph = "Password or email" if email_login_on() else "Password"
+    email_on = email_login_on()
+    ph = "Password or email" if email_on else "Password"
     inv = ' aria-invalid="true"' if error else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
@@ -1761,7 +1798,7 @@ def gate_page(error=""):
  spellcheck="false" aria-describedby="err"{inv}>
 <button type="submit" class="fillbtn">Enter</button></form>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
-</div></div></main>{THEME_JS}</body></html>"""
+</div></div></main>{GATE_JS if email_on else ""}{THEME_JS}</body></html>"""
 
 def not_found_page(msg="There's no page at this address."):
     """Branded 404 so a bad link doesn't drop out of the design."""
@@ -2152,20 +2189,24 @@ def stage_dates(a, sub):
         d["Shipped"] = fmt_mdy(sub["shipped"])
     return d
 
-def timeline_html(status, dates=None, aside=""):
+def timeline_html(status, dates=None, aside="", key=""):
     """Stage state as one text line (current stage, accent) above the 4px
     progress capsule. `dates` (stage -> 'Jul 20', from stage_dates) appends when
     the sub entered its current stage - detail pages only, so a dashboard row
     stays to a single line. `aside` rides the far end of that same line (the
-    row's one link), keeping a ledger row three lines tall."""
+    row's one link), keeping a ledger row three lines tall.
+    `key` is the sub number: FX_JS remembers each sub's stage per browser and
+    only runs the bar's run-out for one that actually MOVED since the last
+    visit, so the motion means "your cards advanced" and not "a page loaded"."""
     idx = stage_index(status)
     pct = 100.0 * (idx + 1) / len(STAGES)
     line = f'<b>{html.escape(STAGES[idx])}</b> · stage {idx + 1} of {len(STAGES)}'
     since = (dates or {}).get(STAGES[idx], "")
     if since:
         line += f' · since {html.escape(since)}'
+    k = f' data-k="{html.escape(str(key))}" data-st="{idx}"' if key else ""
     return (f'<div class="stage"><span>{line}</span>{aside}</div>'
-            f'<div class="bar"><i style="width:{pct:.1f}%"></i></div>')
+            f'<div class="bar"><i style="width:{pct:.1f}%"{k}></i></div>')
 
 STRIP_MAX = 8   # tiles per filmstrip; the 8th becomes "+N" when there are more
 
@@ -2212,6 +2253,10 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
         foot = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
         if s["carrier"] and s["tracking"]:
             foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
+    elif s["on_hold"]:
+        # the alarm gets its sentence here, in the same muted slot the ship
+        # line uses - the red pill above says THAT, this says what it means
+        foot = html.escape(HOLD_NOTE)
     elif s["grades_ready"]:
         foot = "Grades ready"
     else:
@@ -2219,17 +2264,28 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
 
     strip = strip_html(s, fronts)
     sub = html.escape(s['sub_number'])
+    # archiving is the operator's highest-frequency chore and it used to live
+    # only on the detail page: four page loads per finished sub. A finished sub
+    # is a SHIPPED one, so the control rides the foot line those rows already
+    # print - no new band, no new grammar, and ARCH_JS is already bundled.
+    act = ""
+    if s["status"] == "Shipped":
+        act = (f'<span class="footacts"><button class="archbtn" data-sub="{sub}" '
+               f'data-on="{0 if archived else 1}">'
+               f'{"Unarchive" if archived else "Archive"}</button></span>')
     archattr = ' data-arch="1" style="display:none"' if archived else ''
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
                 f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
     led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
+    foot_h = (f'<div class="foot"><span class="est">{foot}</span>{act}</div>'
+              if (foot or act) else "")
     return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><div class="num">#{sub}</div></a>
 <div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
-{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>')}
-{f'<div class="foot"><span class="est">{foot}</span></div>' if foot else ''}</div>"""
+{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>', key=sub)}
+{foot_h}</div>"""
 
 def search_box(value="", owner="", ph=None):
     """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
@@ -2557,24 +2613,47 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
   },{rootMargin:'200px'});
   scans.forEach(function(a){io.observe(a);});
 })();
-/* the stage bar runs out: each bar is knocked back to 0, then released to the
+/* the stage bar runs out: the bar is knocked back to 0, then released to the
    width the server rendered, delayed onto the same .04s row-settle stagger so
-   it lands with its row instead of after it. Reduced motion returns early, so
-   the served width is never touched and there is no 0-width frame. */
+   it lands with its row instead of after it.
+   It runs ONLY for a sub whose stage actually CHANGED since this browser last
+   saw it (psa_stage remembers sub -> stage index). Replaying it on every
+   render - including the silent hourly reload - spent the product's one
+   earned motion on "a page loaded" instead of "your cards moved", and a
+   celebration that fires 40x a week for a thing that happens twice a month is
+   ambient, not earned. First sight of a sub never animates: no baseline, no
+   claim. Reduced motion returns early, so the served width is never touched
+   and there is no 0-width frame; bars that didn't move render the same way. */
 (function(){
   var bars=document.querySelectorAll('.bar i');
   if(!bars.length)return;
-  try{if(matchMedia('(prefers-reduced-motion:reduce)').matches)return;}catch(e){}
+  var seen={},store=1;
+  try{seen=JSON.parse(localStorage.getItem('psa_stage')||'{}')||{};}catch(e){store=0;}
+  var reduce=0;
+  try{reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;}catch(e){}
+  var moved=[],now={};
+  bars.forEach(function(b){
+    var k=b.dataset.k,st=b.dataset.st;
+    if(k){
+      now[k]=st;
+      if(seen[k]!==undefined&&seen[k]!==st&&!reduce&&b.style.width&&!b.dataset.fx)
+        moved.push(b);
+    }
+  });
+  if(store){
+    // merge, don't replace: each page only knows about the subs it rendered
+    for(var k2 in now)seen[k2]=now[k2];
+    try{localStorage.setItem('psa_stage',JSON.stringify(seen));}catch(e){}
+  }
+  if(!moved.length)return;
   var held=[];
-  bars.forEach(function(b,i){
+  moved.forEach(function(b,i){
     var w=b.style.width;
-    if(!w||b.dataset.fx)return;          // no target, or already run
     b.dataset.fx='1';
     b.style.transitionDelay=Math.min(i,7)*40+'ms';
     b.style.width='0%';
     held.push([b,w]);
   });
-  if(!held.length)return;
   void document.body.offsetWidth;        // commit the 0 so the width transition fires
   held.forEach(function(p){p[0].style.width=p[1];});
 })();
@@ -2961,6 +3040,11 @@ def eta_badge(s, extra=""):
         note = (f'<span class="estnote">{tracking_html(s["carrier"], s["tracking"])}</span>'
                 if s["carrier"] and s["tracking"] else "")
         return f'<div class="synced">Shipped<b>{html.escape(fmt_mdy(s["shipped"]))}</b>{note}{extra}</div>'
+    if s["on_hold"]:
+        # a held sub used to render a perfectly normal ETA badge here, so the
+        # one page you'd click THROUGH to for an explanation never mentioned it
+        return (f'<div class="synced">Status<b class="holdb">On hold</b>'
+                f'<span class="estnote">{html.escape(HOLD_NOTE)}</span>{extra}</div>')
     if s["est_start"]:
         val = html.escape(s["est_start"])
         if s["est_end"]:
@@ -3007,15 +3091,17 @@ def detail_page(a, sub):
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
-<div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
+<div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num)}</div>
 {body}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""
 
-def people_page(a, owner, customer=False):
+def people_page(a, owner):
+    """Admin person page (and the operator's `unassigned` worklist).
+    Admin-only: customer sessions are routed to customer_page, never here."""
     owners = owners_map(a)
     arch = archived_set(a)
-    unassigned = (not customer) and owner.strip().lower() == "unassigned"
+    unassigned = owner.strip().lower() == "unassigned"
     subs_by = {s["sub_number"]: s for s in load_subs(a)}
     if unassigned:  # operator worklist: untagged cards in active subs
         active_nums = {n for n in subs_by if n not in arch}
@@ -3031,14 +3117,12 @@ def people_page(a, owner, customer=False):
     # ARCHIVED toggle below the active grid instead of greyed out inline
     act_cards = [c for c in cards if c["sub_number"] not in arch]
     arc_cards = [c for c in cards if c["sub_number"] in arch]
-    if customer:
-        title, sub_line = "Your cards", f"{len(act_cards)} cards · {owner}"
-    elif not unassigned:
+    if not unassigned:
         sub_line = f"{len(act_cards)} cards with {a['label']}"
-    vals, vas_of, vcur = ({}, "", "CAD") if customer else load_values(a)
-    def tiles(cs):  # customer variant keeps the flat grid (their home is already grouped)
+    vals, vas_of, vcur = load_values(a)
+    def tiles(cs):
         return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
-                                 service=svc_map.get(c["sub_number"], ""), customer=customer,
+                                 service=svc_map.get(c["sub_number"], ""),
                                  statline=cust_statline(subs_by.get(c["sub_number"])),
                                  value=vals.get(c["cert_no"] or ""), vcur=vcur)
                        for c in cs)
@@ -3051,10 +3135,12 @@ def people_page(a, owner, customer=False):
         pill = eta_pill(s) if s else ""
         link = (f'<a class="view" href="/sub/{html.escape(str(n))}">'
                 f'Go to sub #{html.escape(str(n))}</a>')
-        tl = timeline_html(s["status"], aside=link) if s else ""
+        tl = timeline_html(s["status"], aside=link, key=n) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
+        hold = (f'<div class="foot"><span class="est">{html.escape(HOLD_NOTE)}</span></div>'
+                if s and s["on_hold"] else "")
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
                 # h2, not div: this IS the group's heading. Zero visual delta -
@@ -3062,7 +3148,7 @@ def people_page(a, owner, customer=False):
                 # type value (17/650/-.012em/1.3), so nothing is inherited.
                 f'<h2 class="num">#{html.escape(str(n))}</h2></a>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
-                f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div></div>')
+                f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div>{hold}</div>')
     def grouped(cs):
         gs = {}
         for c in cs:
@@ -3072,8 +3158,7 @@ def people_page(a, owner, customer=False):
     if act_cards:
         # grouped cards carry no top margin of their own - give them the same
         # breathing room below the search bar the customer home has (28px)
-        grid = ('<div class="grid">' + tiles(act_cards) + "</div>") if customer else (
-            '<div style="margin-top:28px">' + grouped(act_cards) + "</div>")
+        grid = '<div style="margin-top:28px">' + grouped(act_cards) + "</div>"
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
@@ -3082,17 +3167,15 @@ def people_page(a, owner, customer=False):
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
     archsec = ""
     if arc_cards:
-        inner = (f'<div class="grid" id="archgrid" style="display:none">{tiles(arc_cards)}</div>'
-                 if customer else
-                 f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>')
+        inner = f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>'
         # solo pill, same grammar as the dashboard's: a capsule wrapping a
         # single pill prints a ring with nothing else inside (see .fsolo)
         archsec = (f'<button type="button" class="f farch fsolo" id="archtoggle" '
                    f'style="margin:30px 0 0" aria-expanded="false" aria-controls="archgrid">'
                    f'Archived · {len(arc_cards)}</button>'
                    + inner)
-    if unassigned or customer:
-        est = ""  # store cost/coverage numbers are operator-only
+    if unassigned:
+        est = ""  # the worklist is about tagging, not money
     else:
         total, unpriced, covered, uncovered = 0.0, 0, 0.0, 0
         for c in act_cards:
@@ -3116,9 +3199,8 @@ def people_page(a, owner, customer=False):
                f'{"+" if unpriced else ""}</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
-    back = ('<a class="view" href="/logout">Sign out</a>' if customer
-            else '<a class="view" id="backlk" href="/">← Back</a>')
-    page_title = "Your cards" if customer else f"{title}'s cards"
+    back = '<a class="view" id="backlk" href="/">← Back</a>'
+    page_title = f"{title}'s cards"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
@@ -3126,11 +3208,11 @@ def people_page(a, owner, customer=False):
 {back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
-<div class="toolbar tbq">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
+<div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {grid}
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{gear_html(customer)}{APP_JS_TAG}</body></html>"""
+</main>{gear_html()}{APP_JS_TAG}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -3150,7 +3232,7 @@ def customer_page(a, email):
         pill = eta_pill(s) if s else ""
         # these groups ARE the customer's sub detail view (no /sub access), so
         # they get the entered-on stage dates the admin detail page has
-        tl = timeline_html(s["status"], stage_dates(a, s)) if s else ""
+        tl = timeline_html(s["status"], stage_dates(a, s), key=n) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles = "".join(card_tile(c, owners, show_sub=False, archived=(n in arch), customer=True)
                         for c in cs)
@@ -3160,6 +3242,10 @@ def customer_page(a, email):
             if s["carrier"] and s["tracking"]:  # the click they want most once shipped
                 ft += f' · {tracking_html(s["carrier"], s["tracking"])}'
             foot = f'<div class="foot"><span class="est">{ft}</span></div>'
+        elif s and s["on_hold"]:
+            # the customer has no /sub page to click through to, so the only
+            # place her alarm can be explained is right here
+            foot = f'<div class="foot"><span class="est">{html.escape(HOLD_NOTE)}</span></div>'
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><h2 class="num">#{html.escape(str(n))}</h2>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'

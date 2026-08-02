@@ -340,9 +340,10 @@ flat on the sheet with no fill, no tint, and no shadow. That split is the whole 
 story: glass floats and refracts, content does not.
 
 Character is delivered by motion and precision instead of ornament. Rows settle in on a
-short staggered rise; every stage bar is knocked to zero and released to its served width on
-the same stagger, so the queue's progress arrives with its row; the toolbar earns its shadow
-only once content slides underneath it; overlays materialize by fading their scrim, ramping
+short staggered rise; a stage bar is knocked to zero and released to its served width **only
+when that submission actually advanced since this browser last saw it**, so the one motion the
+product exists for means "your cards moved" rather than "a page loaded"; the toolbar earns its
+shadow only once content slides underneath it; overlays materialize by fading their scrim, ramping
 their blur, and landing from 97%. Nothing else moves. The build ships both a light and a
 dark palette on every page so the client toggle flips instantly, and the accent is validated
 *and measured* server-side — relative luminance is computed at boot and every derived mix
@@ -385,8 +386,10 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   exists because raw accent measured 2.48:1 against the dark track — a progress bar is
   non-text content and still has to be seen.
 - **Ring Accent** (`--ring`): every focus indicator — the global `:focus-visible` outline,
-  input focus, and the owner tag's underline and keyboard ring — clamped to 3:1 against the
-  sheet so a pale store accent can never produce an invisible focus state.
+  input focus, and the owner tag's underline and keyboard ring — clamped to 3:1 against
+  **`--inp`**, not the sheet. Inputs take the ring at `outline-offset: 0`, so it rides the quiet
+  input fill; `--inp` is the harder ground in both palettes, so clamping there is correct
+  everywhere the ring is actually painted.
 
 ### Secondary
 - **Ambient Blue** (`--ac2`, env `PSA_ACCENT_2`): the store's second brand color. It never
@@ -437,8 +440,10 @@ yellow are both valid hex and both illegible at the shares tuned for steel blue.
 derived shade starts at its tuned share and walks 1% at a time toward its pole — black on
 light, white on dark — until the measured contrast passes: `--ac-pale` ≥4.5:1 on the sheet,
 `#fff` ≥4.5:1 on `--ac-fill`, `--ac-hot` ≥4.5:1 on the hover-pill ground, `--bar` ≥3:1 on the
-track, `--ring` ≥3:1 on the sheet. The pole itself always passes, so the walk cannot fail. A
-new accent-derived token ships with its target and its ground named, or it does not ship.
+track, `--ring` ≥3:1 on `--inp`. The pole itself always passes, so the walk cannot fail. A new
+accent-derived token ships with its target and **the ground it is actually painted on** named,
+or it does not ship — `--ring` was clamped against the sheet for one day while inputs painted
+it on `--inp`, which is exactly the class of mistake this rule exists to catch.
 
 **The Darkened Fill Rule.** White text appears only on `--ac-fill`, which is always darkened
 regardless of theme and clamped until `#fff` clears 4.5:1 on it; hover deepens it further.
@@ -715,6 +720,14 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
   see the Reserved Red Rule for the grades pill that was tried here and removed.
 Grades-ready is not a pill: it is a muted `.est` footer line ("Grades ready") on the row, and
 a lowercase `.estnote` under the detail page's ETA badge.
+
+**The Named-Alarm Rule.** A hold is the only thing in this product that can actually go
+wrong, and a red word is not an explanation. Every surface that can show a held submission
+also states `HOLD_NOTE` — one sentence, one wording, server-side constant: the dashboard row
+and the person-page group print it as the muted `.est` footer line, the customer group prints
+it in the same slot (she has no detail page to click through to), and the detail page replaces
+its ETA figure with "On hold" at the value rung plus the sentence as an `.estnote`. A held sub
+rendering a normal ETA badge — which it did until 2026-08-02 — is a bug, not a layout choice.
 Archived rows carry no status pill at all: every archived sub is finished, the foot already
 says so, and the extra pill made the column taller than the header and knocked the filmstrip
 out of the rows' rhythm.
@@ -800,11 +813,18 @@ Not a retrofit — a visible part of the system, and it has house styling.
 ### Stage Bar (signature)
 The product's signature component: one text line — current stage in accent-as-text at the
 650 data weight, then "· stage N of 8" in muted — above a 4px capsule whose fill transitions
-its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`. On load every bar is knocked back to
-0% and released to the width the server rendered, delayed onto the same 40ms row stagger so it
-lands *with* its row instead of after it. Archived rows render the fill in muted gray instead
-of accent. This is the moment the product exists for; reduced motion returns before the knock,
-so the served width is never touched and there is no zero-width frame.
+its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
+
+**The run-out is earned, not ambient.** Each bar carries `data-k` (its sub number) and
+`data-st` (its stage index); FX_JS keeps a `psa_stage` map in `localStorage` and knocks a bar
+back to 0% — releasing it on the same 40ms stagger — **only for a sub whose stage differs from
+the one this browser last saw**. Every other bar renders at its served width with no travel.
+First sight of a sub never animates: there is no baseline, so there is no claim. Replaying it
+on every render, including the silent hourly reload, spent the product's one earned motion on
+page loads — roughly 40 celebrations a week for an event that happens twice a month, which is
+ambient, not earned. Archived rows render the fill in muted gray instead of accent. Reduced
+motion returns before the knock, so the served width is never touched and there is no
+zero-width frame.
 
 ### Owner Tag (signature)
 An inline text field that is invisible until touched: transparent ground, transparent bottom
@@ -868,6 +888,11 @@ standing in for icons, no raster icons.
 ### Do:
 - **Do** derive every accent shade with `color-mix(in srgb, var(--ac) …)` so a store's two env
   colors propagate everywhere, ambient ground included.
+- **Do** clamp a derived token against the ground it is actually painted on, not the ground
+  behind that one.
+- **Do** state a hold in words on every surface that can show one (`HOLD_NOTE`).
+- **Do** put a state-changing control in the `.foot` line of the rows that need it — archiving
+  is a dashboard action, not a detail-page pilgrimage.
 - **Do** validate any env-supplied color against `#[0-9a-fA-F]{6}` before it reaches CSS.
 - **Do** clamp every new accent-derived shade server-side against a named ground and a named
   target (4.5:1 for text, 3:1 for bars and focus rings) rather than trusting a tuned share.
