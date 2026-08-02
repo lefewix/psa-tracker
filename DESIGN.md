@@ -818,7 +818,11 @@ its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
 **The run-out is earned, not ambient.** Each bar carries `data-k` (its sub number) and
 `data-st` (its stage index); FX_JS keeps a `psa_stage` map in `localStorage` and knocks a bar
 back to 0% — releasing it on the same 40ms stagger — **only for a sub whose stage differs from
-the one this browser last saw**. Every other bar renders at its served width with no travel.
+the one this browser last saw**. A stage is recorded as *seen* only once its bar has actually
+been on screen with the tab visible (IntersectionObserver, plus a `visibilitychange` gate):
+committing every bar at render burned the signal twice over — an hourly reload of a hidden tab
+played the run-out to an empty room and marked everything current, and a row thirty down could
+advance, never be scrolled to, and never animate again. Every other bar renders at its served width with no travel.
 First sight of a sub never animates: there is no baseline, so there is no claim. Replaying it
 on every render, including the silent hourly reload, spent the product's one earned motion on
 page loads — roughly 40 celebrations a week for an event that happens twice a month, which is
@@ -891,6 +895,10 @@ standing in for icons, no raster icons.
 - **Do** clamp a derived token against the ground it is actually painted on, not the ground
   behind that one.
 - **Do** state a hold in words on every surface that can show one (`HOLD_NOTE`).
+- **Do** keep a row on screen, in its new state, while its Undo chip is up — a chip that lives
+  inside the row cannot be reachable if the row leaves the view the moment it flips.
+- **Do** give a destructive-ish action the same undo grammar the owner tag uses, and announce
+  it. Reversibility belongs to the action that is hard to reverse, not the easy one.
 - **Do** put a state-changing control in the `.foot` line of the rows that need it — archiving
   is a dashboard action, not a detail-page pilgrimage.
 - **Do** validate any env-supplied color against `#[0-9a-fA-F]{6}` before it reaches CSS.

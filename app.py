@@ -973,6 +973,12 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    otherwise set to the full column width */
 .synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
+/* the customer's sign-out is the ICON in the freshness block, matching the
+   admin masthead. As bare text in the top-left it sat in the exact slot every
+   other page uses for "← Back", so the reflex tap that means "go back" ended a
+   session whose credential is an email she has to retype. */
+.synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
+.synced.custrow .custout{text-align:right}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
  transition:color .15s,background-color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
@@ -1158,7 +1164,13 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
  transition:width .55s cubic-bezier(.23,1,.32,1)}
 .card.arch .bar i{background:var(--m1)}
-.foot{padding:0;border:0;margin-top:9px;display:flex;justify-content:space-between;
+/* 16px, not 9: .view's padded hit box hangs 12px BELOW the stage line and
+   .archbtn's hangs 12px above its own, so at 9px they overlapped by 4px -
+   right on top of the stage bar, where a thumb naturally lands, with a
+   navigation link and a state change sharing the target. 7 + 4 + 16 = 27
+   clears the two 12s with room. Ledger rhythm absorbs it; the action row
+   reading as separate from the bar is a bonus, not a cost. */
+.foot{padding:0;border:0;margin-top:16px;display:flex;justify-content:space-between;
  align-items:center;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:13px;font-weight:400;color:var(--m1)}
@@ -1393,7 +1405,16 @@ button:disabled{opacity:.5;cursor:default}
 .dstate{font-size:13px;font-weight:500;color:var(--txt);flex:1}
 .dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
-.card.arch,.gc.arch{opacity:.5;filter:grayscale(.6)}
+.card.arch{opacity:.5;filter:grayscale(.6)}
+/* An archived TILE dims its SCAN, not its data. The .5 wash that reads fine on
+   a row (which sits among live rows and is folded away by default) put card
+   names, cert numbers and values near 1.9:1 on white - and archived tiles
+   render INLINE BY DEFAULT in search results, so that is real content below
+   1.4.3, not a deliberately-quieted fold. The greyed image carries "past"; the
+   text keeps its own contrast. Same call the owner already made for
+   #list.archview, applied where it actually matters. */
+.gc.arch a[href^="/img"],.gc.arch .ph{opacity:.5;filter:grayscale(.6);
+ transition:opacity .18s,filter .18s}
 /* ...but only SLIGHTLY in the archived-only view (the owner, 2026-08-01): the full
    .5 dim exists to push archived rows behind live ones they sit among; with
    nothing to sit behind it made the whole list hard to read, yet full color
@@ -1427,7 +1448,8 @@ button:disabled{opacity:.5;cursor:default}
    look, but they are not targets - only the sub-number link inside a group
    is. Tinting the whole surface promised a click it doesn't have. */
 .card.grp:hover,.card.tlcard:hover{background:transparent}
-.card.arch:hover,.gc.arch:hover{opacity:.62}
+.card.arch:hover{opacity:.62}
+.gc.arch:hover a[href^="/img"],.gc.arch:hover .ph{opacity:.78;filter:grayscale(.3)}
 /* full color on hover inside the archived view - the row still takes the
    normal .card:hover background highlight, and the slight grey lifts off. */
 #list.archview .card.arch:hover{opacity:1;filter:none}
@@ -2269,7 +2291,9 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     # is a SHIPPED one, so the control rides the foot line those rows already
     # print - no new band, no new grammar, and ARCH_JS is already bundled.
     act = ""
-    if s["status"] == "Shipped":
+    # `or archived`: the detail page will archive a sub at ANY status, so an
+    # in-flight sub archived by mistake had no way back from the dashboard
+    if s["status"] == "Shipped" or archived:
         act = (f'<span class="footacts"><button class="archbtn" data-sub="{sub}" '
                f'data-on="{0 if archived else 1}">'
                f'{"Unarchive" if archived else "Archive"}</button></span>')
@@ -2390,21 +2414,82 @@ SEARCH_JS = """<script>
 </script>"""
 
 ARCH_JS = """<script>
-document.querySelectorAll('.archbtn').forEach(function(b){
-  var label=b.textContent;
-  b.addEventListener('click', function(){
-    b.disabled = true;   // button:disabled dims it - visible in-flight state
-    fetch('/archive', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'sub='+encodeURIComponent(b.dataset.sub)+'&on='+b.dataset.on})
-     .then(function(r){ if(r.ok){ location.reload(); } else { throw 0; } })
-     .catch(function(){
-        b.disabled = false;
-        b.textContent="Couldn't "+label.toLowerCase()+" \\u00b7 retry";
-        if(typeof _say==='function')_say("Couldn't "+label.toLowerCase()+" the submission");
-        setTimeout(function(){ b.textContent=label; },4000);
-     });
+(function(){
+  function say(m){var l=document.getElementById('live');
+    if(l){l.textContent='';setTimeout(function(){l.textContent=m;},30);}}
+  function count(d){
+    var p=document.getElementById('archtoggle');if(!p)return;
+    var m=(p.getAttribute('aria-label')||'').match(/(\\d+)/);
+    var v=Math.max(0,(m?parseInt(m[1],10):0)+d);
+    p.setAttribute('aria-label','Archived \\u00b7 '+v);
+    var n=p.querySelector('.archn'); if(n)n.textContent=' \\u00b7 '+v;
+  }
+  /* In place, no reload. Archiving is the operator's most frequent action and
+     it was the only state change in the product with no undo, no spoken
+     confirmation, and a full page reload that dumped him at the top of the
+     list - while RENAMING A TAG, which is trivially redone, shipped a 6s undo
+     chip. The reversibility budget was allocated backwards. */
+  /* place() is deliberately NOT called by flip(): the row has to stay on
+     screen while the Undo chip is up, because the chip lives inside it. The
+     first build hid the row the instant it flipped, which took the undo with
+     it - the offer was unreachable in exactly the case it existed for. So the
+     row flips to its dimmed archived state, sits there for the undo window,
+     and only then leaves the view it no longer belongs to. */
+  function place(row){
+    var lst=document.getElementById('list');
+    var viewing=!!(lst&&lst.classList.contains('archview'));
+    row.style.display=((row.dataset.arch==='1')===viewing)?'':'none';
+  }
+  function flip(row,b,on){
+    row.dataset.arch=on?'1':'0';
+    row.classList.toggle('arch',on);
+    b.dataset.on=on?'0':'1';
+    b.textContent=on?'Unarchive':'Archive';
+    count(on?1:-1);
+  }
+  function post(sub,on,done){
+    fetch('/archive',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'sub='+encodeURIComponent(sub)+'&on='+(on?'1':'0')})
+     .then(function(r){done(r.ok);}).catch(function(){done(false);});
+  }
+  document.querySelectorAll('.archbtn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var label=b.textContent, on=b.dataset.on==='1', sub=b.dataset.sub;
+      var row=b.closest?b.closest('.card[data-sub]'):null;
+      b.disabled=true;                 // button:disabled dims it - in-flight state
+      post(sub,on,function(ok){
+        b.disabled=false;
+        if(!ok){
+          b.textContent="Couldn't "+label.toLowerCase()+" \\u00b7 retry";
+          say("Couldn't "+label.toLowerCase()+" submission "+sub);
+          setTimeout(function(){b.textContent=label;},6000);
+          return;
+        }
+        /* the detail page's whole header reflects archived state, and the very
+           first archive has no Archived pill to move the row into - both keep
+           the reload */
+        if(!row||!document.getElementById('archtoggle')){location.reload();return;}
+        flip(row,b,on);
+        say('Submission '+sub+(on?' archived':' unarchived'));
+        var f=b.parentNode, old=f.querySelector('.undo');
+        if(old)old.remove();
+        var u=document.createElement('button');
+        u.type='button'; u.className='undo'; u.textContent='Undo';
+        f.insertBefore(u,b);
+        var t=setTimeout(function(){u.remove();place(row);},6000);
+        u.addEventListener('click',function(){
+          clearTimeout(t); u.remove(); b.disabled=true;
+          post(sub,!on,function(ok2){
+            b.disabled=false;
+            if(!ok2){say("Couldn't undo that");place(row);return;}
+            flip(row,b,!on); place(row);
+            say('Submission '+sub+(on?' restored':' archived again'));
+          });
+        });
+      });
+    });
   });
-});
+})();
 </script>"""
 
 LIGHTBOX_JS = """<script>
@@ -2572,9 +2657,13 @@ FX_JS = """<script>
         ms=((60-n.getMinutes())*60-n.getSeconds())*1000+off;
     setTimeout(function(){
       var el=document.activeElement;
-      var typing=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
-      var lb=document.querySelector('.lb.open');
-      if(document.hidden||(!typing&&!lb)){location.reload();}else{arm();}
+      var typing=el&&(el.tagName==='INPUT'||el.tagName==='TEXTAREA')&&el.value;
+      /* Reload ONLY a tab nobody is looking at. The old guard reloaded a
+         VISIBLE page as long as you weren't typing - so it yanked the page out
+         from under someone mid-read - and reloading a hidden tab used to burn
+         the stage-bar signal too (the run-out now waits for visibility, see
+         the stage block below). A visible tab just re-arms for the next hour. */
+      if(document.hidden&&!typing){location.reload();}else{arm();}
     },ms);
   }
   arm();
@@ -2625,37 +2714,60 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
    claim. Reduced motion returns early, so the served width is never touched
    and there is no 0-width frame; bars that didn't move render the same way. */
 (function(){
-  var bars=document.querySelectorAll('.bar i');
+  var bars=[].slice.call(document.querySelectorAll('.bar i[data-k]'));
   if(!bars.length)return;
   var seen={},store=1;
   try{seen=JSON.parse(localStorage.getItem('psa_stage')||'{}')||{};}catch(e){store=0;}
   var reduce=0;
   try{reduce=matchMedia('(prefers-reduced-motion:reduce)').matches;}catch(e){}
-  var moved=[],now={};
-  bars.forEach(function(b){
-    var k=b.dataset.k,st=b.dataset.st;
-    if(k){
-      now[k]=st;
-      if(seen[k]!==undefined&&seen[k]!==st&&!reduce&&b.style.width&&!b.dataset.fx)
-        moved.push(b);
+  var stagger=0;
+  /* A bar's stage is recorded as SEEN only once it has actually been on screen
+     with the tab visible. Committing every bar at render burned the signal
+     twice over: an hourly reload of a hidden tab played the run-out to an
+     empty room and marked everything current, and a sub thirty rows down could
+     advance, never be scrolled to, and never animate again - with nothing else
+     on the row to say it moved. The served width is always the truth, so a bar
+     that hasn't animated yet has never claimed anything false. */
+  function commit(list){
+    var run=[];
+    list.forEach(function(b){
+      if(b.dataset.seen)return;
+      b.dataset.seen='1';
+      var k=b.dataset.k;
+      if(seen[k]!==undefined&&seen[k]!==b.dataset.st&&!reduce&&b.style.width&&!b.dataset.fx){
+        b.dataset.fx='1'; run.push([b,b.style.width]);
+      }
+      seen[k]=b.dataset.st;
+    });
+    if(run.length){
+      run.forEach(function(p){
+        p[0].style.transitionDelay=Math.min(stagger++,7)*40+'ms';
+        p[0].style.width='0%';
+      });
+      void document.body.offsetWidth;    // commit the 0 so the width transition fires
+      run.forEach(function(p){p[0].style.width=p[1];});
     }
-  });
-  if(store){
-    // merge, don't replace: each page only knows about the subs it rendered
-    for(var k2 in now)seen[k2]=now[k2];
-    try{localStorage.setItem('psa_stage',JSON.stringify(seen));}catch(e){}
+    if(store&&list.length){try{localStorage.setItem('psa_stage',JSON.stringify(seen));}catch(e){}}
   }
-  if(!moved.length)return;
-  var held=[];
-  moved.forEach(function(b,i){
-    var w=b.style.width;
-    b.dataset.fx='1';
-    b.style.transitionDelay=Math.min(i,7)*40+'ms';
-    b.style.width='0%';
-    held.push([b,w]);
-  });
-  void document.body.offsetWidth;        // commit the 0 so the width transition fires
-  held.forEach(function(p){p[0].style.width=p[1];});
+  function start(){
+    if(!window.IntersectionObserver){commit(bars);return;}
+    var io=new IntersectionObserver(function(es){
+      var vis=[];
+      es.forEach(function(e){
+        if(!e.isIntersecting)return;
+        io.unobserve(e.target); vis.push(e.target);
+      });
+      if(vis.length)commit(vis);
+    },{threshold:0});
+    bars.forEach(function(b){io.observe(b);});
+  }
+  if(document.visibilityState==='hidden'){
+    document.addEventListener('visibilitychange',function h(){
+      if(document.visibilityState!=='hidden'){
+        document.removeEventListener('visibilitychange',h); start();
+      }
+    });
+  }else{start();}
 })();
 /* mobile filter capsule: its scrollbar is hidden, so nothing would say there
    are more pills past the edge. Flag which side still has content (.sl/.sr)
@@ -2822,7 +2934,12 @@ SORT_JS = """<script>
 ARCHFOLD_JS = """<script>
 (function(){
   var af=document.getElementById('archtoggle'),ag=document.getElementById('archgrid');
-  if(!af)return;
+  /* BOTH, not just af. Since every script ships in one bundle this also runs on
+     the DASHBOARD, which has an #archtoggle (a view switch over #list) but no
+     #archgrid - so this used to throw on `ag.style` at every click AND
+     double-toggle the pill's .on class against the dashboard's own handler,
+     leaving the pill reading unpressed while the archived view was open. */
+  if(!af||!ag)return;
   af.addEventListener('click',function(){
     var on=af.classList.toggle('on');
     af.setAttribute('aria-expanded',on?'true':'false');
@@ -3272,10 +3389,10 @@ def customer_page(a, email):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
-<a class="view" href="/logout">Sign out</a>
 <div class="hrow" style="margin-top:14px"><div><div class="brand">{logo_tag()}<h1>Your cards</h1></div>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
-<div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div></div>
+<div class="synced custrow"><div class="custout">Last refreshed<b>{html.escape(stamp)}</b></div>
+<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 <div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
 <div style="margin-top:28px">{body}</div>
 {archsec}
