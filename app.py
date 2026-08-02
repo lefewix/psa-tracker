@@ -82,13 +82,71 @@ def logo_tag():
 # white text (the one filled button), and a store-supplied PSA_ACCENT can be
 # far too light for #fff, so fills are always darkened rather than trusted.
 # Hover deepens instead of brightening - brightening drops the label below 4.5.
-_AC_MIX_FILL = {"--ac-fill": "86%,black", "--ac-fill-hot": "78%,black"}
-_AC_MIX_L = {"--ac-hot": "82%,black", "--ac-pale": "92%,black", **_AC_MIX_FILL}
-_AC_MIX_D = {"--ac-hot": "82%,white", "--ac-pale": "45%,white", **_AC_MIX_FILL}
+#
+# The mix percentages are CLAMPED per accent, not fixed: a syntax-valid env
+# color (kelly green, Pokemon yellow) mixed at a fixed share can still land
+# under 4.5:1. Each derived shade starts at the share tuned for the default
+# steel blue and walks toward its pole (black on light, white on dark) until
+# the WCAG target passes - the pole itself always does, so this cannot fail.
+def _rgb(h):
+    return tuple(int(h[i:i + 2], 16) for i in (1, 3, 5))
+
+def _lum(rgb):
+    def f(c):
+        c /= 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    r, g, b = (f(c) for c in rgb)
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+def _contrast(a, b):
+    la, lb = _lum(a), _lum(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+def _mix(ac, pole, share):
+    """color-mix(in srgb, ac share%, pole) - linear sRGB interpolation."""
+    t = share / 100
+    return tuple(round(a * t + p * (1 - t)) for a, p in zip(ac, pole))
+
+def _over(fg, alpha, bg):
+    """An rgba(fg, alpha) layer composited over an opaque bg."""
+    return tuple(round(f * alpha + b * (1 - alpha)) for f, b in zip(fg, bg))
+
+def _share(ac, pole, against, target, start):
+    """Largest accent share (<= start, 1% steps) whose mix with pole clears
+    the contrast target against `against`."""
+    for s in range(start, -1, -1):
+        if _contrast(_mix(ac, pole, s), against) >= target:
+            return s
+    return 0
+
+_BLACK, _WHITE = (0, 0, 0), (255, 255, 255)
+_AC_RGB = _rgb(ACCENT)
+_BG_DARK = _rgb("#17181a")
+_S3_LIGHT = _rgb("#f2f2f4")                    # --surface3 light (hover pill ground)
+_S3_DARK = _over(_WHITE, 0.08, _BG_DARK)       # --surface3 dark, composited
+_TRACK_LIGHT = _rgb("#ececef")                 # stage-bar track grounds
+_TRACK_DARK = _over(_WHITE, 0.14, _BG_DARK)
+_FILL = _share(_AC_RGB, _BLACK, _WHITE, 4.5, 86)
+_AC_MIX_FILL = {"--ac-fill": f"{_FILL}%,black",
+                "--ac-fill-hot": f"{max(_FILL - 8, 0)}%,black"}
+# --bar: the stage bar's fill vs its track (1.4.11 non-text, 3:1) - raw --ac
+# fails it in dark even for the default accent. --ring: focus indicators vs
+# the sheet (3:1), which a light store accent would otherwise sink below.
+_AC_MIX_L = {"--ac-hot": f"{_share(_AC_RGB, _BLACK, _S3_LIGHT, 4.5, 82)}%,black",
+             "--ac-pale": f"{_share(_AC_RGB, _BLACK, _WHITE, 4.5, 92)}%,black",
+             "--bar": f"{_share(_AC_RGB, _BLACK, _TRACK_LIGHT, 3.0, 100)}%,black",
+             "--ring": f"{_share(_AC_RGB, _BLACK, _WHITE, 3.0, 100)}%,black",
+             **_AC_MIX_FILL}
+_AC_MIX_D = {"--ac-hot": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 4.5, 82)}%,white",
+             "--ac-pale": f"{_share(_AC_RGB, _WHITE, _BG_DARK, 4.5, 45)}%,white",
+             "--bar": f"{_share(_AC_RGB, _WHITE, _TRACK_DARK, 3.0, 100)}%,white",
+             "--ring": f"{_share(_AC_RGB, _WHITE, _BG_DARK, 3.0, 100)}%,white",
+             **_AC_MIX_FILL}
 # Neutral system: one edge-to-edge sheet, hairline rules, no tinted grounds.
 # Light is the flagship (white paper-white sheet, near-black ink); dark is the
 # secondary (neutral gray ground - never blue-gray, never pure black).
-_DARK = {"bg": "#17181a", "surface": "#1c1d20", "surface2": "#202124",
+_DARK = {"bg": "#17181a", "surface": "#1c1d20",
  "surface3": "rgba(255,255,255,.08)", "inp": "rgba(255,255,255,.08)",
  "ph": "rgba(255,255,255,.06)", "hovrow": "rgba(255,255,255,.07)",
  # search-preview tag chip: dark grounds swallow a low-alpha accent wash, so the
@@ -103,7 +161,7 @@ _DARK = {"bg": "#17181a", "surface": "#1c1d20", "surface2": "#202124",
          "transparent 55%),"
          "radial-gradient(88% 46% at -14% -6%,color-mix(in srgb,var(--ac) 8%,transparent),"
          "transparent 52%)"),
- "txt": "#f2f2f4", "m1": "#98989f", "m9": "#98989f", "tert": "#8a8a92",
+ "txt": "#f2f2f4", "m1": "#98989f", "tert": "#8a8a92",
  "hair": "rgba(255,255,255,.12)", "hairh": "rgba(255,255,255,.3)",
  "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)",
  "logoblend": "normal", "chipfill": "#ffffff", "chippad": "5px 7px",
@@ -117,17 +175,17 @@ _DARK = {"bg": "#17181a", "surface": "#1c1d20", "surface2": "#202124",
  "rimb": "rgba(0,0,0,.35)",
  "segtrack": "rgba(255,255,255,.05)", "segon": "rgba(255,255,255,.1)",
  "shc": "rgba(0,0,0,.34)", "shc2": "rgba(0,0,0,.5)", "shc3": "rgba(0,0,0,.28)",
- "sh1": "rgba(255,255,255,.06)", "sh2": "rgba(255,255,255,.11)",
+ "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.4)",
  "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff",
  "ok": "#43c383"}
-_LIGHT = {"bg": "#ffffff", "surface": "#ffffff", "surface2": "#f7f7f8",
+_LIGHT = {"bg": "#ffffff", "surface": "#ffffff",
  "surface3": "#f2f2f4", "inp": "#f2f2f4", "ph": "#f2f2f4",
  "hovrow": "rgba(0,0,0,.05)", "tagmix": "12%",
  "amb": ("radial-gradient(120% 62% at 84% -22%,color-mix(in srgb,var(--ac2) 6%,transparent),"
          "transparent 60%),"
          "radial-gradient(96% 52% at -14% -6%,color-mix(in srgb,var(--ac) 4%,transparent),"
          "transparent 56%)"),
- "txt": "#1d1d1f", "m1": "#6e6e73", "m9": "#6e6e73", "tert": "#86868b",
+ "txt": "#1d1d1f", "m1": "#6e6e73", "tert": "#86868b",
  "hair": "rgba(0,0,0,.1)", "hairh": "rgba(0,0,0,.28)",
  "hair2": "rgba(0,0,0,.07)", "track": "#ececef",
  "logoblend": "normal", "chipfill": "transparent", "chippad": "0", "logofx": "none",
@@ -135,7 +193,7 @@ _LIGHT = {"bg": "#ffffff", "surface": "#ffffff", "surface2": "#f7f7f8",
  "rimb": "rgba(15,20,30,.06)",
  "segtrack": "rgba(0,0,0,.045)", "segon": "#ffffff",
  "shc": "rgba(20,25,35,.1)", "shc2": "rgba(20,25,35,.18)", "shc3": "rgba(20,25,35,.08)",
- "sh1": "#f2f2f4", "sh2": "#e8e8ec",
+ "sh2": "#e8e8ec", "scrim": "rgba(0,0,0,.4)",
  "err": "#b03a2e", "holdtx": "#b03a2e", "grade": "#b12b2b", "fhov": "#1d1d1f",
  "ok": "#2f9e68"}
 def _theme_vars(mode):
@@ -149,6 +207,15 @@ def _theme_vars(mode):
 THEME_VARS = (f":root{{--ac:{ACCENT};--ac2:{ACCENT_2};{_theme_vars(THEME)}}}"
               f':root[data-theme="dark"]{{{_theme_vars("dark")}}}'
               f':root[data-theme="light"]{{{_theme_vars("light")}}}')
+# prefers-contrast: hairlines and secondary text step up hard. Emitted in the
+# same three-block shape as the palettes so the bare :root case (default theme,
+# no data-theme attribute) resolves to the store's default palette.
+_HC_L = "--hair:rgba(0,0,0,.32);--hairh:rgba(0,0,0,.5);--m1:#4a4a4f;--tert:#5c5c61"
+_HC_D = "--hair:rgba(255,255,255,.36);--hairh:rgba(255,255,255,.55);--m1:#c0c0c8;--tert:#b0b0b8"
+THEME_VARS += ("@media(prefers-contrast:more){"
+               f":root{{{_HC_L if THEME == 'light' else _HC_D}}}"
+               f':root[data-theme="dark"]{{{_HC_D}}}'
+               f':root[data-theme="light"]{{{_HC_L}}}}}')
 ACCOUNTS_DIR = os.environ.get("PSA_ACCOUNTS_DIR", "/opt/psa-tracker/accounts")
 
 # Image proxy: PSA card images live on this public CloudFront host. We fetch +
@@ -313,7 +380,9 @@ def load_accounts():
             continue
         accts[d] = {
             "id": d,
-            "label": env.get("LABEL", d.upper()),
+            # the id, not id.upper(): an ALL-CAPS store name in the masthead
+            # subtitle would be the one tracked-caps string in the product
+            "label": env.get("LABEL", d),
             "password": pw,
             "db": os.path.join(base, "psa.db"),
             "own_db": os.path.join(base, "owners.db"),
@@ -506,12 +575,17 @@ DISCORD_JS = """<script>
       body:'owner='+encodeURIComponent(owner)+'&id='+encodeURIComponent(id)})
       .then(function(r){done(r.ok);});
   }
+  function derr(msg){
+    var f=document.getElementById('did'),h=document.querySelector('#dmodal .dhint');
+    f.classList.add('errsave');
+    if(h)h.textContent=msg;  // words, not just a red underline
+  }
   var link=document.getElementById('dlink');
   if(link)link.addEventListener('click',function(){
     var v=(document.getElementById('did').value||'').trim();
-    if(!/^\\d{17,20}$/.test(v)){document.getElementById('did').classList.add('errsave');return;}
+    if(!/^\\d{17,20}$/.test(v)){derr('That doesn\\u2019t look like a Discord user ID \\u2014 it\\u2019s a 17\\u201320 digit number.');return;}
     post(link.dataset.owner,v,function(ok){if(ok)location.reload();
-      else document.getElementById('did').classList.add('errsave');});
+      else derr('Couldn\\u2019t save the ID \\u2014 try again.');});
   });
   var un=document.getElementById('dunlink');
   if(un)un.addEventListener('click',function(){
@@ -577,6 +651,24 @@ def load_all_cards(a):
         return [dict(r) for r in rows]
     except sqlite3.OperationalError:
         return []
+
+def sub_fronts(a):
+    """sub_number -> [(front_thumb, name), ...] in line_number order, imaged
+    cards only. ONE query for the whole dashboard (the filmstrips), grouped
+    here in Python - a per-row query would be one open/close per submission.
+    The name rides along so every strip tile gets a real alt text."""
+    try:
+        conn = _ro_conn(a)
+        rows = conn.execute("SELECT sub_number, front_thumb, name FROM cards "
+                            "WHERE front_thumb IS NOT NULL AND front_thumb != '' "
+                            "ORDER BY line_number").fetchall()
+        conn.close()
+    except sqlite3.OperationalError:
+        return {}
+    out = {}
+    for r in rows:
+        out.setdefault(r["sub_number"], []).append((r["front_thumb"], r["name"] or ""))
+    return out
 
 # Card market values (psa_values.py fills card_values from PSA cert pages).
 # Feature-flagged: with PSA_VALUES unset - or the table absent - every page
@@ -661,6 +753,25 @@ def cust_statline(s):
     eta = s["est_end"] or s["est_start"]
     return s["status"] + (f" · back ~{short_date(eta)}" if eta else "")
 
+def search_cards_sql(a, ql, limit):
+    """The unscoped /suggest hot path: push the substring match and the LIMIT
+    into SQLite instead of scanning every column of every card per keystroke.
+    Matches name, cert_no, and cert_id, like the old Python hay string."""
+    pat = "%" + ql.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    try:
+        conn = _ro_conn(a)
+        rows = conn.execute(
+            "SELECT sub_number, cert_id, cert_no, name, front_thumb FROM cards "
+            "WHERE lower(name) LIKE ? ESCAPE '\\' "
+            "   OR lower(cast(cert_no AS TEXT)) LIKE ? ESCAPE '\\' "
+            "   OR lower(cast(cert_id AS TEXT)) LIKE ? ESCAPE '\\' "
+            "ORDER BY CAST(sub_number AS INTEGER) DESC, line_number LIMIT ?",
+            (pat, pat, pat, limit)).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+    except sqlite3.OperationalError:
+        return []
+
 def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
     """Live search backing the unified search box. People (priority) + cards.
     With owner set (person page), results are ONLY that person's cards - no
@@ -676,28 +787,36 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
         # empty focus = browse mode: list EVERY person, scrollable directory
         name_hits = matches if not ql else matches[:limit_names]
     card_hits = []
-    if ql or want:
+    pool = []
+    if ql and not want:
+        # SQL does the filtering and the limit; the loop below only formats
+        pool = search_cards_sql(a, ql, limit_cards)
+    elif ql or want:
         pool = load_all_cards(a)
         if want:
             pool = [c for c in pool if owners.get(str(c["cert_id"]), "").lower() == want]
             if not ql:  # empty focus on a person page: browse their cards A-Z
                 pool.sort(key=lambda c: smart_title(c.get("name") or "").lower())
-        for c in pool:
-            if ql:
-                hay = " ".join((c.get("name") or "", str(c.get("cert_no") or ""),
-                                str(c.get("cert_id") or ""))).lower()
-                if ql not in hay:
-                    continue
-            card_hits.append({
-                "name": smart_title(c["name"] or ""),
-                "cert": "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or ""),
-                "sub": c["sub_number"],
-                "owner": owners.get(str(c["cert_id"]), ""),
-                "img": ("/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small")))
-                       if c.get("front_thumb") else "",
-            })
-            if len(card_hits) >= limit_cards:
-                break
+    for c in pool:
+        if ql:
+            # a no-op re-check for SQL rows (same fields), the real filter for
+            # the owner-scoped Python pool
+            hay = " ".join((c.get("name") or "", str(c.get("cert_no") or ""),
+                            str(c.get("cert_id") or ""))).lower()
+            if ql not in hay:
+                continue
+        card_hits.append({
+            # subject first, same as the tiles - the set line is boilerplate
+            # and the row already carries a small cert/owner line under it
+            "name": split_name(smart_title(c["name"] or ""))[0],
+            "cert": "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or ""),
+            "sub": c["sub_number"],
+            "owner": owners.get(str(c["cert_id"]), ""),
+            "img": ("/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small")))
+                   if c.get("front_thumb") else "",
+        })
+        if len(card_hits) >= limit_cards:
+            break
     return {"names": name_hits, "cards": card_hits}
 
 # ---------- rendering ----------
@@ -725,7 +844,16 @@ CSS = """
 /* --bg lives on <html> so the CANVAS (and therefore overscroll rubber-banding)
    is always the flat ground colour - no white flash, no gradient smearing when
    the page bounces. body is transparent over it. */
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg)}
+/* touch-action:manipulation on the ROOT: the browser intersects touch-action
+   down the ancestor chain, so one rule here retires the 300ms double-tap-zoom
+   wait for EVERY tap on the site while leaving panning and PINCH zoom fully
+   intact (that is the whole point of `manipulation` over `none`). The viewport
+   meta stays user-scalable - accessibility zoom is never ours to take.
+   The grey iOS tap flash goes with it: every control here already answers a
+   press with its own :active state, so the flash is a second, uglier answer to
+   the same event. The property inherits, so the root is the only place it goes. */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg);
+ touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 @view-transition{navigation:auto}
 /* ---- ambient ground ------------------------------------------------------ */
 /* The sheet is white/graphite edge to edge, which gives the Liquid Glass chrome
@@ -746,9 +874,18 @@ body{background:transparent;min-height:100vh;color:var(--txt);
  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
  -webkit-font-smoothing:antialiased;padding:14px 20px 96px;
  font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums}
-:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .wrap{max-width:820px;margin:0 auto}
+/* screen-reader-only live region (announcements: saves, failures, counts) */
+.vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
+ clip-path:inset(50%);white-space:nowrap}
+/* skip link: first tab stop on the dashboard, visible only on focus - a row's
+   filmstrip is up to 8 links, so the list is a long walk without it */
+.skip{position:fixed;left:-9999px;top:14px;z-index:100;padding:10px 16px;border-radius:999px;
+ background:var(--glasssolid);color:var(--ac-pale);font-size:13px;font-weight:500;
+ text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
+.skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
 /* Hierarchy is weight+size+leading as a SET, never size alone. Three rungs:
    26/700 large title, 17/650 data values and section titles, 13/400 body.
@@ -780,7 +917,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    light catches the top edge (--rim) and falls off at the bottom (--rimb).
    Both are sub-threshold on purpose - you should feel the curvature, not see
    an outline. The drop shadow is separate and is what carries elevation. */
-.toolbar,.filters,.sbar,#gearbtn,#themeflip{
+/* .f.fsolo (the standalone Archived pill) rides in this group at TWO classes on
+   purpose: .f further down zeroes background and border for segment pills, and
+   0,2,0 is what lets the solo pill keep its own glass without a later re-state. */
+.toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{
  background:var(--glass);
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
  border:1px solid var(--hair);
@@ -840,21 +980,78 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .filters,.sbar{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:18px 0 10px}
+/* Archived is a MODE switch, not a sort, so it sits OUTSIDE the sort segment
+   instead of taking the last seat inside it. The real reason is the phone: the
+   sort capsule can become a horizontal scroller there, and anything parked at
+   its right edge is off-screen until you drag it into view - a mode switch has
+   to be visible the whole time. It is a bare pill, not a second capsule: a
+   capsule wrapping a single pill prints a visible ring around it with nothing
+   else inside, which reads as a mistake. So the button carries the glass
+   itself (.f.fsolo, see the chrome group above). Two controls, one row. */
+.filterrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 10px}
+/* the row owns the margin now; the standalone .filters rule above still serves
+   the person-page archived sections, which have no row around them */
+.filterrow .filters{margin:0}
 .sbar{margin-top:12px}
-.f{font-size:13px;font-weight:500;color:var(--m1);background:transparent;border:0;
- padding:7px 14px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;
+/* user-select:none on the CONTROLS only. A pill's word is a button label, not
+   content - a long-press that pops a selection handle over "Order type" is
+   noise. It stops here: card names, lot numbers, tags, values and every input
+   stay selectable, because those are things a person copies. */
+/* line-height is STATED, not inherited, and that is load-bearing. Most pills are
+   <button>, and the UA sheet pins line-height:normal on form controls, so body's
+   1.45 never reaches them - a pill measured 15px of line box while the one <a
+   class="f"> in the same capsule ("N need owners") inherited 18.85 and quietly
+   made the capsule taller. 16px fixes both: every pill is the same box whatever
+   its tag, and the capsule's outer height becomes arithmetic instead of a font
+   metric, which is what lets the solo Archived pill match it exactly (see
+   .fsolo). 16/13 = 1.23, comfortably clear of the glyph box. */
+/* 6/8, not 7/7: centring the line box is not centring the ink - these labels are
+   mostly lowercase and carry no descenders, so -1/+1 rides their x-height mass up
+   to optical centre while the total height stays exactly what it was. */
+.f{font-size:13px;font-weight:500;color:var(--m1);background:transparent;border:0;line-height:16px;
+ padding:6px 14px 8px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;
  width:auto;margin:0;font-family:inherit;letter-spacing:0;position:relative;
+ -webkit-user-select:none;user-select:none;
  transition:background .18s,color .18s,transform .14s ease-out}
-/* the pill LOOKS 33px tall and stays that way - the hit area is grown
-   invisibly past the capsule instead (33 + 12 = 45 >= the 44px HIG floor).
-   On mobile the capsule is a scroller and clips the pseudo, so the CAPSULE
-   grows to 45 there instead - see the 640px block.
+/* the pill LOOKS 30px tall and stays that way - the hit area is grown invisibly
+   past the capsule instead (30 + 14 = 44, exactly the HIG floor; the 7px was 6
+   until the line box above became a stated 16, and it is the cheaper of the two
+   places to take the pixel back).
+   On mobile the capsule is an overflow box and CLIPS this pseudo, so the sort
+   pills' real target there is the capsule's own height - see the 640px block
+   for what that costs and why it is a deliberate call.
    Vertical only: inset 0 left/right so a pill never steals its neighbour.
    z-index:-1 keeps it BEHIND every real box, so when the capsule wraps to a
    second row the lower pill's pad can't shadow the upper pill's live edge. */
-.f::before{content:'';position:absolute;inset:-6px 0;z-index:-1}
+.f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
-.f.farch.on{color:var(--txt)}
+/* Archived is a VIEW SWITCH, not a fourth sort choice, so its pressed state
+   borrows the primary-button grammar (.fillbtn: --ac-fill + #fff) rather than
+   the segment's quiet --segon wash. --ac-fill is the darkened-accent shade that
+   exists precisely to carry white text, so this clears contrast in both
+   themes. :active scale still comes from .f:active. */
+.f.farch.on{background:var(--ac-fill);color:#fff}
+/* the solo Archived pill IS its own capsule. It reads one rung QUIETER than the
+   sort pills (12/500) because it is a mode switch sitting next to them, not a
+   fourth sort; on mobile the count drops too (.archn, see the 640px block) and
+   the aria-label carries it.
+   The 20px of vertical pad is the one number that has to be right: it puts this
+   pill at 16 + (9+11) + 1*2 = 38px, which is exactly the sort capsule's outer
+   height at BOTH breakpoints (desktop 16 + (6+8) + 3*2 + 2 = 38, mobile
+   16 + (5+7) + 4*2 + 2 = 38). The split inside each pair is the optical -1/+1;
+   only the sum matters here. It shares .f's stated 16px line box, so the two
+   silhouettes match by arithmetic, not by luck - no fudge factor, and no
+   dependence on which system font the phone happens to use.
+   Stays inline-block (.f's display), NOT inline-flex: flex would turn the label
+   and the count span into separate flex items and eat the space in front of the
+   middot, printing "Archived· 18". */
+.fsolo{font-size:12px;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
+/* pressed, it has to read like .fillbtn - one solid accent lozenge - and NOT
+   like a filled pill sitting inside a grey ring. The hairline goes transparent
+   rather than to 0 so the box geometry (and the height match) is untouched, and
+   the glass rims go with it; the drop shadow stays, because the pill is still
+   floating at the same elevation it was a moment ago. */
+.f.farch.fsolo.on{border-color:transparent;box-shadow:0 10px 26px var(--shc)}
 .f:active{transform:scale(.97)}
 /* ---- ledger rows: hairlines only, no cards, no shadows -------------------- */
 .card{background:transparent;border:0;border-top:1px solid var(--hair);border-radius:0;
@@ -870,6 +1067,16 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .pills{display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
+/* the status column scans on two gray levels: Shipped = ink (done, real),
+   everything in flight = muted. A third, lighter "pending" gray cannot clear
+   4.5:1 at 13px on the white sheet, so pending keeps --m1 and its clock icon
+   plus the label carry the difference (.pending stays as a semantic hook).
+   Grades landing is the product's payoff and the one place Reserved Red is
+   allowed to announce an EVENT rather than restate a number. */
+.pill.shipped{color:var(--txt)}
+.pill.shipped svg{color:var(--m1)}
+.pill.grades{color:var(--grade);font-weight:600}
+.grady{color:var(--grade);font-weight:600}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
 /* the caption under a value drops back to the small-text rung, so it must also
    drop the value's optical tracking - tracking is inherited, size is not. */
@@ -884,8 +1091,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .stage b{color:var(--ac-pale);font-weight:650}
 .bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
 /* the one considered moment: on load FX_JS drops every bar to 0 and lets it
-   run out to its served width, staggered onto the row settle (see FX_JS) */
-.bar i{display:block;height:100%;border-radius:2px;background:var(--ac);
+   run out to its served width, staggered onto the row settle (see FX_JS).
+   --bar, not raw --ac: the fill is clamped server-side to 3:1 against the
+   track (raw steel blue measured 2.48:1 against the dark track). */
+.bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
  transition:width .55s cubic-bezier(.23,1,.32,1)}
 .card.arch .bar i{background:var(--m1)}
 .foot{padding:0;border:0;margin-top:9px;display:flex;justify-content:space-between;
@@ -897,22 +1106,49 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    As flex items (.stage, .foot, .footacts) the margins cancel exactly; as
    inline anchors the vertical padding never touched line layout to begin with. */
 .view{font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
- padding:12px 8px;margin:-12px -8px;transition:color .15s,background-color .15s}
+ padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
+ transition:color .15s,background-color .15s}
 .archbtn{font-size:13px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
  padding:12px 8px;cursor:pointer;width:auto;margin:-12px -8px;font-family:inherit;
+ -webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s,transform .14s ease-out}
 .archbtn:active{transform:scale(.97)}
 .empty{color:var(--m1);font-size:13px;padding:48px 0;text-align:center;line-height:1.7}
-.cover{width:42px;height:58px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
- background:var(--surface3);flex-shrink:0}
+/* ---- filmstrip: the row's own contact sheet ------------------------------ */
+/* Replaced the old single 42x58 cover thumb (rule and emissions both gone).
+   Up to 8 tiles, the 8th becoming a "+N" chip when the sub has more imaged
+   cards than fit. */
+/* the strip SCROLLS at every width, not just under 640px: 8 tiles measure
+   742px, so any sheet narrower than ~782px (iPad portrait included) would
+   otherwise scroll the whole page sideways. */
+.strip{display:flex;gap:10px;margin-top:12px;overflow-x:auto;
+ overscroll-behavior-x:contain;scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+/* the strip is an overflow box, which also clips vertically - a tile's focus
+   ring draws INSIDE the tile so the box can't cut it */
+.strip a:focus-visible{outline-offset:-2px}
+/* [href^="/img"] is the same selector the lightbox uses to pick out scan links,
+   so the "+N" chip (an /sub/<n> link) keeps its own display:flex. */
+.strip a[href^="/img"]{display:block;flex-shrink:0;line-height:0}
+.strip img{width:84px;height:117px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
+ background:var(--surface3);cursor:zoom-in;flex-shrink:0}
+.morechip{width:84px;height:117px;border-radius:6px;border:1px solid var(--hair);
+ background:var(--ph);display:flex;align-items:center;justify-content:center;font-size:13px;
+ font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:11px 0;font-size:13px;
  color:var(--m1);background:transparent;border-bottom:1px solid var(--hair)}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
- color:var(--m1);font-size:13px;cursor:pointer;transition:color .15s,background-color .15s}
+ color:var(--m1);font-size:13px;cursor:pointer;-webkit-user-select:none;user-select:none;
+ transition:color .15s,background-color .15s}
 /* ---- scans: image, 6px radius, hairline, no shadow ------------------------ */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:20px}
 .grid img{width:100%;border-radius:6px;border:1px solid var(--hair);background:var(--surface3);
  aspect-ratio:1.72/2.4;object-fit:cover;display:block}
+/* NO content-visibility here: its paint containment clips every descendant
+   that reaches past the tile box - focus rings, and the .sublink hover pill's
+   negative-margin bleed. The endless off-screen sweep it was meant to stop is
+   handled in FX_JS instead: the sweep class only lands when a still-loading
+   tile approaches the viewport. */
 .gc{background:transparent;border:0;border-radius:0;padding:0;display:flex;flex-direction:column}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:6px;border:1px solid var(--hair);
  background:var(--ph);display:flex;align-items:center;justify-content:center;
@@ -921,29 +1157,56 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .gc .cn{font-size:11.5px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
-.gc .nm{font-size:13px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;height:54px;
- display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* the card NAME is the subject only (split_name demotes the set boilerplate to
+   .nmset below): two lines is enough for it, and the reserved height keeps
+   every tile in the grid on the same baseline. 2 x 13px x 1.4 = 36.4 -> 37.
+   min-height, not height: a fixed box clips the second line mid-glyph under
+   a user-set minimum font size or text-only zoom (WCAG 1.4.4). */
+.gc .nm{font-size:13px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:37px;
+ display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gc .nmset{font-size:11.5px;color:var(--m1);margin-top:2px;white-space:nowrap;overflow:hidden;
+ text-overflow:ellipsis}
 .gc .cval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);margin-top:4px}
 .gc .cval span{font-size:11.5px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color .15s,background-color .15s}
-.sublink[style]{color:var(--m1);font-weight:400}
+/* the customer's non-link variant is a real class, not "has any inline style" -
+   keying on [style] made an unrelated inline style silently repaint the link */
+.sublink.sublink-static{color:var(--m1);font-weight:400;cursor:default}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
-.own{margin-top:auto;background:transparent;border:0;border-bottom:1px solid transparent;
+.ownrow{display:flex;align-items:center;margin-top:auto}
+.own{background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:13px;font-weight:400;
- padding:11px 0 10px;width:100%;outline:none;transition:border-color .15s;touch-action:manipulation}
+ padding:11px 0 10px;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
+/* touch devices: tap navigates instantly, this pencil is the edit affordance
+   (double-tap-to-edit is a desktop double-click idea - on a phone it races
+   navigation). Hidden while editing so the underline runs full width. */
+.ownedit{display:none;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
+@media(pointer:coarse){
+ .ownedit{display:flex;align-items:center;justify-content:center;width:40px;
+  margin-right:-6px;align-self:stretch}
+ .ownedit:active{color:var(--txt)}
+ .ownrow:focus-within .ownedit{display:none}}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
-.own:focus,.own:focus-visible{border-bottom-color:var(--ac);outline:none}
+/* pointer focus keeps the quiet accent underline alone; KEYBOARD focus gets
+   the full ring back - a 1px underline is not a visible focus indicator on
+   the app's most-used control (WCAG 2.4.11). Order matters: focus-visible is
+   stated after :focus so its outline wins when both apply. */
+.own:focus{border-bottom-color:var(--ring);outline:none}
+.own:focus-visible{border-bottom-color:var(--ring);outline:2px solid var(--ring);outline-offset:2px}
 .own.saved{border-bottom-color:var(--ok)}
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
  color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
  transition:color .15s,background-color .15s}
+/* the failed-save chip: same slot and grammar as the undo chip, alert-colored -
+   a save failure must say so in words, not in a 1.2s border flash */
+.undo.uerr{color:var(--err)}
 /* ---- lightbox ------------------------------------------------------------ */
-.lb{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.4);display:flex;
+.lb{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;
  align-items:center;justify-content:center;cursor:zoom-out;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
  transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
@@ -951,8 +1214,16 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .lb.open{opacity:1;visibility:visible;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
  transition-delay:0s}
 .lb img{max-width:92vw;max-height:92vh;border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
- transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1)}
+ transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1);cursor:default}
 .lb.open img{transform:none}
+/* the reveal moment must survive being touched: the scan itself is inert, the
+   scrim and this orb close. Fixed values, not tokens - it always sits on the
+   dimmed scrim, same as the lightbox shadow. */
+.lbx{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
+ display:flex;align-items:center;justify-content:center;padding:0;margin:0;
+ color:#fff;background:rgba(0,0,0,.35);border:0;cursor:pointer;
+ transition:background .15s,transform .14s ease-out}
+@media(hover:hover){.lbx:hover{background:rgba(0,0,0,.55)}}
 .grid a{cursor:zoom-in;position:relative;display:block}
 /* The loading sweep used to animate background-position ON THE IMG: a full
    repaint of every unloaded tile, every frame. It is now ONE overlay on the
@@ -964,7 +1235,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    nothing visible is cut, and an element's own focus outline is not clipped by
    its own overflow. */
 .grid a[href^="/img"]{overflow:hidden;border-radius:6px}
-.grid a[href^="/img"]::after{content:'';position:absolute;inset:0;border-radius:6px;
+/* the sweep only runs on .ldg - FX_JS sets it when a still-loading tile nears
+   the viewport, so lazy images below the fold (which never load and would
+   otherwise sweep forever) cost nothing */
+.grid a[href^="/img"].ldg::after{content:'';position:absolute;inset:0;border-radius:6px;
  pointer-events:none;
  background:linear-gradient(100deg,transparent 20%,var(--sh2) 50%,transparent 80%);
  animation:sweep 1.15s linear infinite}
@@ -973,8 +1247,6 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    there the sweep would never stop. */
 .grid a.ld::after{display:none}
 @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
-/* .cover is a 42x58 thumb: too small for a sweep to read as anything but noise.
-   It keeps the flat var(--surface3) placeholder it already declares. */
 /* ---- corner controls: glass orbs ----------------------------------------- */
 /* 44x44 is the HIG touch floor; the 8px gap between the orbs is preserved by
    pushing the gear out to 20 + 44 + 8 = 72. Icon glyphs are unchanged. */
@@ -992,7 +1264,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:999px;
  color:var(--txt);font-size:15px;font-weight:400;text-align:left;padding:11px 16px;
  font-family:inherit;outline:none}
-input:focus,input:focus-visible{outline:2px solid var(--ac);outline-offset:0}
+input:focus,input:focus-visible{outline:2px solid var(--ring);outline-offset:0}
 input::placeholder{color:var(--m1)}
 /* BUTTONS ARE NOT FILLED BY DEFAULT. The filled accent capsule used to live on
    the `button` ELEMENT selector, which meant every text action, pill and orb in
@@ -1013,6 +1285,7 @@ button{background:transparent;border:0;color:inherit;
 /* press-scale stays element-level: it is feedback every button deserves, and it
    sets no colour so it cannot leak a fill. */
 button:active{transform:scale(.97)}
+button:disabled{opacity:.5;cursor:default}
 .err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:14px}
 /* ---- settings ------------------------------------------------------------ */
 .card.sblock{margin:0;padding:22px 0 24px;border-top:1px solid var(--hair);border-radius:0}
@@ -1033,11 +1306,11 @@ button:active{transform:scale(.97)}
 .slbl{font-size:12px;color:var(--m1);margin-top:18px;line-height:1.6;max-width:460px}
 .snote{display:inline-block;font-size:13px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
-.sbar .f{padding:8px 15px}
+.sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
 .spane{margin-top:16px}
 /* settings/discord sheets materialize like the lightbox: stays mounted, scrim
    fades up with the same blur(8px), sheet lands from .97. Exit is quicker. */
-.smodal{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.4);display:flex;
+.smodal{position:fixed;inset:0;z-index:60;background:var(--scrim);display:flex;
  align-items:center;justify-content:center;padding:18px;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
  transition:opacity .14s ease-out,backdrop-filter .14s ease-out,
@@ -1060,6 +1333,14 @@ button:active{transform:scale(.97)}
 .dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
 .card.arch,.gc.arch{opacity:.5;filter:grayscale(.6)}
+/* ...but only SLIGHTLY in the archived-only view (the owner, 2026-08-01): the full
+   .5 dim exists to push archived rows behind live ones they sit among; with
+   nothing to sit behind it made the whole list hard to read, yet full color
+   read as current. This keeps the rows legible while still saying "past".
+   #list.archview is set by the toggle script, so the scope is exactly that
+   view - the person, cards and search pages (.gc.arch, ARCHFOLD) keep the full
+   dimming, and the sub detail page's .archdim is untouched. */
+#list.archview .card.arch{opacity:.85;filter:grayscale(.55)}
 .card.tlcard{padding:6px 0 2px;border-top:0;margin:0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
@@ -1070,7 +1351,7 @@ button:active{transform:scale(.97)}
 .setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.6}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
-.gbox{width:300px;text-align:center}
+.gbox{width:min(300px,100%);text-align:center}
 /* the gate is a 300px centred card, not a page - a large title sized for a
    820px sheet overpowers it and wraps a two-word site name onto two lines.
    One step down, same weight, tracking re-scaled to the new size. The card is
@@ -1081,13 +1362,23 @@ button:active{transform:scale(.97)}
 /* ---- hover: pointer devices only ----------------------------------------- */
 @media(hover:hover){
 .card:hover{background:var(--hovrow)}
+/* group wrappers and the standalone timeline block are .card for the ledger
+   look, but they are not targets - only the sub-number link inside a group
+   is. Tinting the whole surface promised a click it doesn't have. */
+.card.grp:hover,.card.tlcard:hover{background:transparent}
 .card.arch:hover,.gc.arch:hover{opacity:.62}
+/* full color on hover inside the archived view - the row still takes the
+   normal .card:hover background highlight, and the slight grey lifts off. */
+#list.archview .card.arch:hover{opacity:1;filter:none}
 .f:hover{color:var(--fhov)}
 .f.on:hover{color:var(--ac-pale)}
+/* stated AFTER .f.on:hover and at 4 classes so the pressed Archived pill keeps
+   its fill text colour on hover instead of flipping to accent-on-accent. */
+.f.farch.on:hover{color:#fff;background:var(--ac-fill-hot)}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
-.view:hover,.archbtn:hover,.sublink:not([style]):hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
+.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
 /* The text actions already carry an invisible padded hit box (the negative-
    margin trick above). On hover that box becomes VISIBLE as a quiet fill - the
    iOS/macOS toolbar highlight - so you can see the target you're about to hit
@@ -1096,7 +1387,7 @@ button:active{transform:scale(.97)}
    contrast in both themes with room to spare.
    8px, NOT a capsule: these are inline actions inside a sentence of layout, and
    a capsule would read as a control sitting there permanently. */
-.view:hover,.archbtn:hover,.sublink:not([style]):hover,.undo:hover,.tlink:hover,.dbtn:hover{
+.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover{
  background:var(--surface3);border-radius:8px}
 /* the glyph actions ARE square-ish targets, so theirs is a circle */
 .hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
@@ -1144,16 +1435,20 @@ button:active{transform:scale(.97)}
  /* the segmented control never breaks into a second row - it scrolls.
     overflow-y is pinned to hidden so the pills' -6px hit pseudo can never
     open a phantom vertical scroll on the capsule. */
- /* the capsule is a scroller here, so the pills' -6px hit pseudo is CLIPPED to
-    the capsule box - the 45px target the desktop capsule gets for free is cut
-    back to the capsule's own height. So the capsule itself grows instead: 6px
-    vertical pad (from 3) puts its box at 33 + 12 = 45, and the pseudo's -6px
-    now runs exactly to the new padding edge. Horizontal pad stays 3px so the
-    end caps read the same. This is the one deliberate visual delta on mobile.
-    .sbar is NOT a scroller (no rule here), so its pseudo still overflows
-    freely and it already clears 44 - it is left alone. */
+ /* the capsule is an overflow box here, so the pills' -6px hit pseudo is CLIPPED
+    to the capsule box - the 45px target the desktop capsule gets for free is cut
+    back to the capsule's own height. This block used to pad the capsule out to
+    45 to buy that back; it no longer does. The row read too tall on a phone and
+    the call was made explicitly for a THINNER control: 4px vertical pad (from 7)
+    and 6px on the pills (from 7) put the capsule at 38px, six under the 44px HIG
+    floor. Honest trade, stated here rather than papered over - the pills are
+    wide (44px+ horizontally), they sit in a row of their own with nothing
+    destructive next to them, and the solo Archived pill outside the overflow box
+    still gets the full pseudo (52px). Horizontal pad stays 3px so the end caps
+    read the same. .sbar is NOT an overflow box (no rule here), so its pseudo
+    still overflows freely and it already clears 44 - it is left alone. */
  .filters{display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;overflow-y:hidden;
-  overscroll-behavior-x:contain;scrollbar-width:none;padding:7px 3px;align-items:center}
+  overscroll-behavior-x:contain;scrollbar-width:none;padding:4px 3px;align-items:center}
  .filters::-webkit-scrollbar{display:none}
  .filters .f{flex:0 0 auto}
  /* scroll cue: the scrollbar is hidden, so nothing would say there are more
@@ -1177,10 +1472,42 @@ button:active{transform:scale(.97)}
   transition:--cuel .18s ease-out,--cuer .18s ease-out}
  .filters.sl{--cuel:var(--shc3)}
  .filters.sr{--cuer:var(--shc3)}
+ /* the sort capsule HUGS its pills - no flex:1. Stretching it to fill the row
+    left a long empty glass track between the last pill and the capsule's right
+    edge, which read as a broken control rather than as space. With flex-basis
+    back on auto the slack lives BETWEEN the two controls (the row is
+    space-between), so the gap is page background, which is what a gap should be.
+    min-width:0 stays: it is what still lets the capsule shrink below its content
+    and become a scroller if a phone ever is narrow enough (~<330px) to need it.
+    On a 360px sheet it does not engage - three pills at 13/500 measure ~247px,
+    and two notches keep it that way: the count leaves the Archived button
+    (aria-label keeps it) and the sort pills' side padding goes 14 -> 11.
+    scrollWidth === clientWidth at both 390 and 360, which is also what keeps
+    the scroll-cue JS silent - it is scroll-position based, and a capsule that
+    cannot scroll never sets .sl/.sr. */
+ .filterrow .filters{min-width:0}
+ .archn{display:none}
+ .filterrow .filters .f{padding:5px 11px 7px}
  .grid{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:14px}
+ /* phone filmstrip: tiles stay legible (64x89) and the strip bleeds to the
+    card's own padding edge (-10px here, matching .card below) so the last
+    tile runs off the sheet edge - the honest "there is more" cue. The scroll
+    behavior itself now lives on the base .strip rule. */
+ .strip{gap:8px;margin:10px -10px 0;padding:0 10px}
+ .strip img,.morechip{width:64px;height:89px}
  .card{padding:15px 10px;margin:0 -10px}
- input,.searchbar,.own{font-size:16px}
- .gc .nm{height:auto;-webkit-line-clamp:2}}
+ input,.searchbar{font-size:16px}
+ /* 16px only while the tag is EDITABLE: that is the only moment iOS would
+    zoom on focus. A readonly owner tag is just text, and at 16px it shouted
+    over the 13px card name it sits under. */
+ .own:not([readonly]){font-size:16px}
+ .gc .nm{min-height:0}}
+/* iOS focus-zoom fires on any sub-16px input on a COARSE pointer, not on a
+   narrow viewport - iPad portrait is 768px and still zoomed. The 640px block
+   covers phones; this covers the rest of the coarse-pointer range. */
+@media(pointer:coarse) and (min-width:641px){
+ input,.searchbar{font-size:16px}
+ .own:not([readonly]){font-size:16px}}
 /* ---- reduced motion: named, not blanket ---------------------------------- */
 /* The old `*{transition-duration:.01ms}` sledgehammer also killed the feedback
    that TELLS you something happened - hover tints, focus rings, a sheet
@@ -1194,7 +1521,7 @@ button:active{transform:scale(.97)}
  .card,.gc{animation:none}
  .bar i{transition:none}
  /* the sweep overlay goes entirely - what is left is the flat var(--surface3)
-    placeholder the img/.cover already carry, which is what this block gave
+    placeholder the img already carries, which is what this block gave
     before the sweep moved off background-position. */
  .grid a[href^="/img"]::after{display:none}
  /* press-scale on every control that has one */
@@ -1219,14 +1546,18 @@ button:active{transform:scale(.97)}
 /* background-COLOR, never the shorthand: the shorthand would wipe the capsule's
    segtrack layer and the mobile scroll cue along with the translucency */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .toolbar,.filters,.sbar,#gearbtn,#themeflip{background-color:var(--glasssolid)}}
+ .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{background-color:var(--glasssolid)}
+ /* backdrop-filter was what made the capsule a stacking context; without it the
+    pills' z-index:-1 hit pseudo would fall BEHIND the now-opaque background */
+ .filters,.sbar{isolation:isolate}}
 /* no color-mix, no ambient: the pseudo just goes empty and the flat --bg on
    <html> shows through, which is exactly the pre-ambient look */
 @supports not (background:color-mix(in srgb,red 5%,transparent)){
  body::before{background:none}}
 @media(prefers-reduced-transparency:reduce){
- .toolbar,.filters,.sbar,#gearbtn,#themeflip{backdrop-filter:none;-webkit-backdrop-filter:none;
+ .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{backdrop-filter:none;-webkit-backdrop-filter:none;
   background-color:var(--glasssolid)}
+ .filters,.sbar{isolation:isolate}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
   background:rgba(0,0,0,.72)}
  /* the ambient exists to be refracted by the glass; with the glass gone it is
@@ -1261,8 +1592,9 @@ if os.path.exists(TOUCH_PNG):
 
 HEAD_HTML = f"""{_ICONS}
 <meta name="description" content="PSA grading submission tracker">
-<script>(function(){{try{{var t=localStorage.getItem('psa_theme');
-if(t&&t!=="{THEME}")document.documentElement.dataset.theme=t;}}catch(e){{}}}})()</script>"""
+<script>(function(){{var t=null;try{{t=localStorage.getItem('psa_theme');}}catch(e){{}}
+var sys=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light',cur=t||sys;
+if(cur!=="{THEME}")document.documentElement.dataset.theme=cur;}})()</script>"""
 
 _SUN = ('<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/>'
@@ -1278,19 +1610,27 @@ THEME_JS = f"""<script>
   var cur=d.dataset.theme||def;
   var b=document.createElement('button');b.id='themeflip';b.type='button';
   var SUN={json.dumps(_SUN)}, MOON={json.dumps(_MOON)};
+  var mq=matchMedia('(prefers-color-scheme: dark)');
+  function sys(){{return mq.matches?'dark':'light';}}
   function render(){{
     b.innerHTML=(cur==='dark')?SUN:MOON;
     b.title=b.ariaLabel=(cur==='dark')?'Switch to light mode':'Switch to dark mode';
   }}
   b.addEventListener('click',function(){{
     cur=(cur==='dark')?'light':'dark';
+    /* choosing the system's current value returns the page to auto-follow */
     try{{
-      if(cur===def){{delete d.dataset.theme;localStorage.removeItem('psa_theme');}}
-      else{{d.dataset.theme=cur;localStorage.setItem('psa_theme',cur);}}
-    }}catch(e){{d.dataset.theme=cur;}}
+      if(cur===sys())localStorage.removeItem('psa_theme');
+      else localStorage.setItem('psa_theme',cur);
+    }}catch(e){{}}
+    d.dataset.theme=cur;
     render();
   }});
   document.body.appendChild(b);render();
+  mq.addEventListener('change',function(e){{
+    var stored=null;try{{stored=localStorage.getItem('psa_theme');}}catch(x){{}}
+    if(!stored){{cur=e.matches?'dark':'light';d.dataset.theme=cur;render();}}
+  }});
 }})();
 </script>"""
 
@@ -1338,28 +1678,43 @@ def tracking_html(carrier, tracking):
             f'target="_blank" rel="noopener">{label}</a>')
 
 def eta_pill(s):
-    """Status pill for a sub: return ETA, shipped, hold, or pending."""
+    """Status pill for a sub: return ETA, shipped, hold, or pending.
+    Shipped reads at ink level, everything in flight at muted, so the column
+    scans (the old .done class was emitted for two different states and had
+    no CSS rule at all - the column read as one gray)."""
     if s["on_hold"]:
         return f'<span class="pill hold">{ICON_HOLD}On hold</span>'
     if s["status"] == "Shipped":
-        return f'<span class="pill done">{ICON_CHECK}Shipped</span>'
+        return f'<span class="pill shipped">{ICON_CHECK}Shipped</span>'
     if s["est_end"] or s["est_start"]:
         return f'<span class="pill">{ICON_CLOCK}Back ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
-    return f'<span class="pill done">{ICON_CLOCK}ETA pending</span>'
+    return f'<span class="pill pending">{ICON_CLOCK}ETA pending</span>'
+
+def grades_pill(s, graded=0):
+    """The payoff pill: grades have landed and the cards aren't shipped yet.
+    Grade Red announcing the EVENT - the one thing the product exists for -
+    instead of leaving it as muted footer text identical to a ship date."""
+    if not s or not s["grades_ready"] or s["status"] == "Shipped" or s["on_hold"]:
+        return ""
+    label = (f'{graded} grade{"s" if graded != 1 else ""} landed' if graded
+             else "Grades ready")
+    return f'<span class="pill grades">{label}</span>'
 
 def gate_page(error=""):
     # only advertise email login where it can actually work (email owner tags)
     ph = "Password or email" if email_login_on() else "Password"
+    inv = ' aria-invalid="true"' if error else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="{ph}" aria-label="{ph}"
- autofocus autocomplete="current-password">
+ autofocus autocomplete="current-password" autocapitalize="none" autocorrect="off"
+ spellcheck="false" aria-describedby="err"{inv}>
 <button type="submit" class="fillbtn">Enter</button></form>
-<div class="err">{html.escape(error)}</div>
+<div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
 def not_found_page(msg="There's no page at this address."):
@@ -1367,7 +1722,7 @@ def not_found_page(msg="There's no page at this address."):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Not found</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Not found</h1><div class="sub">{html.escape(msg)}</div>
 <a class="view" style="display:inline-block;margin-top:10px" href="/">&larr; Back to the dashboard</a>
 </div></div></main>{THEME_JS}</body></html>"""
@@ -1439,16 +1794,17 @@ def account_env_path(acct_id):
     return os.path.join(ACCOUNTS_DIR, acct_id, "account.env")
 
 def settings_gate(error=""):
+    inv = ' aria-invalid="true"' if error else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}@view-transition{{navigation:none}}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
 <form method="POST" action="/settings/auth">
 <input type="password" name="password" placeholder="Settings password"
- aria-label="Settings password" autofocus autocomplete="off">
+ aria-label="Settings password" autofocus autocomplete="off" aria-describedby="err"{inv}>
 <button type="submit" class="fillbtn">Open settings</button></form>
-<div class="err">{html.escape(error)}</div>
+<div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
 def settings_page(msg="", err=""):
@@ -1500,14 +1856,14 @@ def settings_page(msg="", err=""):
  aria-label="Repeat new site password" autocomplete="new-password">
 <button type="submit" class="fillbtn sbtn">Save</button></form>
 </div>""")
-    note = (f'<div class="snote serr">{html.escape(err)}</div>' if err else
-            (f'<div class="snote">{html.escape(msg)}</div>' if msg else ""))
+    note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err else
+            (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
     sbar2 = f'<div class="sbar">{"".join(schips)}</div>' if multi else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}@view-transition{{navigation:none}}</style></head><body><main class="wrap">
+<style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
 <div class="sub">Changes apply from the next hourly scan.</div></div></div>
@@ -1601,7 +1957,7 @@ def settings_page(msg="", err=""):
   }});
 }})();
 </script>
-</main>{FX_JS}{THEME_JS}</body></html>"""
+</main>{APP_JS_TAG}</body></html>"""
 
 GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
@@ -1707,7 +2063,7 @@ def setup_page(error="", label="", psa_email=""):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)} · Setup</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap"><div class="gate"><div class="gbox">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">First-time setup — connect your PSA account</div>
 <form method="POST" action="/setup" class="setupform">
 <input name="label" placeholder="Store or site name" aria-label="Store or site name"
@@ -1721,7 +2077,7 @@ def setup_page(error="", label="", psa_email=""):
 <button type="submit" class="fillbtn">Connect PSA</button></form>
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
 only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
-<div class="err">{html.escape(error)}</div>
+<div class="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
 def stage_dates(a, sub):
@@ -1764,35 +2120,68 @@ def timeline_html(status, dates=None, aside=""):
     return (f'<div class="stage"><span>{line}</span>{aside}</div>'
             f'<div class="bar"><i style="width:{pct:.1f}%"></i></div>')
 
-def card_html(s, archived=False, value=None, vcur="CAD"):
+STRIP_MAX = 8   # tiles per filmstrip; the 8th becomes "+N" when there are more
+
+def strip_html(s, fronts):
+    """The row's contact sheet: the sub's first scans, in line_number order.
+    `fronts` is this sub's imaged (front_thumb, name) list (see sub_fronts).
+    Past STRIP_MAX the last tile becomes a "+N" chip into the detail page, so
+    the strip is always one fixed-width run and never wraps. A sub with no
+    imaged cards falls back to its own subs.thumb; with neither, no strip."""
+    fronts = fronts or []
+    if not fronts and s.get("thumb"):
+        fronts = [(s["thumb"], "")]
+    if not fronts:
+        return ""
+    more = len(fronts) - (STRIP_MAX - 1) if len(fronts) > STRIP_MAX else 0
+    shown = fronts[:STRIP_MAX - 1] if more else fronts
+    tiles = []
+    for u, nm in shown:
+        src = "/img?u=" + urllib.parse.quote(img_url(u, "small"))
+        big = "/img?u=" + urllib.parse.quote(img_url(u, "large"))
+        # every tile is a focusable link, so it needs a NAME: the card's
+        # subject (same trim the grid tiles use), or a plain fallback
+        alt = html.escape(split_name(smart_title(nm))[0] or "Card scan")
+        # anchor href = the large scan, exactly like a .grid tile: LIGHTBOX_JS
+        # reads the href, so strip tiles open the same zoom overlay
+        tiles.append(f'<a href="{big}"><img loading="lazy" src="{src}" alt="{alt}"></a>')
+    if more:
+        tiles.append(f'<a class="morechip" href="/sub/{html.escape(s["sub_number"])}">'
+                     f'+{more}</a>')
+    return f'<div class="strip">{"".join(tiles)}</div>'
+
+def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, graded=0):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
-    # longer repeats an "Expected return" line
-    pill = eta_pill(s)
+    # longer repeats an "Expected return" line.
+    # Archived rows carry NO status pill: every archived sub is finished and the
+    # foot already says "Shipped <date> · tracking", while the extra pill under
+    # the value made .pills taller than the header and bumped the filmstrip
+    # ~20px out of the active rows' rhythm.
+    pill = "" if archived else (grades_pill(s, graded) + eta_pill(s))
 
     if s["status"] == "Shipped" and s["shipped"]:
         foot = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
         if s["carrier"] and s["tracking"]:
             foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
-    elif s["grades_ready"]:
-        foot = "Grades ready"
     else:
+        # grades_ready moved UP into the pills column as the red grades pill -
+        # it was footer text byte-identical to a ship date down here
         foot = ""
 
-    cover = (f'<img class="cover" loading="lazy" src="/img?u={urllib.parse.quote(img_url(s["thumb"], "small"))}" alt="">'
-             if s.get("thumb") else '')
+    strip = strip_html(s, fronts)
     sub = html.escape(s['sub_number'])
-    if archived:
-        pill += '<span class="pill arch">Archived</span>'
     archattr = ' data-arch="1" style="display:none"' if archived else ''
-    # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
+    # data-sub/svc/eta/gr feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
-                f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
+                f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"'
+                f' data-gr="{1 if s["grades_ready"] else 0}"')
     led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
     return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
-<div class="top"><div class="hd">{cover}<div><div class="num">#{sub}</div>
+<div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><div class="num">#{sub}</div></a>
 <div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{led}{pill}</div></div>
+{strip}
 {timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>')}
 {f'<div class="foot"><span class="est">{foot}</span></div>' if foot else ''}</div>"""
 
@@ -1826,7 +2215,7 @@ SEARCH_JS = """<script>
   function esc(s){var d=document.createElement('div');d.textContent=s==null?'':s;return d.innerHTML;}
   function act(n){
     var p=rows[ai];
-    if(p){p.classList.remove('act');p.removeAttribute('aria-selected');}
+    if(p){p.classList.remove('act');p.setAttribute('aria-selected','false');}
     ai=n;
     var r=rows[ai];
     if(r){
@@ -1837,6 +2226,8 @@ SEARCH_JS = """<script>
       q.removeAttribute('aria-activedescendant');
     }
   }
+  function say(msg){ var l=document.getElementById('live');
+    if(l){ l.textContent=''; setTimeout(function(){ l.textContent=msg; },30); } }
   function open(on){
     pv.classList.toggle('on',on);
     q.setAttribute('aria-expanded',on?'true':'false');
@@ -1847,7 +2238,7 @@ SEARCH_JS = """<script>
     if(data.names&&data.names.length){
       h+='<div class="pvsec" role="presentation">People</div>';
       data.names.forEach(function(nm){
-        h+='<a class="pvrow" role="option" id="pvo'+(n++)+'" href="/cards?owner='+encodeURIComponent(nm)+'"><span class="pvtag">Person</span><span>'+esc(nm)+'</span></a>';
+        h+='<a class="pvrow" role="option" aria-selected="false" id="pvo'+(n++)+'" href="/cards?owner='+encodeURIComponent(nm)+'"><span class="pvtag">Person</span><span>'+esc(nm)+'</span></a>';
       });
     }
     if(data.cards&&data.cards.length){
@@ -1855,21 +2246,25 @@ SEARCH_JS = """<script>
       data.cards.forEach(function(c){
         var img=c.img?'<img class="pvimg" src="'+c.img+'" alt="">':'';
         var sub=esc(c.cert?('#'+c.cert):('sub #'+c.sub))+(c.owner?(' · '+esc(c.owner)):'');
-        h+='<a class="pvrow" role="option" id="pvo'+(n++)+'" href="/sub/'+encodeURIComponent(c.sub)+'">'+img+'<span>'+esc(c.name||'Card')+'<small>'+sub+'</small></span></a>';
+        h+='<a class="pvrow" role="option" aria-selected="false" id="pvo'+(n++)+'" href="/sub/'+encodeURIComponent(c.sub)+'">'+img+'<span>'+esc(c.name||'Card')+'<small>'+sub+'</small></span></a>';
       });
     }
     if(!h) h='<div class="pvempty">No matches</div>';
     ai=-1; q.removeAttribute('aria-activedescendant');
     pv.innerHTML=h;
     rows=[].slice.call(pv.querySelectorAll('.pvrow'));
+    say(rows.length?rows.length+' suggestion'+(rows.length!==1?'s':''):'No matches');
     open(true);
   }
   function go(){
     clearTimeout(t);
     t=setTimeout(function(){
       if(!pv.classList.contains('on')){pv.innerHTML='<div class="pvempty">Searching…</div>';rows=[];ai=-1;open(true);}
+      /* non-OK (the 429 rate limit included) closes the preview instead of
+         rendering as a false "No matches" */
       fetch('/suggest?q='+encodeURIComponent(q.value.trim())+scope,{headers:{'X-Requested-With':'fetch'}})
-        .then(function(r){return r.json();}).then(render).catch(function(){rows=[];open(false);});
+        .then(function(r){if(!r.ok)throw 0;return r.json();}).then(render)
+        .catch(function(){rows=[];open(false);});
     },110);
   }
   q.addEventListener('input',go);
@@ -1894,47 +2289,106 @@ SEARCH_JS = """<script>
 
 ARCH_JS = """<script>
 document.querySelectorAll('.archbtn').forEach(function(b){
+  var label=b.textContent;
   b.addEventListener('click', function(){
-    b.disabled = true;
+    b.disabled = true;   // button:disabled dims it - visible in-flight state
     fetch('/archive', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'sub='+encodeURIComponent(b.dataset.sub)+'&on='+b.dataset.on})
-     .then(function(r){ if(r.ok){ location.reload(); } else { b.disabled = false; } });
+     .then(function(r){ if(r.ok){ location.reload(); } else { throw 0; } })
+     .catch(function(){
+        b.disabled = false;
+        b.textContent="Couldn't "+label.toLowerCase()+" \\u00b7 retry";
+        if(typeof _say==='function')_say("Couldn't "+label.toLowerCase()+" the submission");
+        setTimeout(function(){ b.textContent=label; },4000);
+     });
   });
 });
 </script>"""
 
 LIGHTBOX_JS = """<script>
 (function(){
-  var links=document.querySelectorAll('.grid a[href^="/img"]');
+  var links=document.querySelectorAll('.grid a[href^="/img"],.strip a[href^="/img"]');
   if(!links.length) return;
-  var lb=document.createElement('div'); lb.className='lb'; lb.innerHTML='<img alt="">';
+  /* a real dialog: role/aria-modal, focus moves in on open and back out on
+     close, Tab is held on the close orb (the only tabbable inside), and the
+     SCAN ITSELF IS INERT - the reveal must survive being touched. The scrim
+     and the orb close; Escape closes. */
+  var lb=document.createElement('div'); lb.className='lb';
+  lb.setAttribute('role','dialog'); lb.setAttribute('aria-modal','true');
+  lb.setAttribute('aria-label','Enlarged scan'); lb.tabIndex=-1;
+  lb.innerHTML='<img alt="">'
+    +'<button type="button" class="lbx" aria-label="Close">__XICON__</button>';
   document.body.appendChild(lb);
-  var im=lb.querySelector('img'), clr=null;
+  var im=lb.querySelector('img'), x=lb.querySelector('.lbx'), clr=null, opener=null;
   links.forEach(function(a){
     a.addEventListener('click', function(e){
       e.preventDefault();
       var t=a.querySelector('img');
-      im.alt=t?t.alt:'';
+      im.alt=(t&&t.alt)?t.alt:'Card scan';
       clearTimeout(clr);
       im.src=a.getAttribute('href');
+      opener=a;
       lb.classList.add('open');
+      lb.focus();
     });
   });
   function close(){
+    if(!lb.classList.contains('open'))return;
     lb.classList.remove('open');
     clearTimeout(clr);
     clr=setTimeout(function(){ if(!lb.classList.contains('open')) im.src=''; },220);
+    if(opener&&document.contains(opener))opener.focus();
+    opener=null;
   }
-  lb.addEventListener('click', close);
+  lb.addEventListener('click', function(e){ if(e.target!==im) close(); });
+  x.addEventListener('click', function(e){ e.stopPropagation(); close(); });
+  lb.addEventListener('keydown', function(e){
+    if(e.key==='Tab'){ e.preventDefault(); x.focus(); }  // one tabbable: hold it
+  });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
 })();
-</script>"""
+</script>""".replace("__XICON__", ICON_X)
 
 OWNER_JS = """
 <script>
+var coarse=window.matchMedia&&matchMedia('(pointer:coarse)').matches;
+function _say(msg){ var l=document.getElementById('live');
+  if(l){ l.textContent=''; setTimeout(function(){ l.textContent=msg; },30); } }
 document.querySelectorAll('.own').forEach(function(i){
-  var prev=i.value, nav=null;
-  function fail(){ i.classList.add('errsave'); setTimeout(function(){i.classList.remove('errsave')},1200); }
+  var prev=i.value, nav=null, row=i.parentNode;
+  function chip(cls,label,onclick,ttl){
+    var s=row.nextElementSibling;          // one chip at a time
+    if(s&&s.classList.contains('undo')) s.remove();
+    var u=document.createElement('button');
+    u.type='button'; u.className=cls; u.textContent=label;
+    row.insertAdjacentElement('afterend', u);
+    var t=ttl?setTimeout(function(){u.remove()},ttl):null;
+    u.addEventListener('click', function(){ if(t)clearTimeout(t); u.remove(); onclick(); });
+    return u;
+  }
+  function fail(val,old){
+    i.classList.add('errsave'); setTimeout(function(){i.classList.remove('errsave')},1200);
+    _say("Couldn't save the owner tag");
+    /* a failed save must say so in words and offer the retry - the red border
+       flash alone was invisible to a screen reader and easy to miss at speed */
+    chip('undo uerr','Couldn\\u2019t save \\u00b7 Retry',function(){ save(val,old); });
+  }
+  function save(val,old){
+    post(val, function(ok){
+      if(!ok){ fail(val,old); return; }
+      prev=val;
+      i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},1600);
+      _say('Owner saved');
+      chip('undo','Saved \\u00b7 Undo',function(){
+        post(old, function(ok2){
+          if(!ok2){ fail(old,val); return; }
+          i.value=old; prev=old;
+          i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);
+          _say('Owner restored');
+        });
+      },6000);
+    });
+  }
   function post(val,done){
     fetch('/owner', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(val)})
@@ -1958,36 +2412,24 @@ document.querySelectorAll('.own').forEach(function(i){
     if(nav){ clearTimeout(nav); nav=null; edit(); return; }
     if(!i.value){ edit(); return; }
     if(i.selectionStart!==i.selectionEnd) return;  // copying the name, not navigating
+    if(coarse){ visit(); return; }                 // the pencil edits - taps go straight through
     nav=setTimeout(function(){ nav=null; visit(); },280);
   });
+  var eb=row.querySelector('.ownedit');
+  if(eb) eb.addEventListener('click', edit);
   i.addEventListener('focus', function(){ prev=i.value; });
   i.addEventListener('blur', function(){
     i.readOnly=true;
     if(i.value===prev) return;             // nothing changed - no POST
-    var old=prev;
-    post(i.value, function(ok){
-      if(!ok){ fail(); return; }
-      prev=i.value;
-      i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},1600);
-      var s=i.nextElementSibling;          // one undo chip at a time
-      if(s&&s.classList.contains('undo')) s.remove();
-      var u=document.createElement('button');
-      u.type='button'; u.className='undo'; u.textContent='Saved \\u00b7 Undo';
-      i.insertAdjacentElement('afterend', u);
-      var t=setTimeout(function(){u.remove()},6000);
-      u.addEventListener('click', function(){
-        clearTimeout(t); u.remove();
-        post(old, function(ok2){
-          if(!ok2){ fail(); return; }
-          i.value=old; prev=old;
-          i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);
-        });
-      });
-    });
+    save(i.value, prev);
   });
   i.addEventListener('keydown', function(e){
-    if(i.readOnly){                                 // keyboard: typing starts an edit
-      if(e.key.length===1&&!e.metaKey&&!e.ctrlKey&&!e.altKey){  // (Enter only ever saves)
+    if(i.readOnly){
+      /* keyboard route to the person page: Enter on a FILLED readonly tag
+         visits, mirroring the click. The "Enter saves, never navigates"
+         ruling governs the editing state, which is unchanged below. */
+      if(e.key==='Enter'&&i.value){ e.preventDefault(); visit(); return; }
+      if(e.key.length===1&&!e.metaKey&&!e.ctrlKey&&!e.altKey){  // typing starts an edit
         if(nav){ clearTimeout(nav); nav=null; }
         i.readOnly=false;
       }
@@ -2039,15 +2481,36 @@ FX_JS = """<script>
    the sweep overlay (see .grid a.ld::after). Cached images report .complete
    here synchronously - this script runs after the grid markup - so a warm tile
    never flashes the sweep. */
-document.querySelectorAll('.grid img,.cover').forEach(function(m){
+document.querySelectorAll('.grid img,.strip img').forEach(function(m){
   var done=function(){
     m.classList.add('ld');
     var p=m.parentNode;
-    if(p&&p.tagName==='A')p.classList.add('ld');
+    if(p&&p.tagName==='A'){p.classList.add('ld');p.classList.remove('ldg');}
   };
   if(m.complete){done();}
   else{m.addEventListener('load',done);m.addEventListener('error',done);}
 });
+/* the loading sweep starts only when a still-loading tile approaches the
+   viewport (.ldg) - below-the-fold lazy tiles never load, so an always-on
+   sweep would tick forever. Without IntersectionObserver, sweep everything
+   (the pre-existing behavior). */
+(function(){
+  var scans=document.querySelectorAll('.grid a[href^="/img"]:not(.ld)');
+  if(!scans.length)return;
+  if(!window.IntersectionObserver){
+    scans.forEach(function(a){a.classList.add('ldg');});
+    return;
+  }
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){
+      if(!e.isIntersecting)return;
+      var img=e.target.querySelector('img');
+      if(img&&!img.complete)e.target.classList.add('ldg');
+      io.unobserve(e.target);
+    });
+  },{rootMargin:'200px'});
+  scans.forEach(function(a){io.observe(a);});
+})();
 /* the stage bar runs out: each bar is knocked back to 0, then released to the
    width the server rendered, delayed onto the same .04s row-settle stagger so
    it lands with its row instead of after it. Reduced motion returns early, so
@@ -2073,6 +2536,9 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
    are more pills past the edge. Flag which side still has content (.sl/.sr)
    and let the CSS shade that edge; a capsule that fits gets neither class,
    and each class drops the moment you reach that end. */
+/* rAF-batches a layout-reading handler so scroll/resize never run a forced
+   read->write cycle more than once a frame */
+function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFrame(function(){p=0;fn();});};}
 (function(){
   document.querySelectorAll('.filters').forEach(function(f){
     function cue(){
@@ -2080,8 +2546,9 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
       f.classList.toggle('sl',max>1&&f.scrollLeft>1);
       f.classList.toggle('sr',max>1&&f.scrollLeft<max-1);
     }
-    f.addEventListener('scroll',cue,{passive:true});
-    addEventListener('resize',cue);
+    var cueR=_raf(cue);
+    f.addEventListener('scroll',cueR,{passive:true});
+    addEventListener('resize',cueR);
     cue();
   });
 })();
@@ -2103,6 +2570,29 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
   new IntersectionObserver(function(e){
     tb.classList.toggle('raised',!e[0].isIntersecting);
   },{rootMargin:'6px 0px 0px 0px',threshold:0}).observe(s);
+})();
+/* the masthead CONDENSES on a phone: the sticky offset goes negative by exactly
+   the height of the brand row, so .tbtop scrolls away with the page and the
+   search capsule alone stays pinned - the same compact bar every other page
+   carries. Done with `top` and not by hiding .tbtop, because changing a sticky
+   element's HEIGHT mid-scroll reflows everything under it and the page jumps
+   under your thumb. Measured rather than hardcoded: the brand row's height
+   depends on the label wrapping. 10 = the bar's resting sticky offset. Only the
+   dashboard has a <header class="toolbar">; the .tbq bars are divs and already
+   compact, so they're never touched. */
+(function(){
+  var tb=document.querySelector('header.toolbar'),tt=tb&&tb.querySelector('.tbtop');
+  if(!tb||!tt||!window.matchMedia)return;
+  var mq=matchMedia('(max-width:640px)');
+  function settop(){
+    if(!mq.matches){tb.style.top='';return;}
+    var cs=getComputedStyle(tb),g=parseFloat(cs.rowGap);
+    if(!(g>=0))g=parseFloat(cs.gap)||10;   // 'normal' parses to NaN in older engines
+    tb.style.top=(10-(tt.offsetHeight+g+parseFloat(cs.paddingTop)))+'px';
+  }
+  settop();
+  addEventListener('resize',_raf(settop));
+  if(mq.addEventListener)mq.addEventListener('change',settop);
 })();
 /* sheets are dialogs: while one is open, Tab must not walk out the back of it,
    and closing must hand focus back to whatever opened it. Each sheet's own
@@ -2150,21 +2640,41 @@ document.querySelectorAll('.grid img,.cover').forEach(function(m){
 // stage bar running out, and overlays materializing. Hover lives in CSS alone.)
 </script>"""
 
+# ---------- cacheable chrome ----------
+# The stylesheet and the two page-independent scripts are byte-identical on
+# every page, but every response used to inline them under Cache-Control:
+# no-store - ~55KB re-downloaded per navigation, dominating time-to-first-
+# paint on the phones customers actually use. They are served at hashed
+# immutable URLs instead (still stdlib, still single-file, zero build); only
+# THEME_VARS (env-derived, 3KB) stays inline. Pages without FX (the gate,
+# setup, 404) keep their inline THEME_JS so their behavior is unchanged.
+def _script_body(tagged):
+    return tagged.replace("<script>", "").replace("</script>", "")
+
+APP_JS = _script_body(FX_JS) + "\n" + _script_body(THEME_JS)
+_ASSET_V = hashlib.sha256((CSS + APP_JS).encode()).hexdigest()[:12]
+APP_CSS_TAG = f'<link rel="stylesheet" href="/app.css?v={_ASSET_V}">'
+APP_JS_TAG = f'<script src="/app.js?v={_ASSET_V}"></script>'
+
 # person page: fold archived-sub cards behind a toggle below the active grid
 SORT_JS = """<script>
 (function(){
   var list=document.getElementById('list');
   var btns=document.querySelectorAll('.fsort');
   if(!list||!btns.length)return;
-  // clicking the active pill again reverses it; labels follow the direction
-  var BASE={sub:'Newest',svc:'Order type',eta:'Return time'};
-  var DIR={sub:['Newest','Oldest'],
-           svc:['Order type \\u00b7 A\\u2013Z','Order type \\u00b7 Z\\u2013A'],
-           eta:['Return \\u00b7 soonest','Return \\u00b7 latest']};
+  // clicking the active pill again reverses it; only the sub pill flips its word
+  // (Newest/Oldest) - the others keep their plain label in both directions
+  var BASE={sub:'Newest',svc:'Order type',eta:'Return',gr:'Grades ready'};
+  var REV={sub:'Oldest'};
   function subDesc(a,b){return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
   function cmp(a,b,m,d){
     var r=0;
     if(m==='sub'){r=subDesc(a,b);return d?-r:r;}
+    if(m==='gr'){ // landed subs first, newest first inside each half
+      r=(b.dataset.gr||'0')-(a.dataset.gr||'0');
+      if(r)return d?-r:r;
+      return subDesc(a,b);
+    }
     if(m==='svc'){
       var x=(a.dataset.svc||'').toLowerCase(),y=(b.dataset.svc||'').toLowerCase();
       r=x<y?-1:x>y?1:0; if(r)return d?-r:r;
@@ -2186,7 +2696,7 @@ SORT_JS = """<script>
       var on=b.dataset.sort===m;
       b.classList.toggle('on',on);
       b.setAttribute('aria-pressed',on?'true':'false');
-      b.textContent=on?DIR[m][d?1:0]:BASE[b.dataset.sort];
+      b.textContent=(on&&d&&REV[m])||BASE[b.dataset.sort];
     });
     cur=m; rev=d;
     try{localStorage.setItem('psa_sort',m+(d?':r':''))}catch(e){}
@@ -2199,7 +2709,7 @@ SORT_JS = """<script>
   var saved=null; try{saved=localStorage.getItem('psa_sort')}catch(e){}
   if(saved){
     var m=saved.split(':')[0], d=saved.indexOf(':r')>-1;
-    if(DIR[m]&&(m!=='sub'||d))apply(m,d);
+    if(BASE[m]&&(m!=='sub'||d))apply(m,d);
   }
 })();
 </script>"""
@@ -2210,17 +2720,48 @@ ARCHFOLD_JS = """<script>
   if(!af)return;
   af.addEventListener('click',function(){
     var on=af.classList.toggle('on');
+    af.setAttribute('aria-expanded',on?'true':'false');
     ag.style.display=on?'':'none';
-    if(on)ag.scrollIntoView({behavior:'smooth',block:'nearest'});
+    /* an explicit behavior option overrides the CSS scroll-behavior:auto the
+       reduced-motion block sets, so the gate has to live here too */
+    if(on)ag.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'nearest'});
   });
 })();
 </script>"""
+
+_YEAR_TOK = re.compile(r"(19|20)\d\d")
+_NUM_TOK = re.compile(r"[A-Za-z]{0,3}-?\d{1,4}[A-Za-z]?\*?", re.I)     # 075, 3, SV107, FP-007, 197b
+_CARDNO_TOK = re.compile(r"[A-Za-z]{0,3}-?\d{3,4}[A-Za-z]?\*?", re.I)  # the padded form PSA prints
+
+def split_name(name):
+    """'2026 One Piece Promos 075 Monkey D. Luffy Tin Pack' ->
+    ('Monkey D. Luffy Tin Pack', '2026 One Piece Promos · 075').
+
+    PSA names read YEAR SET NUM SUBJECT/VARIANT, so the split point is the card
+    number - the LAST number-ish token that isn't a year, because set names
+    carry their own digits ('Championship 2024 ... 102 Gedatsu', '3rd
+    Anniversary ... 3 Brothers Pack 053 Portgas D. Ace'). Padded 3-4 digit
+    tokens win over bare ones so set copy like 'Cup-Top 64' can't masquerade as
+    the number. Anything that doesn't parse renders whole: (name, "")."""
+    toks = (name or "").split()
+    if len(toks) < 4 or not _YEAR_TOK.fullmatch(toks[0]):
+        return (name or "", "")
+    # range: >=1 set word before the number, >=1 subject word after it
+    cand = [i for i in range(2, len(toks) - 1)
+            if _NUM_TOK.fullmatch(toks[i]) and not _YEAR_TOK.fullmatch(toks[i])]
+    if not cand:
+        return (name or "", "")
+    padded = [i for i in cand if _CARDNO_TOK.fullmatch(toks[i])]
+    i = (padded or cand)[-1]
+    return (" ".join(toks[i + 1:]), f"{' '.join(toks[:i])} · {toks[i]}")
 
 def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline="",
               value=None, vcur="CAD"):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
-    name = html.escape(smart_title(c["name"] or ""))
+    subject, setline = split_name(smart_title(c["name"] or ""))
+    name = html.escape(subject)
+    nmset = f'<div class="nmset">{html.escape(setline)}</div>' if setline else ""
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
     # the grade is the news on this tile: plain text, PSA-label red, under the scan
     grade = f'<div class="gr">PSA {html.escape(c["grade"])}</div>' if c.get("grade") else ""
@@ -2231,13 +2772,13 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
-        img = f'<a href="{big}"><img loading="lazy" src="{src}" alt="{name}"></a>'  # opens in the lightbox
+        img = f'<a href="{big}"><img loading="lazy" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
     else:
         img = '<div class="ph">No image yet</div>'
     if customer:
         # customers never link into submissions (those show other people's cards);
         # the chip carries this card's own status instead
-        sub_link = f'<div class="sublink" style="cursor:default">{html.escape(statline)}</div>' if statline else ""
+        sub_link = f'<div class="sublink sublink-static">{html.escape(statline)}</div>' if statline else ""
     else:
         sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))}</a>'
                     if show_sub else "")
@@ -2245,45 +2786,52 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     # readonly until OWNER_JS unlocks it: one click opens the person's page,
     # a second click (or typing) switches the field into edit mode
     own_input = ("" if customer else
-                 f'<input class="own" data-cert="{cid}" value="{owner}" readonly'
+                 f'<div class="ownrow"><input class="own" data-cert="{cid}" value="{owner}" readonly'
                  + (f' title="Click opens their page · click twice to edit"'
-                    f' aria-label="Owner: {owner} — click opens their page, type to edit"'
+                    f' aria-label="Owner: {owner}. Press Enter to open their cards, type to rename."'
                     if owner else ' aria-label="Add owner name"')
-                 + ' placeholder="+ owner name">')
+                 + ' placeholder="+ owner name">'
+                   '<button type="button" class="ownedit" aria-label="Edit owner tag">'
+                   '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">'
+                   '<path d="M11.1 2.2a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3L6.4 12.3l-3.1.8.8-3.1z" '
+                   'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>'
+                   '</button></div>')
     val = (f'<div class="cval">${value:,.0f} <span>{vcur} · estimated</span></div>'
            if value is not None and not customer else "")
     return (f'<div class="gc{" arch" if archived else ""}">{img}{grade}{head}'
-            f'<div class="nm">{name}</div>'
+            f'<div class="nm">{name}</div>{nmset}'
             f'{val}{svc}{sub_link}'
             f'{own_input}'
             f'</div>')
-
-def untagged_count(a, active_subs):
-    """Cards in ACTIVE (non-archived) subs that have no owner yet - the operator's
-    to-tag worklist. Archived subs are excluded (old stuff, intentionally untagged)."""
-    owners = owners_map(a)
-    active_nums = {s["sub_number"] for s in active_subs}
-    n = 0
-    for c in load_all_cards(a):
-        if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), ""):
-            n += 1
-    return n
 
 def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
     gone = [s for s in subs if s["sub_number"] in arch]
-    # per-sub estimated totals: the index's price column (PSA estimates)
+    # ONE cards scan and ONE owners read for the whole page: value totals, the
+    # untagged count, and per-sub graded counts all come off the same rows
+    # (this page used to run load_all_cards twice and owners_map twice)
+    cards_all = load_all_cards(a) if subs else []
+    owners = owners_map(a)
     vals, _vas, vcur = load_values(a)
-    tot = {}
-    if vals:
-        for c in load_all_cards(a):
+    tot, gcount = {}, {}
+    for c in cards_all:
+        if vals:
             v = vals.get(c["cert_no"] or "")
             if v:
                 tot[c["sub_number"]] = tot.get(c["sub_number"], 0) + v
+        if c.get("grade"):
+            gcount[c["sub_number"]] = gcount.get(c["sub_number"], 0) + 1
+    active_nums = {s["sub_number"] for s in active}
+    untag = sum(1 for c in cards_all
+                if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), ""))
     if subs:
-        body = ("".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur) for s in active)
-                + "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur) for s in gone))
+        fronts = sub_fronts(a)   # ONE query for every row's filmstrip
+        body = ("".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
+                                  fronts=fronts.get(s["sub_number"]),
+                                  graded=gcount.get(s["sub_number"], 0)) for s in active)
+                + "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur,
+                                    fronts=fronts.get(s["sub_number"])) for s in gone))
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
@@ -2313,40 +2861,59 @@ def dash_page(a, subs):
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
                   '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>',
-                  '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return time</button>']
-    if gone:
-        pills.append(f'<button type="button" class="f farch" id="archtoggle">Archived · {len(gone)}</button>')
-    untag = untagged_count(a, active)
+                  '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>']
+        if any(s["grades_ready"] for s in active):
+            # the attention sort: landed subs float to the top. Only offered
+            # while something has actually landed, so the capsule stays lean.
+            pills.append('<button type="button" class="f fsort" data-sort="gr" aria-pressed="false">Grades ready</button>')
     if untag:
         pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} need owners</a>')
-    # role, not <nav>: .filters is styled and queried by CLASS everywhere, and a
-    # role keeps the tag swap out of it entirely. Label so the landmark list
-    # says which navigation this is.
-    filters = (f'<div class="filters" role="navigation" aria-label="Filters">'
+    # role=group, not navigation: three sort toggles and at most one link are
+    # not a navigation landmark. Styled and queried by CLASS everywhere, so
+    # the role carries no layout weight.
+    filters = (f'<div class="filters" role="group" aria-label="Sort submissions">'
                f'{"".join(pills)}</div>') if pills else ""
+    # Archived is a BARE pill beside the sort segment, a direct child of the row
+    # with no wrapper capsule - .fsolo makes the button carry the glass itself
+    # (see .filterrow). The id and classes are unchanged, so the toggle script
+    # doesn't care (it only flips classes and aria-pressed, never textContent -
+    # so .archn is safe). The count lives in its own span so the 640px block can
+    # drop it and give the sort pills the room; aria-label keeps the full phrase.
+    archpill = (f'<button type="button" class="f farch fsolo" '
+               f'id="archtoggle" aria-pressed="false" aria-label="Archived · {len(gone)}">'
+               f'Archived<span class="archn"> · {len(gone)}</span></button>') if gone else ""
+    filterrow = (f'<div class="filterrow">{filters}{archpill}</div>'
+                 if (filters or archpill) else "")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
+<a class="skip" href="#list">Skip to submissions</a>
 {toolbar}
 {hint}
-{filters}
-<div id="list">{body}</div>
+{filterrow}
+<div id="list" tabindex="-1">{body}</div>
+<div class="vh" id="live" aria-live="polite"></div>
 </main>
 <script>
-(function(){{var h=document.getElementById('hint');
- if(h&&localStorage.getItem('psa_hint_seen')){{h.style.display='none';}}
+(function(){{var h=document.getElementById('hint'),seen=null;
+ try{{seen=localStorage.getItem('psa_hint_seen');}}catch(e){{}}
+ if(h&&seen){{h.style.display='none';}}
  var x=document.getElementById('hintx');
- if(x)x.addEventListener('click',function(){{h.style.display='none';localStorage.setItem('psa_hint_seen','1');}});}})();
+ if(x)x.addEventListener('click',function(){{h.style.display='none';
+  try{{localStorage.setItem('psa_hint_seen','1');}}catch(e){{}}}});}})();
 var af=document.getElementById('archtoggle');
 if(af)af.addEventListener('click',function(){{
   var on=af.classList.toggle('on');
+  af.setAttribute('aria-pressed',on?'true':'false');
+  var lst=document.getElementById('list');
+  if(lst)lst.classList.toggle('archview',on);
   document.querySelectorAll('#list .card').forEach(function(c){{
     var a=c.dataset.arch==='1';
     c.style.display=(on?a:!a)?'':'none';
   }});
 }});
-</script>{SORT_JS}{SEARCH_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
+</script>{SORT_JS}{SEARCH_JS}{LIGHTBOX_JS}{gear_html()}{APP_JS_TAG}</body></html>"""
 
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
@@ -2360,7 +2927,7 @@ def eta_badge(s, extra=""):
         val = html.escape(s["est_start"])
         if s["est_end"]:
             val += f' to {html.escape(s["est_end"])}'
-        note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
+        note = '<span class="estnote grady">Grades ready</span>' if s["grades_ready"] else ""
         return f'<div class="synced">PSA ETA<b>{val}</b>{note}{extra}</div>'
     return f'<div class="synced">PSA ETA<b>Estimate pending</b>{extra}</div>'
 
@@ -2390,21 +2957,22 @@ def detail_page(a, sub):
         body = '<div class="empty">No cards assigned yet. PSA lists them during Research &amp; ID.</div>'
     if archived:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0">Unarchive</button>'
-        tag = ' · <span style="color:var(--m9)">Archived</span>'
+        tag = ' · <span style="color:var(--m1)">Archived</span>'
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1">Archive</button>'
         tag = ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
 {body}
-</main>{OWNER_JS}{BACK_JS}{ARCH_JS}{LIGHTBOX_JS}{FX_JS}{gear_html()}{THEME_JS}</body></html>"""
+<div class="vh" id="live" aria-live="polite"></div>
+</main>{OWNER_JS}{BACK_JS}{ARCH_JS}{LIGHTBOX_JS}{gear_html()}{APP_JS_TAG}</body></html>"""
 
 def people_page(a, owner, customer=False):
     owners = owners_map(a)
@@ -2442,7 +3010,7 @@ def people_page(a, owner, customer=False):
         # person's tiles inside; the sub number links through to the sub page.
         s = subs_by.get(n)
         svc = html.escape(s["service"]) if s else ""
-        pill = eta_pill(s) if s else ""
+        pill = (grades_pill(s, sum(1 for c in cs if c.get("grade"))) + eta_pill(s)) if s else ""
         link = (f'<a class="view" href="/sub/{html.escape(str(n))}">'
                 f'Go to sub #{html.escape(str(n))}</a>')
         tl = timeline_html(s["status"], aside=link) if s else ""
@@ -2479,8 +3047,11 @@ def people_page(a, owner, customer=False):
         inner = (f'<div class="grid" id="archgrid" style="display:none">{tiles(arc_cards)}</div>'
                  if customer else
                  f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>')
-        archsec = (f'<div class="filters" style="margin:30px 0 0">'
-                   f'<button type="button" class="f farch" id="archtoggle">Archived · {len(arc_cards)}</button></div>'
+        # solo pill, same grammar as the dashboard's: a capsule wrapping a
+        # single pill prints a ring with nothing else inside (see .fsolo)
+        archsec = (f'<button type="button" class="f farch fsolo" id="archtoggle" '
+                   f'style="margin:30px 0 0" aria-expanded="false" aria-controls="archgrid">'
+                   f'Archived · {len(arc_cards)}</button>'
                    + inner)
     if unassigned or customer:
         est = ""  # store cost/coverage numbers are operator-only
@@ -2514,14 +3085,15 @@ def people_page(a, owner, customer=False):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 {back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
 {archsec}
-</main>{SEARCH_JS}{owner_js}{BACK_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
+<div class="vh" id="live" aria-live="polite"></div>
+</main>{SEARCH_JS}{owner_js}{BACK_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{gear_html(customer)}{APP_JS_TAG}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -2538,7 +3110,9 @@ def customer_page(a, email):
     def group_html(n, cs):
         s = subs_by.get(n)
         svc = html.escape(s["service"]) if s else ""
-        pill = eta_pill(s) if s else ""
+        # the grades pill rides here too: the customer's evening check-in is
+        # exactly who the "grades landed" news is for
+        pill = (grades_pill(s, sum(1 for c in cs if c.get("grade"))) + eta_pill(s)) if s else ""
         # these groups ARE the customer's sub detail view (no /sub access), so
         # they get the entered-on stage dates the admin detail page has
         tl = timeline_html(s["status"], stage_dates(a, s)) if s else ""
@@ -2563,8 +3137,9 @@ def customer_page(a, email):
             or '<div class="empty">No cards yet — they appear once the store receives your submission.</div>')
     archsec = ""
     if gone:
-        archsec = (f'<div class="filters" style="margin:30px 0 0">'
-                   f'<button type="button" class="f farch" id="archtoggle">Archived · {len(gone)}</button></div>'
+        archsec = (f'<button type="button" class="f farch fsolo" id="archtoggle" '
+                   f'style="margin:30px 0 0" aria-expanded="false" aria-controls="archgrid">'
+                   f'Archived · {len(gone)}</button>'
                    f'<div id="archgrid" style="display:none">'
                    + "".join(group_html(n, groups[n]) for n in gone) + '</div>')
     total = sum(len(groups[n]) for n in act)
@@ -2575,15 +3150,16 @@ def customer_page(a, email):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="view" href="/logout">Sign out</a>
-<div class="hrow" style="margin-top:14px"><div><div class="brand sm">{logo_tag()}<h1>Your cards</h1></div>
+<div class="hrow" style="margin-top:14px"><div><div class="brand">{logo_tag()}<h1>Your cards</h1></div>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
 <div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div></div>
 <div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
 <div style="margin-top:28px">{body}</div>
 {archsec}
-</main>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{FX_JS}{THEME_JS}</body></html>"""
+<div class="vh" id="live" aria-live="polite"></div>
+</main>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{APP_JS_TAG}</body></html>"""
 
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
@@ -2630,13 +3206,14 @@ def search_page(a, q, owner="", customer=False):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Search</title>
 {HEAD_HTML}
-<style>{THEME_VARS}{CSS}</style></head><body><main class="wrap">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 {back}
 <h1 style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
-</main>{SEARCH_JS}{"" if customer else OWNER_JS}{BACK_JS}{LIGHTBOX_JS}{FX_JS}{gear_html(customer)}{THEME_JS}</body></html>"""
+<div class="vh" id="live" aria-live="polite"></div>
+</main>{SEARCH_JS}{"" if customer else OWNER_JS}{BACK_JS}{LIGHTBOX_JS}{gear_html(customer)}{APP_JS_TAG}</body></html>"""
 
 # ---------- server ----------
 
@@ -2728,6 +3305,17 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
+    def serve_str(self, body, ctype):
+        """The hashed chrome bundle (/app.css, /app.js): cached forever, a new
+        hash in ?v is the cache buster. No secrets live in either string."""
+        data = body.encode()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        self.end_headers()
+        self.wfile.write(data)
+
     def serve_asset(self, fpath, ctype):
         """Small pre-auth static file (favicon PNGs); 404s when the instance
         doesn't ship the file."""
@@ -2779,6 +3367,10 @@ class H(BaseHTTPRequestHandler):
         path = parsed.path
         if path == "/logo":
             return self.serve_logo()
+        if path == "/app.css":
+            return self.serve_str(CSS, "text/css; charset=utf-8")
+        if path == "/app.js":
+            return self.serve_str(APP_JS, "text/javascript; charset=utf-8")
         if path in ("/favicon.png", "/favicon.ico"):  # Safari asks for .ico blind
             return self.serve_asset(FAV_PNG, "image/png")
         if path == "/apple-touch-icon.png":
@@ -3052,7 +3644,8 @@ class H(BaseHTTPRequestHandler):
                 matched, email = hit, given.strip().lower()
         if not matched:
             login_fail(ip)
-            msg = ("No cards found for that email yet." if "@" in given
+            msg = ("No cards found for that email yet — check with the store "
+                   "which email your cards are tagged under." if "@" in given
                    else "Incorrect password.")
             return self.send(200, gate_page(msg))
         login_ok(ip)
