@@ -27,7 +27,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
-import base64, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
+import base64, gzip, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -196,6 +196,26 @@ _LIGHT = {"bg": "#ffffff", "surface": "#ffffff",
  "sh2": "#e8e8ec", "scrim": "rgba(0,0,0,.4)",
  "err": "#b03a2e", "holdtx": "#b03a2e", "grade": "#b12b2b", "fhov": "#1d1d1f",
  "ok": "#2f9e68"}
+# The accent ramp is clamped above; the NEUTRAL ramp is hand-picked, and the
+# build's one shipped contrast failure lived exactly there. This doesn't
+# auto-adjust (the values are static and tuned) - it warns at boot so the next
+# hand-picked gray can't ship under target unnoticed.
+def _check_neutrals():
+    for pal, name in ((_LIGHT, "light"), (_DARK, "dark")):
+        bg = _rgb(pal["bg"])
+        for tok, target in (("txt", 4.5), ("m1", 4.5), ("err", 4.5),
+                            ("holdtx", 4.5), ("grade", 4.5),
+                            ("tert", 3.0), ("ok", 3.0)):  # tert/ok are non-text
+            v = pal[tok]
+            if not v.startswith("#"):
+                continue
+            c = _contrast(_rgb(v), bg)
+            if c < target:
+                print(f"WARNING: --{tok} {v} on {name} bg is {c:.2f}:1 "
+                      f"(target {target}:1)", flush=True)
+
+_check_neutrals()
+
 def _theme_vars(mode):
     acmix = _AC_MIX_L if mode == "light" else _AC_MIX_D
     neut = _LIGHT if mode == "light" else _DARK
@@ -729,10 +749,20 @@ def find_customer(email):
                 return a
     return None
 
+_EMAIL_ON = [None, 0.0]  # cached value + timestamp
+
 def email_login_on():
     """True if any owner tag looks like an email. Controls the gate placeholder:
     a personal instance with plain-name tags shouldn't advertise an email login
-    that can never match."""
+    that can never match. Cached for 60s - this runs on every unauthenticated
+    response, and a per-request DB probe for a placeholder string is waste."""
+    now = time.time()
+    if _EMAIL_ON[0] is not None and now - _EMAIL_ON[1] < 60:
+        return _EMAIL_ON[0]
+    _EMAIL_ON[0], _EMAIL_ON[1] = _email_login_probe(), now
+    return _EMAIL_ON[0]
+
+def _email_login_probe():
     for a in load_accounts().values():
         try:
             c = sqlite3.connect(f"file:{a['own_db']}?mode=ro", uri=True)
@@ -752,6 +782,29 @@ def cust_statline(s):
         return f"Shipped {fmt_mdy(s['shipped'])}" if s["shipped"] else "Shipped"
     eta = s["est_end"] or s["est_start"]
     return s["status"] + (f" · back ~{short_date(eta)}" if eta else "")
+
+def load_cards_by_certs(a, cert_ids):
+    """The owner-scoped pool for /suggest: only that person's rows, by cert_id,
+    instead of a full-table scan per keystroke (customer sessions are ALWAYS
+    owner-scoped, so this is the path every customer search hits)."""
+    if not cert_ids:
+        return []
+    out = []
+    try:
+        conn = _ro_conn(a)
+        for i in range(0, len(cert_ids), 500):  # stay under SQLite's param cap
+            chunk = cert_ids[i:i + 500]
+            marks = ",".join("?" * len(chunk))
+            out += [dict(r) for r in conn.execute(
+                "SELECT sub_number, line_number, cert_id, cert_no, name, front_thumb "
+                f"FROM cards WHERE cert_id IN ({marks})", chunk)]
+        conn.close()
+    except sqlite3.OperationalError:
+        return []
+    # restore load_all_cards' global order: newest sub first, then line order
+    out.sort(key=lambda c: (-int(c["sub_number"]) if str(c["sub_number"]).isdigit() else 0,
+                            c.get("line_number") or 0))
+    return out
 
 def search_cards_sql(a, ql, limit):
     """The unscoped /suggest hot path: push the substring match and the LIMIT
@@ -791,12 +844,12 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
     if ql and not want:
         # SQL does the filtering and the limit; the loop below only formats
         pool = search_cards_sql(a, ql, limit_cards)
-    elif ql or want:
-        pool = load_all_cards(a)
-        if want:
-            pool = [c for c in pool if owners.get(str(c["cert_id"]), "").lower() == want]
-            if not ql:  # empty focus on a person page: browse their cards A-Z
-                pool.sort(key=lambda c: smart_title(c.get("name") or "").lower())
+    elif want:
+        # only this person's rows, fetched by cert_id - never a full scan
+        pool = load_cards_by_certs(
+            a, [cid for cid, ow in owners.items() if ow.lower() == want])
+        if not ql:  # empty focus on a person page: browse their cards A-Z
+            pool.sort(key=lambda c: smart_title(c.get("name") or "").lower())
     for c in pool:
         if ql:
             # a no-op re-check for SQL rows (same fields), the real filter for
@@ -2060,6 +2113,7 @@ def first_sync_note(a):
             '<a href="/setup">Re-enter it</a>.')
 
 def setup_page(error="", label="", psa_email=""):
+    desc = ' aria-describedby="err"' if error else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)} · Setup</title>
 {HEAD_HTML}
@@ -2069,15 +2123,15 @@ def setup_page(error="", label="", psa_email=""):
 <input name="label" placeholder="Store or site name" aria-label="Store or site name"
  maxlength="40" value="{html.escape(label)}">
 <input type="password" name="site_pw" placeholder="Choose a site password (for visitors)"
- aria-label="Choose a site password (for visitors)" autocomplete="new-password">
+ aria-label="Choose a site password (for visitors)" autocomplete="new-password"{desc}>
 <input type="email" name="psa_email" placeholder="PSA account email"
- aria-label="PSA account email" value="{html.escape(psa_email)}">
+ aria-label="PSA account email" value="{html.escape(psa_email)}"{desc}>
 <input type="password" name="psa_pw" placeholder="PSA account password"
- aria-label="PSA account password" autocomplete="new-password">
+ aria-label="PSA account password" autocomplete="new-password"{desc}>
 <button type="submit" class="fillbtn">Connect PSA</button></form>
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
 only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
-<div class="err" role="alert">{html.escape(error)}</div>
+<div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
 def stage_dates(a, sub):
@@ -2640,21 +2694,6 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
 // stage bar running out, and overlays materializing. Hover lives in CSS alone.)
 </script>"""
 
-# ---------- cacheable chrome ----------
-# The stylesheet and the two page-independent scripts are byte-identical on
-# every page, but every response used to inline them under Cache-Control:
-# no-store - ~55KB re-downloaded per navigation, dominating time-to-first-
-# paint on the phones customers actually use. They are served at hashed
-# immutable URLs instead (still stdlib, still single-file, zero build); only
-# THEME_VARS (env-derived, 3KB) stays inline. Pages without FX (the gate,
-# setup, 404) keep their inline THEME_JS so their behavior is unchanged.
-def _script_body(tagged):
-    return tagged.replace("<script>", "").replace("</script>", "")
-
-APP_JS = _script_body(FX_JS) + "\n" + _script_body(THEME_JS)
-_ASSET_V = hashlib.sha256((CSS + APP_JS).encode()).hexdigest()[:12]
-APP_CSS_TAG = f'<link rel="stylesheet" href="/app.css?v={_ASSET_V}">'
-APP_JS_TAG = f'<script src="/app.js?v={_ASSET_V}"></script>'
 
 # person page: fold archived-sub cards behind a toggle below the active grid
 SORT_JS = """<script>
@@ -2728,6 +2767,25 @@ ARCHFOLD_JS = """<script>
   });
 })();
 </script>"""
+
+# ---------- cacheable chrome ----------
+# The stylesheet and every page-independent script are byte-identical wherever
+# they appear, but each response used to inline them under Cache-Control:
+# no-store - dominating time-to-first-paint on the phones customers actually
+# use. They are served at hashed immutable URLs instead (still stdlib, still
+# single-file, zero build); only THEME_VARS (env-derived, 3KB) stays inline.
+# Every script in the bundle self-guards with an early return / null check, so
+# a page that lacks a script's target simply no-ops it. Pages without FX (the
+# gate, setup, 404) keep their inline THEME_JS so their behavior is unchanged.
+def _script_body(tagged):
+    return tagged.replace("<script>", "").replace("</script>", "")
+
+APP_JS = "\n".join(_script_body(s) for s in (
+    FX_JS, SORT_JS, SEARCH_JS, OWNER_JS, ARCH_JS, ARCHFOLD_JS,
+    BACK_JS, DISCORD_JS, LIGHTBOX_JS, THEME_JS))
+_ASSET_V = hashlib.sha256((CSS + APP_JS).encode()).hexdigest()[:12]
+APP_CSS_TAG = f'<link rel="stylesheet" href="/app.css?v={_ASSET_V}">'
+APP_JS_TAG = f'<script src="/app.js?v={_ASSET_V}"></script>'
 
 _YEAR_TOK = re.compile(r"(19|20)\d\d")
 _NUM_TOK = re.compile(r"[A-Za-z]{0,3}-?\d{1,4}[A-Za-z]?\*?", re.I)     # 075, 3, SV107, FP-007, 197b
@@ -2913,7 +2971,7 @@ if(af)af.addEventListener('click',function(){{
     c.style.display=(on?a:!a)?'':'none';
   }});
 }});
-</script>{SORT_JS}{SEARCH_JS}{LIGHTBOX_JS}{gear_html()}{APP_JS_TAG}</body></html>"""
+</script>{gear_html()}{APP_JS_TAG}</body></html>"""
 
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
@@ -2972,7 +3030,7 @@ def detail_page(a, sub):
 <div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub))}</div>
 {body}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{OWNER_JS}{BACK_JS}{ARCH_JS}{LIGHTBOX_JS}{gear_html()}{APP_JS_TAG}</body></html>"""
+</main>{gear_html()}{APP_JS_TAG}</body></html>"""
 
 def people_page(a, owner, customer=False):
     owners = owners_map(a)
@@ -3081,7 +3139,6 @@ def people_page(a, owner, customer=False):
     back = ('<a class="view" href="/logout">Sign out</a>' if customer
             else '<a class="view" id="backlk" href="/">← Back</a>')
     page_title = "Your cards" if customer else f"{title}'s cards"
-    owner_js = "" if customer else OWNER_JS
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
@@ -3093,7 +3150,7 @@ def people_page(a, owner, customer=False):
 {grid}
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{SEARCH_JS}{owner_js}{BACK_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{gear_html(customer)}{APP_JS_TAG}</body></html>"""
+</main>{gear_html(customer)}{APP_JS_TAG}</body></html>"""
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -3159,7 +3216,7 @@ def customer_page(a, email):
 <div style="margin-top:28px">{body}</div>
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{SEARCH_JS}{LIGHTBOX_JS}{ARCHFOLD_JS}{DISCORD_JS}{APP_JS_TAG}</body></html>"""
+</main>{APP_JS_TAG}</body></html>"""
 
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
@@ -3213,7 +3270,7 @@ def search_page(a, q, owner="", customer=False):
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{SEARCH_JS}{"" if customer else OWNER_JS}{BACK_JS}{LIGHTBOX_JS}{gear_html(customer)}{APP_JS_TAG}</body></html>"""
+</main>{gear_html(customer)}{APP_JS_TAG}</body></html>"""
 
 # ---------- server ----------
 
@@ -3252,10 +3309,23 @@ class H(BaseHTTPRequestHandler):
             return bool(got and not got[1])
         return False
 
+    def _gz(self, data):
+        """gzip a text response when the client accepts it. The dashboard is
+        ~106KB raw and 9KB gzipped, and it repeats every navigation under
+        no-store - this is the single biggest payload lever left."""
+        if len(data) > 500 and "gzip" in self.headers.get("Accept-Encoding", ""):
+            gz = gzip.compress(data, 6)
+            if len(gz) < len(data):
+                self.send_header("Content-Encoding", "gzip")
+                data = gz
+        self.send_header("Vary", "Accept-Encoding")
+        return data
+
     def send(self, code, body, ctype="text/html; charset=utf-8", extra=None):
         data = body.encode()
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        data = self._gz(data)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
@@ -3311,6 +3381,7 @@ class H(BaseHTTPRequestHandler):
         data = body.encode()
         self.send_response(200)
         self.send_header("Content-Type", ctype)
+        data = self._gz(data)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=31536000, immutable")
         self.end_headers()
