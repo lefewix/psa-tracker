@@ -1124,12 +1124,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    everything in flight = muted. A third, lighter "pending" gray cannot clear
    4.5:1 at 13px on the white sheet, so pending keeps --m1 and its clock icon
    plus the label carry the difference (.pending stays as a semantic hook).
-   Grades landing is the product's payoff and the one place Reserved Red is
-   allowed to announce an EVENT rather than restate a number. */
+   NO red status pill: a red "grades landed" pill shipped briefly and was
+   removed by owner ruling - red stays on the grade itself, holds, and alerts. */
 .pill.shipped{color:var(--txt)}
 .pill.shipped svg{color:var(--m1)}
-.pill.grades{color:var(--grade);font-weight:600}
-.grady{color:var(--grade);font-weight:600}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
 /* the caption under a value drops back to the small-text rung, so it must also
    drop the value's optical tracking - tracking is inherited, size is not. */
@@ -1743,15 +1741,10 @@ def eta_pill(s):
         return f'<span class="pill">{ICON_CLOCK}Back ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
     return f'<span class="pill pending">{ICON_CLOCK}ETA pending</span>'
 
-def grades_pill(s, graded=0):
-    """The payoff pill: grades have landed and the cards aren't shipped yet.
-    Grade Red announcing the EVENT - the one thing the product exists for -
-    instead of leaving it as muted footer text identical to a ship date."""
-    if not s or not s["grades_ready"] or s["status"] == "Shipped" or s["on_hold"]:
-        return ""
-    label = (f'{graded} grade{"s" if graded != 1 else ""} landed' if graded
-             else "Grades ready")
-    return f'<span class="pill grades">{label}</span>'
+# NO grades-landed pill and NO red announcement of grades arriving: shipped
+# briefly on 2026-08-01 (red "N grades landed" pill + a "Grades ready" sort)
+# and REMOVED by the owner's call on 2026-08-02. Grades-ready stays a muted footer
+# line; red belongs to the grade on the tile, holds, and alerts only.
 
 def gate_page(error=""):
     # only advertise email login where it can actually work (email owner tags)
@@ -2204,7 +2197,7 @@ def strip_html(s, fronts):
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
-def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, graded=0):
+def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
@@ -2213,24 +2206,23 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, graded=0):
     # foot already says "Shipped <date> · tracking", while the extra pill under
     # the value made .pills taller than the header and bumped the filmstrip
     # ~20px out of the active rows' rhythm.
-    pill = "" if archived else (grades_pill(s, graded) + eta_pill(s))
+    pill = "" if archived else eta_pill(s)
 
     if s["status"] == "Shipped" and s["shipped"]:
         foot = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
         if s["carrier"] and s["tracking"]:
             foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
+    elif s["grades_ready"]:
+        foot = "Grades ready"
     else:
-        # grades_ready moved UP into the pills column as the red grades pill -
-        # it was footer text byte-identical to a ship date down here
         foot = ""
 
     strip = strip_html(s, fronts)
     sub = html.escape(s['sub_number'])
     archattr = ' data-arch="1" style="display:none"' if archived else ''
-    # data-sub/svc/eta/gr feed the client-side sort pills (SORT_JS)
+    # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
-                f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"'
-                f' data-gr="{1 if s["grades_ready"] else 0}"')
+                f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
     led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
     return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><div class="num">#{sub}</div></a>
@@ -2703,17 +2695,12 @@ SORT_JS = """<script>
   if(!list||!btns.length)return;
   // clicking the active pill again reverses it; only the sub pill flips its word
   // (Newest/Oldest) - the others keep their plain label in both directions
-  var BASE={sub:'Newest',svc:'Order type',eta:'Return',gr:'Grades ready'};
+  var BASE={sub:'Newest',svc:'Order type',eta:'Return'};
   var REV={sub:'Oldest'};
   function subDesc(a,b){return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
   function cmp(a,b,m,d){
     var r=0;
     if(m==='sub'){r=subDesc(a,b);return d?-r:r;}
-    if(m==='gr'){ // landed subs first, newest first inside each half
-      r=(b.dataset.gr||'0')-(a.dataset.gr||'0');
-      if(r)return d?-r:r;
-      return subDesc(a,b);
-    }
     if(m==='svc'){
       var x=(a.dataset.svc||'').toLowerCase(),y=(b.dataset.svc||'').toLowerCase();
       r=x<y?-1:x>y?1:0; if(r)return d?-r:r;
@@ -2866,28 +2853,25 @@ def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
     gone = [s for s in subs if s["sub_number"] in arch]
-    # ONE cards scan and ONE owners read for the whole page: value totals, the
-    # untagged count, and per-sub graded counts all come off the same rows
-    # (this page used to run load_all_cards twice and owners_map twice)
+    # ONE cards scan and ONE owners read for the whole page: value totals and
+    # the untagged count both come off the same rows (this page used to run
+    # load_all_cards twice and owners_map twice)
     cards_all = load_all_cards(a) if subs else []
     owners = owners_map(a)
     vals, _vas, vcur = load_values(a)
-    tot, gcount = {}, {}
+    tot = {}
     for c in cards_all:
         if vals:
             v = vals.get(c["cert_no"] or "")
             if v:
                 tot[c["sub_number"]] = tot.get(c["sub_number"], 0) + v
-        if c.get("grade"):
-            gcount[c["sub_number"]] = gcount.get(c["sub_number"], 0) + 1
     active_nums = {s["sub_number"] for s in active}
     untag = sum(1 for c in cards_all
                 if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), ""))
     if subs:
         fronts = sub_fronts(a)   # ONE query for every row's filmstrip
         body = ("".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
-                                  fronts=fronts.get(s["sub_number"]),
-                                  graded=gcount.get(s["sub_number"], 0)) for s in active)
+                                  fronts=fronts.get(s["sub_number"])) for s in active)
                 + "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur,
                                     fronts=fronts.get(s["sub_number"])) for s in gone))
     else:
@@ -2920,10 +2904,6 @@ def dash_page(a, subs):
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
                   '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>',
                   '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>']
-        if any(s["grades_ready"] for s in active):
-            # the attention sort: landed subs float to the top. Only offered
-            # while something has actually landed, so the capsule stays lean.
-            pills.append('<button type="button" class="f fsort" data-sort="gr" aria-pressed="false">Grades ready</button>')
     if untag:
         pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} need owners</a>')
     # role=group, not navigation: three sort toggles and at most one link are
@@ -2985,7 +2965,7 @@ def eta_badge(s, extra=""):
         val = html.escape(s["est_start"])
         if s["est_end"]:
             val += f' to {html.escape(s["est_end"])}'
-        note = '<span class="estnote grady">Grades ready</span>' if s["grades_ready"] else ""
+        note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
         return f'<div class="synced">PSA ETA<b>{val}</b>{note}{extra}</div>'
     return f'<div class="synced">PSA ETA<b>Estimate pending</b>{extra}</div>'
 
@@ -3068,7 +3048,7 @@ def people_page(a, owner, customer=False):
         # person's tiles inside; the sub number links through to the sub page.
         s = subs_by.get(n)
         svc = html.escape(s["service"]) if s else ""
-        pill = (grades_pill(s, sum(1 for c in cs if c.get("grade"))) + eta_pill(s)) if s else ""
+        pill = eta_pill(s) if s else ""
         link = (f'<a class="view" href="/sub/{html.escape(str(n))}">'
                 f'Go to sub #{html.escape(str(n))}</a>')
         tl = timeline_html(s["status"], aside=link) if s else ""
@@ -3167,9 +3147,7 @@ def customer_page(a, email):
     def group_html(n, cs):
         s = subs_by.get(n)
         svc = html.escape(s["service"]) if s else ""
-        # the grades pill rides here too: the customer's evening check-in is
-        # exactly who the "grades landed" news is for
-        pill = (grades_pill(s, sum(1 for c in cs if c.get("grade"))) + eta_pill(s)) if s else ""
+        pill = eta_pill(s) if s else ""
         # these groups ARE the customer's sub detail view (no /sub access), so
         # they get the entered-on stage dates the admin detail page has
         tl = timeline_html(s["status"], stage_dates(a, s)) if s else ""

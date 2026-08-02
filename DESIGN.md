@@ -282,10 +282,6 @@ components:
   status-pill-hold:
     backgroundColor: "transparent"
     textColor: "{colors.alert}"
-  status-pill-grades:
-    backgroundColor: "transparent"
-    textColor: "{colors.grade-red}"
-    typography: "{typography.body}"
   strip-tile:
     backgroundColor: "{colors.fill-quiet}"
     textColor: "{colors.ink}"
@@ -398,10 +394,10 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   6% (light) / 11% (dark) into the wider top-right radial.
 
 ### Tertiary
-- **Grade Red** (`--grade`): the color of a grade landing. It appears on the grade line of a
-  scan tile, on the dashboard's grades pill, and on the detail page's "Grades ready" badge —
-  three places, one event. It is the emotional payoff of the product; its scarcity is why it
-  lands.
+- **Grade Red** (`--grade`): the color of a grade landing. **One place only: the grade line of
+  a scan tile.** A red "N grades landed" status pill and a red detail-page badge shipped
+  briefly on 2026-08-01 and were removed the next day by owner ruling — see the Reserved Red
+  Rule. It is the emotional payoff of the product; its scarcity is why it lands.
 - **Alert Red** (`--err` / `--holdtx`): form errors, destructive text actions, and the "On
   hold" pill. Same family as Grade Red, distinct token, distinct job.
 - **Saved Green** (`--ok`): one use only — the owner tag's underline flashing on a successful
@@ -452,11 +448,12 @@ darker.
 **The Both-Palettes Rule.** Every page emits `:root`, `:root[data-theme="dark"]`, and
 `:root[data-theme="light"]` blocks. Never ship a page that can only render one theme.
 
-**The Reserved Red Rule.** Red belongs to a landed grade, an alert, or a hold — and, since
-grades landing is the event the product exists for, red is also allowed to *announce* that
-event: the dashboard's grades pill ("3 grades landed") and the detail page's "Grades ready"
-badge, both Grade Red at 600. That is announcement, not decoration. Red is never a heading
-color, a hover state, or an emphasis device.
+**The Reserved Red Rule.** Red belongs to a landed grade (on the scan tile), an alert, or a
+hold. It never *announces* — **owner ruling, 2026-08-02**: a critique argued the grades-landed
+event deserved red in the status column, that shipped as a "N grades landed" pill plus a red
+detail badge, and the owner rejected both on sight. Grades-ready is a muted footer line and a
+lowercase detail note; the news is the grade printed under the scan, not a banner about it.
+Red is never a heading color, a hover state, an emphasis device, or an event announcement.
 
 **The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
 `color-mix`, so a white-label swap re-tints it for free. Never hardcode an ambient hue, never
@@ -688,9 +685,9 @@ content — a panel, a sheet, an image, a row — it is not.
   a ring around nothing. It reads one rung quieter than the sort pills (12px/500 vs 13px) and
   lands at exactly 38px, the sort capsule's outer height at both breakpoints. It is the
   archived disclosure on all three list pages.
-- **Sort pills:** Newest, Order type, Return — plus a fourth, "Grades ready", that appears on
-  the dashboard only when something has actually landed. A sort that would sort nothing is not
-  offered.
+- **Sort pills:** Newest, Order type, Return. Three, always the same three — a "Grades ready"
+  fourth pill shipped briefly and was removed with the rest of the grades promotion
+  (2026-08-02 owner ruling).
 - **State:** inactive is muted 500-weight on transparent; active takes the `--segon` fill,
   accent-as-text, 600 weight, and the Segment Lift shadow. The Archived pill is the exception
   in both directions: pressed it takes `--ac-fill` with a `#fff` label (see the Opt-In Fill
@@ -714,10 +711,10 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
 - **Pending (`.pill.pending`)**, muted: "ETA pending". The class is a semantic hook only — a
   third, lighter status gray cannot clear 4.5:1 at 13px on the white sheet, so the clock icon
   and the label carry the difference, not a color step.
-- **Hold (`.pill.hold`)**, alert red: the queue has stopped.
-- **Grades (`.pill.grades`)**, Grade Red 600: "3 grades landed" / "Grades ready". Suppressed
-  once the sub ships or goes on hold — the payoff pill never competes with a terminal state.
-  Its detail-page twin is `.grady`, the same red 600 as an inline badge.
+- **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
+  see the Reserved Red Rule for the grades pill that was tried here and removed.
+Grades-ready is not a pill: it is a muted `.est` footer line ("Grades ready") on the row, and
+a lowercase `.estnote` under the detail page's ETA badge.
 Archived rows carry no status pill at all: every archived sub is finished, the foot already
 says so, and the extra pill made the column taller than the header and knocked the filmstrip
 out of the rows' rhythm.
@@ -929,8 +926,8 @@ standing in for icons, no raster icons.
 - **Don't** add a fourth band to a dashboard row, and don't move a detail-only fact into one.
 - **Don't** let tapping the enlarged scan close the lightbox; the image is inert and the scrim
   and close orb do the closing.
-- **Don't** offer a sort control for a state nothing is in — the "Grades ready" pill appears
-  only once something has landed.
+- **Don't** promote grades-ready into a colored pill, a badge, or a sort control. It was tried
+  and rejected by the owner; the grade on the scan tile is the whole announcement.
 - **Don't** reach for near-black-plus-violet "AI default" surfaces or any themed retro world;
   the dark ground is neutral gray, never blue-gray and never pure black.
 </content>
