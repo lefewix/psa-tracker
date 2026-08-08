@@ -1,6 +1,6 @@
 ---
 name: PSA Submission Tracker
-description: A white-label grading ledger executed at Apple fidelity — white sheet, hairline rows, lensed glass chrome.
+description: A white-label grading tracker executed at Apple fidelity — grouped ground, raised content cards, lensed glass chrome.
 colors:
   accent: "#3a6fd8"
   accent-ambient: "#5b8def"
@@ -14,9 +14,10 @@ colors:
   accent-bar-dark: "color-mix(in srgb,var(--ac) 89%,white)"
   accent-ring-light: "color-mix(in srgb,var(--ac) 100%,black)"
   accent-ring-dark: "color-mix(in srgb,var(--ac) 100%,white)"
-  sheet-white: "#ffffff"
-  sheet-graphite: "#17181a"
-  surface-raised-dark: "#1c1d20"
+  ground-light: "#f2f2f7"
+  ground-dark: "#101113"
+  card-light: "#ffffff"
+  card-dark: "#1c1d20"
   ink: "#1d1d1f"
   ink-inverse: "#f2f2f4"
   muted: "#6e6e73"
@@ -93,11 +94,17 @@ typography:
     letterSpacing: "normal"
   body:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "13px"
+    fontSize: "14px"
     fontWeight: 400
-    lineHeight: 1.45
+    lineHeight: 1.5
     letterSpacing: "normal"
     fontFeature: "tabular-nums"
+  control:
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    fontSize: "13px"
+    fontWeight: 500
+    lineHeight: "16px"
+    letterSpacing: "normal"
   caption:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "12px"
@@ -106,7 +113,7 @@ typography:
     letterSpacing: "normal"
   micro:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "11.5px"
+    fontSize: "12px"
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
@@ -118,7 +125,7 @@ typography:
     letterSpacing: "normal"
   cert:
     fontFamily: "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace"
-    fontSize: "11.5px"
+    fontSize: "12px"
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
@@ -131,6 +138,7 @@ rounded:
   lg: "12px"
   xl: "14px"
   xxl: "16px"
+  gate: "20px"
   capsule: "999px"
   orb: "50%"
 spacing:
@@ -155,7 +163,7 @@ components:
   button-primary-compact:
     backgroundColor: "{colors.accent-fill}"
     textColor: "#ffffff"
-    typography: "{typography.body}"
+    typography: "{typography.control}"
     rounded: "{rounded.capsule}"
     padding: "11px 18px"
     width: "auto"
@@ -173,10 +181,16 @@ components:
     rounded: "{rounded.none}"
     padding: "12px 8px"
   button-text-hover:
+    backgroundColor: "transparent"
+    textColor: "{colors.accent-hot-light}"
+    padding: "12px 8px"
+  stage-action-pill:
     backgroundColor: "{colors.fill-quiet}"
     textColor: "{colors.accent-hot-light}"
-    rounded: "{rounded.md}"
-    padding: "12px 8px"
+    typography: "{typography.control}"
+    fontWeight: 600
+    rounded: "{rounded.capsule}"
+    padding: "7px 14px"
   button-glyph-hover:
     backgroundColor: "{colors.fill-quiet}"
     textColor: "{colors.ink}"
@@ -185,7 +199,7 @@ components:
   button-destructive:
     backgroundColor: "transparent"
     textColor: "{colors.alert}"
-    typography: "{typography.body}"
+    typography: "{typography.control}"
     rounded: "{rounded.capsule}"
     padding: "11px 0"
     width: "auto"
@@ -206,7 +220,7 @@ components:
   chip-segment:
     backgroundColor: "transparent"
     textColor: "{colors.muted}"
-    typography: "{typography.body}"
+    typography: "{typography.control}"
     rounded: "{rounded.capsule}"
     padding: "7px 14px"
   chip-segment-active:
@@ -231,14 +245,17 @@ components:
     typography: "{typography.tag}"
     rounded: "{rounded.capsule}"
     padding: "3px 9px"
-  ledger-row:
-    backgroundColor: "transparent"
+  submission-card:
+    backgroundColor: "{colors.card-light}"
     textColor: "{colors.ink}"
     typography: "{typography.body}"
-    rounded: "{rounded.none}"
-    padding: "15px 12px"
-  ledger-row-hover:
-    backgroundColor: "{colors.row-hover}"
+    rounded: "{rounded.xxl}"
+    padding: "18px 16px"
+    border: "1px solid {colors.hairline-soft}"
+    shadow: "0 2px 10px rgba(20,25,35,.08)"
+    gap: "14px"
+  submission-card-hover:
+    backgroundColor: "color-mix(in srgb,{colors.ink} 4%,#ffffff)"
     textColor: "{colors.ink}"
   toolbar:
     backgroundColor: "{colors.glass}"
@@ -299,7 +316,7 @@ components:
   skip-link:
     backgroundColor: "{colors.glass-solid}"
     textColor: "{colors.accent-text-light}"
-    typography: "{typography.body}"
+    typography: "{typography.control}"
     rounded: "{rounded.capsule}"
     padding: "10px 16px"
   scan-tile:
@@ -321,23 +338,27 @@ components:
 **Creative North Star: "Canon, Played Straight"**
 
 This is the category standard executed at Apple fidelity: a precision instrument for
-watching cards move through a grading queue, refusing themed decoration entirely. The
-sheet is white and edge-to-edge, rows are separated by hairlines rather than boxed into
-cards, type is sentence-case system stack, and exactly one accent — supplied per store by
-environment — carries every link, active state, and the single filled button. The world is
-recognizable with all content removed, purely by its restraint plus its Liquid Glass
-chrome. The direction is an owner-chosen standing exit (2026-07-31): the assigned grounded
-direction was stood aside by the owner's call in favor of playing the category canon
-straight.
+watching cards move through a grading queue, refusing themed decoration entirely. Content
+sits on raised cards over a quiet grouped ground — white cards on Apple's grouped grey
+(#f2f2f7) in light, #1c1d20 cards on near-black #101113 in dark. (App Store grammar, owner
+call 2026-08-08: the original hairline ledger read too fused on the phone — "not enough
+distinction between panels" — and was retired.) Type is sentence-case system stack, and
+exactly one accent — supplied per store by environment — carries every link, active state,
+and the single filled button. The world is recognizable with all content removed, purely by
+its restraint plus its Liquid Glass chrome and card rhythm. The direction is an owner-chosen
+standing exit (2026-07-31): the assigned grounded direction was stood aside by the owner's
+call in favor of playing the category canon straight.
 
 Depth exists in one place only: the chrome. The sticky toolbar, the segmented filter
 capsule, and the two fixed corner orbs are translucent, blurred, saturated, and **lensed** —
 rimmed with a specular catch along the top edge and a falloff along the bottom, so they read
 as curved glass rather than as frosted rectangles. Under them, and only visible through them,
 sits an ambient ground: two very wide accent-derived radials pooled in the top corners that
-give the lens something to refract. Everything else — rows, scans, values, stage bars — sits
-flat on the sheet with no fill, no tint, and no shadow. That split is the whole material
-story: glass floats and refracts, content does not.
+give the lens something to refract. Depth otherwise lives in exactly one more
+place: the content card — 16px radius, hairline-soft edge, one quiet cast shadow, separated
+by gaps rather than rules. Inside a card everything stays flat: scans, values, stage bars
+carry no fill, no tint, no shadow of their own. The material story is glass floats and
+refracts; cards sit raised on the ground; content inside them does not move.
 
 Character is delivered by motion and precision instead of ornament. Rows settle in on a
 short staggered rise; a stage bar is knocked to zero and released to its served width **only
@@ -356,10 +377,10 @@ variables remain inline. Nothing is compiled, bundled, or fetched from a CDN —
 no icon packages, no framework runtime.
 
 **Key Characteristics:**
-- White edge-to-edge sheet; content rows are hairline-separated, never boxed
+- Grouped ground carrying raised 16px-radius content cards, gap-separated (App Store grammar)
 - One env-supplied accent (steel blue by default) as text plus one opt-in filled capsule
 - Liquid Glass on chrome only — dual-rimmed, over an accent-derived ambient ground
-- Three type rungs only: 26/700 masthead, 17/650 data, 13/400 body
+- Three type rungs only: 26/700 masthead, 17/650 data, 14/400 body
 - Single-line controls are capsules (999px); content-side surfaces stay square-ish
 - Both palettes always emitted; every accent shade derived by `color-mix` and contrast-clamped
 - A visible accessibility layer: skip link, live region, real dialog semantics, keyboard paths
@@ -486,25 +507,30 @@ on Segoe and Roboto.
   settings panel titles, and the current stage name. The operator sweeps these columns; they
   all sit on one weight.
 - **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
-- **Body** (400, 13px, 1.45): the default. Metadata lines, stage line, pills, links, filter
-  chips, owner tags, empty states.
+- **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
+  pills, links, owner tags, card names, empty states. (Lifted from 13/1.45 on 2026-08-08 —
+  owner found the sheet claustrophobic and the text small.)
+- **Control** (500, 13px, 16px line box): control labels only — filter pills, compact
+  buttons, the skip link. Stays at 13 because the capsule height arithmetic (38px at both
+  breakpoints) is stated in the CSS and depends on the 16px line box.
 - **Caption** (400, 12px, 1.5): subtitles under a title, sync notes, service line, helper text.
   The masthead subtitle alone runs 12.5px — half a pixel is all it needs to stop reading as a
   caption under a 26px title.
-- **Micro** (400, 11.5px, 1.4): the sub-figure line under a value, preview-row secondaries,
-  section labels inside the search preview.
+- **Micro** (400, 12px, 1.4): the sub-figure line under a value, preview-row secondaries,
+  section labels inside the search preview. Merged up from 11.5 (2026-08-08); the caption
+  tier is now a single 12px rung.
 - **Tag** (500, 11px, 1.0): the search-preview category chip. `line-height: 1` keeps its 3px
   of vertical padding from growing the row.
-- **Cert** (monospace, 11.5px): certification numbers on scan tiles. A prelim card falls back
+- **Cert** (monospace, 12px): certification numbers on scan tiles. A prelim card falls back
   to the inherited face at 12px because there is no number to align.
 
 ### Named Rules
 **The Three-Rung Rule.** There are exactly three hierarchy rungs: 26/700 masthead, 17/650
-data, 13/400 body. Everything else (12, 11.5, 11) is a caption tier hanging off the body rung.
-A new size does not create a new rung.
+data, 14/400 body. Everything else (13 controls, 12 captions, 11 tags) hangs off the body
+rung. A new size does not create a new rung.
 
 **The Optical Tracking Rule.** Tracking is a function of size, never a style: 26px = −0.021em,
-24px = −0.020em, 22px = −0.017em, 17px = −0.012em, 13px and below = 0. Nothing in this system
+24px = −0.020em, 22px = −0.017em, 17px = −0.012em, 14px and below = 0. Nothing in this system
 ever tracks positive. When a caption sits inside a tracked value (`.ledval span`), it resets
 letter-spacing to normal, because tracking inherits and size does not.
 
@@ -522,13 +548,15 @@ and anything a webfont would buy is bought instead with spacing and weight.
 
 ## Layout
 
-A single centered column, `max-width: 820px`, on a page padded `14px 20px 96px`
-(`12px 14px 88px` under 640px). The bottom padding reserves the corner-orb landing zone.
+A single centered column, `max-width: 820px`, on a page padded `18px 20px 96px`
+(`16px 14px 88px` under 640px). The bottom padding reserves the corner-orb landing zone.
 
-Content rows are **wider than the column**: the ledger row uses `padding: 15px 12px` with
-`margin: 0 -12px` (`15px 10px` / `-10px` under 640px) so its hover tint and hairline bleed
-past the text measure. That bleed is what makes the sheet read as edge-to-edge rather than as
-a stack of blocks. The list carries a closing hairline on its bottom edge.
+Content sits in **raised cards flush with the column**: each submission is a card at
+`padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px
+radius, `--hair2` edge and a `0 2px 10px` cast shadow. The gap between cards is the
+separator — no hairlines between or around the list, no closing rule. Inside a card, the
+mobile filmstrip still bleeds to the card's own padding edge (`-14px`) so the last tile
+runs off the card edge as the "there is more" cue.
 
 The toolbar is sticky at `top: 10px` (`z-index: 20`), preceded by a 1px sentinel that drives
 its scroll-edge elevation; the filter capsule floats below it. Scan grids are
@@ -572,8 +600,9 @@ translucent ground, `blur(16px) saturate(170%)`, a hairline border, an inset spe
 an inset bottom falloff rim, and one soft cast shadow. Beneath them the ambient ground
 (`body::before`, `position: fixed`, `z-index: -1`) lays two accent-derived radials in the top
 corners — the layer that makes the glass read as a lens instead of a frosted rectangle.
-Content — rows, scan tiles, values, bars — has no background, no border box, and no shadow at
-all. Depth in content is expressed only by the hairline and by gray level.
+Content lives in raised cards (16px radius, `--hair2` edge, one quiet cast shadow); inside a
+card, elements — scan tiles, values, bars — carry no fill, tint, or shadow of their own.
+Depth inside a card is expressed only by gray level.
 
 Elevation is also **earned rather than assumed**: the sticky toolbar sits nearly flush at rest
 and lifts to its full cast shadow only once an IntersectionObserver sentinel above it leaves
@@ -615,8 +644,10 @@ surface may drop its rims only when it is *becoming* a filled control, never to 
 scrolled beneath it. Rest state is `0 1px 2px`; the full `0 10px 26px` is a state, flipped by
 a sentinel, transitioned over 0.25s.
 
-**The Bare-Content Rule.** Content never gets a card, a tint, a border box, or a shadow. If a
-row needs separation, it gets a hairline.
+**The One-Card-Deep Rule** (supersedes the Bare-Content Rule, owner call 2026-08-08).
+Content sits exactly one card deep: the submission card, the timeline card, the hint, the
+gate. Nothing inside a card gets its own card, tint, border box, or shadow — nested cards
+are always wrong. Separation inside a card is proximity and gray level.
 
 **The Graceful Degradation Rule.** Every glass surface ships its fallbacks together:
 `@supports not (backdrop-filter)` and `prefers-reduced-transparency: reduce` both swap to
@@ -678,7 +709,16 @@ content — a panel, a sheet, an image, a row — it is not.
   color and therefore cannot leak a fill. Orbs use `.94`.
 - **Text buttons:** accent-as-text on transparent — "Archive", "View cards", "Undo",
   disclosure links. They carry an invisible padded hit box (`12px 8px` padding cancelled by an
-  equal negative margin) so the resting layout is byte-identical to unpadded text.
+  equal negative margin) so the resting layout is byte-identical to unpadded text. Hover is
+  the colour deepen and nothing else — no painted fill (the hit box hangs over the stage bar
+  and read as a stray sub-panel inside a card), no underline (tried and disliked; both owner
+  calls 2026-08-08).
+- **Stage-line pill (`.stage .view`):** the exception — the row's one link sits at the far
+  end of the stage line as a visible quiet capsule (App Store's row action; a bar-row
+  placement was tried and reverted same day, 2026-08-08). `--surface3` fill, `--ac-hot`
+  label at 13/600 (the accent shade already clamped 4.5:1 against that fill), `7px 14px`,
+  999px, baseline-aligned with the stage text. The bar below stays full width. Hover
+  deepens the fill by 6% ink.
 - **Destructive:** transparent ground, alert-red label, capsule radius so the focus ring
   follows the shape. It never becomes a filled red button.
 
@@ -708,13 +748,13 @@ content — a panel, a sheet, an image, a row — it is not.
 
 ### Status Pills
 The right-hand column of a dashboard row, right-aligned under the value, stacked at 3px. All
-are 13px text with a 5px gap to an inline stroked SVG — no fill, no border, no capsule; a pill
+are 14px text with a 5px gap to an inline stroked SVG — no fill, no border, no capsule; a pill
 here is a *word*, not a control. The column scans on two gray levels plus one red:
 - **Dated ETA (`.pill`)**, muted: the default — "Back ~Sep 25".
 - **Shipped (`.pill.shipped`)**, ink with a muted icon: done, and real. The icon stays muted so
   the row's only ink outside the lot number is the fact itself.
 - **Pending (`.pill.pending`)**, muted: "ETA pending". The class is a semantic hook only — a
-  third, lighter status gray cannot clear 4.5:1 at 13px on the white sheet, so the clock icon
+  third, lighter status gray cannot clear 4.5:1 at 14px on the white sheet, so the clock icon
   and the label carry the difference, not a color step.
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
   see the Reserved Red Rule for the grades pill that was tried here and removed.
@@ -733,9 +773,9 @@ says so, and the extra pill made the column taller than the header and knocked t
 out of the rows' rhythm.
 
 ### Cards / Containers
-There are no content cards. The row is a **ledger row**: transparent, zero radius, one top
-hairline, `15px 12px` padding with `-12px` horizontal margin, no shadow. Its only state is a
-hover tint (`--hovrow`) on pointer devices. Archived rows drop to `opacity: .5` with
+The row is a **submission card**: `--surface` ground, 16px radius, `--hair2` edge, `0 2px
+10px` cast shadow, `18px 16px` padding, 14px gap to the next card. Its only state is a hover
+tint (`color-mix` of 4% ink over the surface) on pointer devices. Archived rows drop to `opacity: .5` with
 `grayscale(.6)` and lift to `.62` on hover. The only true containers are detached surfaces —
 the search preview panel (14px, 6px padding, solid `--surface`) and the modal sheet
 (`min(460px, 94vw)`, 14px, `24px 24px 26px`).
@@ -744,7 +784,7 @@ the search preview panel (14px, 6px padding, solid `--surface`) and the modal sh
 Every dashboard row carries its own contact sheet: up to eight card fronts (`STRIP_MAX = 8`)
 in line order, 84×117px at 6px radius with a hairline and a quiet-fill ground, 10px apart,
 12px under the identity band. Past eight, the last tile becomes a **"+N" chip** — same box,
-same radius, quiet placeholder ground, muted 13px/600 numeral — linking into the detail page,
+same radius, quiet placeholder ground, muted 14px/600 numeral — linking into the detail page,
 so the strip is always one fixed-width run and never wraps. A sub with no imaged cards falls
 back to its own cover thumb; with neither, the band is absent entirely rather than reserved.
 
@@ -841,8 +881,8 @@ page is a no-op.
 
 ### Scan Tile (signature)
 Image at a fixed 1.72/2.4 card ratio with a 6px radius and a hairline — no shadow, no
-container. Below it: grade in Grade Red 600/13px, cert number in monospace micro, card name
-clamped to two lines with a reserved **`min-height`** (37px — never a fixed height, which
+container. Below it: grade in Grade Red 600/14px, cert number in monospace micro, card name
+clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), the set line demoted below it, value on
 the 17/650 data rung, then the owner tag pinned to the bottom via `margin-top: auto`. Off-screen
 tiles take `content-visibility: auto` with an approximate intrinsic size, so they skip layout,

@@ -122,11 +122,17 @@ def _share(ac, pole, against, target, start):
 
 _BLACK, _WHITE = (0, 0, 0), (255, 255, 255)
 _AC_RGB = _rgb(ACCENT)
-_BG_DARK = _rgb("#17181a")
+# Card era (2026-08-08): content sits on raised cards over a grouped ground, so
+# every clamp runs against the HARDER ground for that ink - light text grounds
+# are the grey page (darker than the white card), dark text grounds are the
+# card surface (lighter than the near-black page).
+_BG_DARK = _rgb("#101113")                     # dark page ground
+_CARD_DARK = _rgb("#1c1d20")                   # dark card surface
+_BG_LIGHT = _rgb("#f2f2f7")                    # light page ground (cards are white)
 _S3_LIGHT = _rgb("#f2f2f4")                    # --surface3 light (hover pill ground)
-_S3_DARK = _over(_WHITE, 0.08, _BG_DARK)       # --surface3 dark, composited
+_S3_DARK = _over(_WHITE, 0.08, _CARD_DARK)     # --surface3 dark, composited on the card
 _TRACK_LIGHT = _rgb("#ececef")                 # stage-bar track grounds
-_TRACK_DARK = _over(_WHITE, 0.14, _BG_DARK)
+_TRACK_DARK = _over(_WHITE, 0.14, _CARD_DARK)
 _FILL = _share(_AC_RGB, _BLACK, _WHITE, 4.5, 86)
 _AC_MIX_FILL = {"--ac-fill": f"{_FILL}%,black",
                 "--ac-fill-hot": f"{max(_FILL - 8, 0)}%,black"}
@@ -138,19 +144,20 @@ _AC_MIX_FILL = {"--ac-fill": f"{_FILL}%,black",
 # is the harder ground in each (lighter in light, lighter in dark), so
 # clamping there is correct everywhere the ring is actually painted.
 _AC_MIX_L = {"--ac-hot": f"{_share(_AC_RGB, _BLACK, _S3_LIGHT, 4.5, 82)}%,black",
-             "--ac-pale": f"{_share(_AC_RGB, _BLACK, _WHITE, 4.5, 92)}%,black",
+             "--ac-pale": f"{_share(_AC_RGB, _BLACK, _BG_LIGHT, 4.5, 92)}%,black",
              "--bar": f"{_share(_AC_RGB, _BLACK, _TRACK_LIGHT, 3.0, 100)}%,black",
              "--ring": f"{_share(_AC_RGB, _BLACK, _S3_LIGHT, 3.0, 100)}%,black",
              **_AC_MIX_FILL}
 _AC_MIX_D = {"--ac-hot": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 4.5, 82)}%,white",
-             "--ac-pale": f"{_share(_AC_RGB, _WHITE, _BG_DARK, 4.5, 45)}%,white",
+             "--ac-pale": f"{_share(_AC_RGB, _WHITE, _CARD_DARK, 4.5, 45)}%,white",
              "--bar": f"{_share(_AC_RGB, _WHITE, _TRACK_DARK, 3.0, 100)}%,white",
              "--ring": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 3.0, 100)}%,white",
              **_AC_MIX_FILL}
-# Neutral system: one edge-to-edge sheet, hairline rules, no tinted grounds.
-# Light is the flagship (white paper-white sheet, near-black ink); dark is the
-# secondary (neutral gray ground - never blue-gray, never pure black).
-_DARK = {"bg": "#17181a", "surface": "#1c1d20",
+# Neutral system, card era (owner call 2026-08-08, App Store grammar): a quiet
+# grouped ground carries raised cards - light is Apple's grouped grey #f2f2f7
+# under white cards, dark is near-black #101113 under #1c1d20 cards. Never
+# blue-gray, never pure black.
+_DARK = {"bg": "#101113", "surface": "#1c1d20",
  "surface3": "rgba(255,255,255,.08)", "inp": "rgba(255,255,255,.08)",
  "ph": "rgba(255,255,255,.06)", "hovrow": "rgba(255,255,255,.07)",
  # search-preview tag chip: dark grounds swallow a low-alpha accent wash, so the
@@ -182,8 +189,10 @@ _DARK = {"bg": "#17181a", "surface": "#1c1d20",
  "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.4)",
  "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff",
  "ok": "#43c383"}
-_LIGHT = {"bg": "#ffffff", "surface": "#ffffff",
- "surface3": "#f2f2f4", "inp": "#f2f2f4", "ph": "#f2f2f4",
+_LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
+ # ph is white, not the old #f2f2f4: placeholder tiles now sit on the grey
+ # ground (detail-page grids), where a grey ph would vanish into it
+ "surface3": "#f2f2f4", "inp": "#f2f2f4", "ph": "#ffffff",
  "hovrow": "rgba(0,0,0,.05)", "tagmix": "12%",
  "amb": ("radial-gradient(120% 62% at 84% -22%,color-mix(in srgb,var(--ac2) 6%,transparent),"
          "transparent 60%),"
@@ -206,7 +215,10 @@ _LIGHT = {"bg": "#ffffff", "surface": "#ffffff",
 # hand-picked gray can't ship under target unnoticed.
 def _check_neutrals():
     for pal, name in ((_LIGHT, "light"), (_DARK, "dark")):
-        bg = _rgb(pal["bg"])
+        # harder ground per theme: light ink also sits on the grey page ground
+        # (darker than the white card); dark ink's harder ground is the card
+        # surface (lighter than the near-black page)
+        bg = _rgb(pal["bg"] if name == "light" else pal["surface"])
         for tok, target in (("txt", 4.5), ("m1", 4.5), ("err", 4.5),
                             ("holdtx", 4.5), ("grade", 4.5),
                             ("tert", 3.0), ("ok", 3.0)):  # tert/ok are non-text
@@ -234,8 +246,12 @@ THEME_VARS = (f":root{{--ac:{ACCENT};--ac2:{ACCENT_2};{_theme_vars(THEME)}}}"
 # prefers-contrast: hairlines and secondary text step up hard. Emitted in the
 # same three-block shape as the palettes so the bare :root case (default theme,
 # no data-theme attribute) resolves to the store's default palette.
-_HC_L = "--hair:rgba(0,0,0,.32);--hairh:rgba(0,0,0,.5);--m1:#4a4a4f;--tert:#5c5c61"
-_HC_D = "--hair:rgba(255,255,255,.36);--hairh:rgba(255,255,255,.55);--m1:#c0c0c8;--tert:#b0b0b8"
+# --hair2 rides along: it draws every content card's edge in the card era, so
+# high-contrast users get real borders, not shadow-only separation
+_HC_L = ("--hair:rgba(0,0,0,.32);--hairh:rgba(0,0,0,.5);--hair2:rgba(0,0,0,.28);"
+         "--m1:#4a4a4f;--tert:#5c5c61")
+_HC_D = ("--hair:rgba(255,255,255,.36);--hairh:rgba(255,255,255,.55);--hair2:rgba(255,255,255,.32);"
+         "--m1:#c0c0c8;--tert:#b0b0b8")
 THEME_VARS += ("@media(prefers-contrast:more){"
                f":root{{{_HC_L if THEME == 'light' else _HC_D}}}"
                f':root[data-theme="dark"]{{{_HC_D}}}'
@@ -882,14 +898,15 @@ CSS = """
 /* =================================================== CANON, PLAYED STRAIGHT ==
    THESIS: The category standard executed at Apple fidelity - a precision
    instrument, refusing themed decoration entirely.
-   OWN-WORLD: White edge-to-edge sheet, hairline rows, sentence-case system
-   type, one env accent as text + one filled button, Liquid Glass chrome only
-   (toolbar, filter capsule, orbs). Recognizable with content removed by its
-   restraint + glass chrome.
+   OWN-WORLD: Grouped ground (App Store grammar, owner call 2026-08-08:
+   "cards like in App Store") carrying raised white/#1c1d20 content cards,
+   sentence-case system type, one env accent as text + one filled button,
+   Liquid Glass chrome (toolbar, filter capsule, orbs). Recognizable with
+   content removed by its restraint + glass chrome + card rhythm.
    STORY: An operator scans stages in one sweep; a customer feels a grade land
    via the bar springing forward and red grade text appearing.
-   FIRST VIEWPORT: Glass toolbar with 21px "Submissions" large title; glass
-   filter capsule; then hairline ledger rows - lot 16.5/600 left, stage line +
+   FIRST VIEWPORT: Glass toolbar with 26px "Submissions" large title; glass
+   filter capsule; then raised submission cards - lot number left, stage line +
    4px capsule bar, price right.
    FORM: Category-standard canon, owner-chosen standing exit (2026-07-31);
    assigned grounded direction (seed a400bd5c, candidate 6/7 "The Vault") stood
@@ -929,8 +946,8 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
  background:var(--amb)}
 body{background:transparent;min-height:100vh;color:var(--txt);
  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
- -webkit-font-smoothing:antialiased;padding:14px 20px 96px;
- font-size:13px;line-height:1.45;font-variant-numeric:tabular-nums}
+ -webkit-font-smoothing:antialiased;padding:18px 20px 96px;
+ font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
 :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .wrap{max-width:820px;margin:0 auto}
@@ -945,9 +962,11 @@ body{background:transparent;min-height:100vh;color:var(--txt);
 .skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
 /* Hierarchy is weight+size+leading as a SET, never size alone. Three rungs:
-   26/700 large title, 17/650 data values and section titles, 13/400 body.
+   26/700 large title, 17/650 data values and section titles, 14/400 body
+   (13 stays on control labels only - pills, compact buttons - whose capsule
+   arithmetic depends on it; the READING layer is 14).
    Tracking is optical, so it is a function of size, never a style: 26 = -.021em,
-   24 = -.020, 22 = -.017, 17 = -.012, and 13px/below sits at 0. Nothing here
+   24 = -.020, 22 = -.017, 17 = -.012, and 14px/below sits at 0. Nothing here
    ever tracks POSITIVE - no uppercase, no letterspaced labels.
    700 (not 600) on the large title: at 26px the extra weight is what separates
    the masthead from the 650 data rung, which size alone no longer does. */
@@ -965,7 +984,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.5}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
-.synced .estnote{display:block;font-size:11.5px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
+.synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
 /* the held-sub figure: alert red, same token as the pill, so the detail page
    states the alarm at the value rung instead of hiding it */
 .synced b.holdb{color:var(--holdtx)}
@@ -1028,10 +1047,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  opacity:0;visibility:hidden;transform:scale(.985) translateY(-4px);transform-origin:top center;
  transition:opacity .18s ease-out,transform .18s cubic-bezier(.23,1,.32,1),visibility 0s .18s}
 .preview.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
-.pvsec{font-size:11.5px;font-weight:400;color:var(--m1);padding:9px 10px 5px}
+.pvsec{font-size:12px;font-weight:400;color:var(--m1);padding:9px 10px 5px}
 .pvrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
- text-decoration:none;color:var(--txt);font-size:13px;font-weight:500}
-.pvrow small{display:block;color:var(--m1);font-size:11.5px;font-weight:400;margin-top:1px}
+ text-decoration:none;color:var(--txt);font-size:14px;font-weight:500}
+.pvrow small{display:block;color:var(--m1);font-size:12px;font-weight:400;margin-top:1px}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
 /* the tag is a category, not a sentence - as bare accent text it competed with
@@ -1044,11 +1063,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background:color-mix(in srgb,var(--ac-pale) var(--tagmix),transparent)}
 .pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--hair);
  flex-shrink:0;background:var(--surface3)}
-.pvempty{padding:14px 10px;color:var(--m1);font-size:13px}
+.pvempty{padding:14px 10px;color:var(--m1);font-size:14px}
 /* ---- filter capsule: floating segmented glass; active = solid pill --------- */
 .filters,.sbar{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
-.filters{margin:18px 0 10px}
+.filters{margin:20px 0 12px}
 /* Archived is a MODE switch, not a sort, so it sits OUTSIDE the sort segment
    instead of taking the last seat inside it. The real reason is the phone: the
    sort capsule can become a horizontal scroller there, and anything parked at
@@ -1057,7 +1076,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    capsule wrapping a single pill prints a visible ring around it with nothing
    else inside, which reads as a mistake. So the button carries the glass
    itself (.f.fsolo, see the chrome group above). Two controls, one row. */
-.filterrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 10px}
+.filterrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
 /* the row owns the margin now; the standalone .filters rule above still serves
    the person-page archived sections, which have no row around them */
 .filterrow .filters{margin:0}
@@ -1122,19 +1141,26 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    floating at the same elevation it was a moment ago. */
 .f.farch.fsolo.on{border-color:transparent;box-shadow:0 10px 26px var(--shc)}
 .f:active{transform:scale(.97)}
-/* ---- ledger rows: hairlines only, no cards, no shadows -------------------- */
-.card{background:transparent;border:0;border-top:1px solid var(--hair);border-radius:0;
- padding:15px 12px;margin:0 -12px;box-shadow:none;transition:background .18s,opacity .18s,filter .18s}
-#list{border-bottom:1px solid var(--hair)}
+/* ---- content cards: App Store grammar (owner call 2026-08-08) -------------- */
+/* The hairline ledger is RETIRED: rows read too fused ("not enough distinction
+   between panels" - the owner, with screenshot). Each submission is now a raised
+   card on the grouped ground - white on #f2f2f7 in light, #1c1d20 on #101113
+   in dark, 16px radius (the toolbar's own rounding), a soft hair2 edge and a
+   quiet cast shadow. Depth now lives in TWO places: glass chrome floats and
+   refracts, cards sit raised on the ground; everything inside a card stays
+   flat. Gap between cards replaces the hairline as the separator. */
+.card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
+ padding:18px 16px;margin:0 0 14px;box-shadow:0 2px 10px var(--shc3);
+ transition:background .18s,opacity .18s,filter .18s}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
 /* the data rung: 17/650. 650 is a real weight on the system face (SF supports
    the full optical range); Segoe/Roboto have no 650 and snap to 600 or 700 -
    both acceptable, since the rung only has to out-weigh 13px/400 body. */
 .num{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
-.meta{font-size:13px;font-weight:400;color:var(--m1);margin-top:2px}
-.pills{display:flex;flex-direction:column;gap:3px;align-items:flex-end;text-align:right;flex-shrink:0}
-.pill{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--m1);white-space:nowrap}
+.meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
+.pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
 /* the status column scans on two gray levels: Shipped = ink (done, real),
    everything in flight = muted. A third, lighter "pending" gray cannot clear
@@ -1147,10 +1173,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
 /* the caption under a value drops back to the small-text rung, so it must also
    drop the value's optical tracking - tracking is inherited, size is not. */
-.ledval span{display:block;font-size:11.5px;font-weight:400;letter-spacing:normal;color:var(--m1)}
+.ledval span{display:block;font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 /* ---- stage: one text line above a 4px capsule bar ------------------------- */
 .stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
- font-size:13px;color:var(--m1);margin:13px 0 7px}
+ font-size:14px;color:var(--m1);margin:15px 0 8px}
 .stage>span{min-width:0}
 /* 650, matching .num/.ledval: the stage name is a DATA value, not emphasis in a
    sentence. The operator sweeps the column of stage names the same way they
@@ -1164,29 +1190,40 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
  transition:width .55s cubic-bezier(.23,1,.32,1)}
 .card.arch .bar i{background:var(--m1)}
-/* 16px, not 9: .view's padded hit box hangs 12px BELOW the stage line and
+/* the row's one link is a visible quiet capsule at the stage line's far end
+   (App Store's row action, owner-tuned 2026-08-08). Label is --ac-hot, the
+   accent shade already clamped 4.5:1 against --surface3 in both themes.
+   baseline alignment on .stage keeps the pill's text on the stage line's
+   baseline; the pad grows the row symmetrically around it. */
+.stage .view{flex-shrink:0;margin:0;padding:7px 14px;border-radius:999px;line-height:16px;
+ font-size:13px;font-weight:600;color:var(--ac-hot);background:var(--surface3);position:relative}
+/* the pill reads 30px tall and stays that way - the hit area grows invisibly
+   past it (30 + 14 = 44, the HIG floor), same trick as the filter pills.
+   Vertical only, so it never steals the stage text's tap. */
+.stage .view::before{content:'';position:absolute;inset:-7px 0}
+/* 18px, not 9: .view's padded hit box hangs 12px BELOW the stage line and
    .archbtn's hangs 12px above its own, so at 9px they overlapped by 4px -
    right on top of the stage bar, where a thumb naturally lands, with a
-   navigation link and a state change sharing the target. 7 + 4 + 16 = 27
+   navigation link and a state change sharing the target. 8 + 4 + 18 = 30
    clears the two 12s with room. Ledger rhythm absorbs it; the action row
    reading as separate from the bar is a bonus, not a cost. */
-.foot{padding:0;border:0;margin-top:16px;display:flex;justify-content:space-between;
+.foot{padding:0;border:0;margin-top:18px;display:flex;justify-content:space-between;
  align-items:center;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.est{font-size:13px;font-weight:400;color:var(--m1)}
+.est{font-size:14px;font-weight:400;color:var(--m1)}
 /* bare 13px text actions: pad the hit box out to ~43px and cancel the growth
    with an equal negative margin, so the resting layout is byte-identical.
    As flex items (.stage, .foot, .footacts) the margins cancel exactly; as
    inline anchors the vertical padding never touched line layout to begin with. */
-.view{font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
+.view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
-.archbtn{font-size:13px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
+.archbtn{font-size:14px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
  padding:12px 8px;cursor:pointer;width:auto;margin:-12px -8px;font-family:inherit;
  -webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s,transform .14s ease-out}
 .archbtn:active{transform:scale(.97)}
-.empty{color:var(--m1);font-size:13px;padding:48px 0;text-align:center;line-height:1.7}
+.empty{color:var(--m1);font-size:14px;padding:48px 0;text-align:center;line-height:1.7}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* Replaced the old single 42x58 cover thumb (rule and emissions both gone).
    Up to 8 tiles, the 8th becoming a "+N" chip when the sub has more imaged
@@ -1194,7 +1231,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* the strip SCROLLS at every width, not just under 640px: 8 tiles measure
    742px, so any sheet narrower than ~782px (iPad portrait included) would
    otherwise scroll the whole page sideways. */
-.strip{display:flex;gap:10px;margin-top:12px;overflow-x:auto;
+.strip{display:flex;gap:10px;margin-top:14px;overflow-x:auto;
  overscroll-behavior-x:contain;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
 /* the strip is an overflow box, which also clips vertically - a tile's focus
@@ -1205,16 +1242,21 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .strip a[href^="/img"]{display:block;flex-shrink:0;line-height:0}
 .strip img{width:84px;height:117px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
  background:var(--surface3);cursor:zoom-in;flex-shrink:0}
+/* --surface3, not --ph: this chip lives INSIDE a white card, where the
+   ground-tuned white --ph would vanish; same for placeholder tiles in group
+   cards (the .card .gc .ph rule below). --ph stays for grids on the page
+   ground (cards/search/detail pages). */
 .morechip{width:84px;height:117px;border-radius:6px;border:1px solid var(--hair);
- background:var(--ph);display:flex;align-items:center;justify-content:center;font-size:13px;
+ background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px;
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
-.hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:11px 0;font-size:13px;
- color:var(--m1);background:transparent;border-bottom:1px solid var(--hair)}
+.hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
+ color:var(--m1);background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
+ box-shadow:0 2px 10px var(--shc3)}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
- color:var(--m1);font-size:13px;cursor:pointer;-webkit-user-select:none;user-select:none;
+ color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
 /* ---- scans: image, 6px radius, hairline, no shadow ------------------------ */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:24px}
 .grid img{width:100%;border-radius:6px;border:1px solid var(--hair);background:var(--surface3);
  aspect-ratio:1.72/2.4;object-fit:cover;display:block}
 /* NO content-visibility here: its paint containment clips every descendant
@@ -1226,24 +1268,27 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:6px;border:1px solid var(--hair);
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
-.gc .gr{font-size:13px;font-weight:600;color:var(--grade);margin-top:9px}
-.gc .cn{font-size:11.5px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
+/* inside a raised card the white ground-tuned --ph vanishes; the in-card
+   placeholder ground is the quiet fill (see .morechip) */
+.card .gc .ph{background:var(--surface3)}
+.gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px}
+.gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
 /* the card NAME is the subject only (split_name demotes the set boilerplate to
    .nmset below): two lines is enough for it, and the reserved height keeps
-   every tile in the grid on the same baseline. 2 x 13px x 1.4 = 36.4 -> 37.
+   every tile in the grid on the same baseline. 2 x 14px x 1.4 = 39.2 -> 40.
    min-height, not height: a fixed box clips the second line mid-glyph under
    a user-set minimum font size or text-only zoom (WCAG 1.4.4). */
-.gc .nm{font-size:13px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:37px;
+.gc .nm{font-size:14px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:40px;
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.gc .nmset{font-size:11.5px;color:var(--m1);margin-top:2px;white-space:nowrap;overflow:hidden;
+.gc .nmset{font-size:12px;color:var(--m1);margin-top:2px;white-space:nowrap;overflow:hidden;
  text-overflow:ellipsis}
 .gc .cval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);margin-top:4px}
-.gc .cval span{font-size:11.5px;font-weight:400;letter-spacing:normal;color:var(--m1)}
+.gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
-.sublink{display:block;font-size:13px;font-weight:500;color:var(--ac-pale);text-decoration:none;
+.sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color .15s,background-color .15s}
 /* the customer's non-link variant is a real class, not "has any inline style" -
    keying on [style] made an unrelated inline style silently repaint the link */
@@ -1251,7 +1296,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
- border-radius:0;color:var(--txt);font:inherit;font-size:13px;font-weight:400;
+ border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
  padding:11px 0 10px;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
 /* touch devices: tap navigates instantly, this pencil is the edit affordance
    (double-tap-to-edit is a desktop double-click idea - on a phone it races
@@ -1361,7 +1406,7 @@ button:active{transform:scale(.97)}
 button:disabled{opacity:.5;cursor:default}
 .err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:14px}
 /* ---- settings ------------------------------------------------------------ */
-.card.sblock{margin:0;padding:22px 0 24px;border-top:1px solid var(--hair);border-radius:0}
+.card.sblock{margin:0 0 14px;padding:22px 20px 24px}
 .sblock .sform{max-width:430px}
 .sform button{margin-top:14px}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
@@ -1377,7 +1422,7 @@ button:disabled{opacity:.5;cursor:default}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
 .slbl{font-size:12px;color:var(--m1);margin-top:18px;line-height:1.6;max-width:460px}
-.snote{display:inline-block;font-size:13px;font-weight:500;color:var(--ac-pale);margin-top:16px}
+.snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
 .spane{margin-top:16px}
@@ -1400,9 +1445,9 @@ button:disabled{opacity:.5;cursor:default}
 .sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:15px;cursor:pointer;
  width:auto;margin:-10px -12px;padding:12px 18px;transition:color .15s,background-color .15s}
 .dbtn{width:auto;margin:-1px -8px -11px;padding:11px 8px;background:transparent;color:var(--ac-pale);
- font-size:13px;font-weight:500}
+ font-size:14px;font-weight:500}
 .dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
-.dstate{font-size:13px;font-weight:500;color:var(--txt);flex:1}
+.dstate{font-size:14px;font-weight:500;color:var(--txt);flex:1}
 .dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
 .card.arch{opacity:.5;filter:grayscale(.6)}
@@ -1422,8 +1467,12 @@ button:disabled{opacity:.5;cursor:default}
    #list.archview is set by the toggle script, so the scope is exactly that
    view - the person, cards and search pages (.gc.arch, ARCHFOLD) keep the full
    dimming, and the sub detail page's .archdim is untouched. */
-#list.archview .card.arch{opacity:.85;filter:grayscale(.55)}
-.card.tlcard{padding:6px 0 2px;border-top:0;margin:0}
+/* full opacity in the card era: the .85 wash also faded the card's own white
+   surface, dropping muted text to ~3.8:1 (2026-08-08 audit). "Past" is carried
+   by grayscale alone - the accent stage name, bar and scans all desaturate -
+   while the ink stays on a full-strength card and keeps its 4.5. */
+#list.archview .card.arch{opacity:1;filter:grayscale(.55)}
+.card.tlcard{padding:16px;margin:14px 0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
  transition:color .15s,background-color .15s}
@@ -1433,7 +1482,12 @@ button:disabled{opacity:.5;cursor:default}
 .setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.6}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
-.gbox{width:min(300px,100%);text-align:center}
+/* the gate is a card now too - on the grouped ground a bare centered stack
+   floats anchorless, and the quiet input fill (#f2f2f4) all but vanished on
+   the near-identical #f2f2f7 page. The white card gives it back its ground. */
+.gbox{width:min(340px,100%);text-align:center;background:var(--surface);
+ border:1px solid var(--hair2);border-radius:20px;padding:28px 22px;
+ box-shadow:0 2px 10px var(--shc3)}
 /* the gate is a 300px centred card, not a page - a large title sized for a
    820px sheet overpowers it and wraps a two-word site name onto two lines.
    One step down, same weight, tracking re-scaled to the new size. The card is
@@ -1443,11 +1497,13 @@ button:disabled{opacity:.5;cursor:default}
 .gbox .sub{margin-top:6px}
 /* ---- hover: pointer devices only ----------------------------------------- */
 @media(hover:hover){
-.card:hover{background:var(--hovrow)}
-/* group wrappers and the standalone timeline block are .card for the ledger
+/* the hover tint layers ON the card surface (background replaces, so a bare
+   alpha wash would swap the raised card for a smudge of page ground) */
+.card:hover{background:color-mix(in srgb,var(--txt) 4%,var(--surface))}
+/* group wrappers and the standalone timeline block are .card for the raised
    look, but they are not targets - only the sub-number link inside a group
    is. Tinting the whole surface promised a click it doesn't have. */
-.card.grp:hover,.card.tlcard:hover{background:transparent}
+.card.grp:hover,.card.tlcard:hover{background:var(--surface)}
 .card.arch:hover{opacity:.62}
 .gc.arch:hover a[href^="/img"],.gc.arch:hover .ph{opacity:.78;filter:grayscale(.3)}
 /* full color on hover inside the archived view - the row still takes the
@@ -1462,16 +1518,14 @@ button:disabled{opacity:.5;cursor:default}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
 .view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
-/* The text actions already carry an invisible padded hit box (the negative-
-   margin trick above). On hover that box becomes VISIBLE as a quiet fill - the
-   iOS/macOS toolbar highlight - so you can see the target you're about to hit
-   instead of guessing from a colour shift. --surface3 is the neutral quiet fill
-   (light #f2f2f4, dark rgba(255,255,255,.08)); against --ac-hot text it clears
-   contrast in both themes with room to spare.
-   8px, NOT a capsule: these are inline actions inside a sentence of layout, and
-   a capsule would read as a control sitting there permanently. */
-.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover{
- background:var(--surface3);border-radius:8px}
+/* Text actions keep their invisible padded hit box (the negative-margin trick
+   above) but hover NEVER paints it: the quiet-fill slab hung 12px past the
+   text - straight over the stage bar - and inside a raised card a filled box
+   read as a stray sub-panel; the underline tried next was disliked too (both
+   owner calls, 2026-08-08). Hover is the colour deepen above, nothing else.
+   The stage-line View pill is the exception: it IS a visible capsule, so its
+   hover deepens its own fill. */
+.stage .view:hover{color:var(--ac-hot);background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
 /* the glyph actions ARE square-ish targets, so theirs is a circle */
 .hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
 .numlink:hover .num{color:var(--ac-pale)}
@@ -1499,7 +1553,7 @@ button:disabled{opacity:.5;cursor:default}
     stale snapshot (often mid-scroll, glass baked in) for ~a quarter second
     before the real page - on a phone that reads as flash+lag, not continuity */
  :root{view-transition-name:none}
- body{padding:12px 14px 88px}
+ body{padding:16px 14px 88px}
  .tbtop{flex-wrap:wrap;gap:10px}
  .brand{gap:10px;min-width:0}
  .logo{height:26px}
@@ -1510,11 +1564,11 @@ button:disabled{opacity:.5;cursor:default}
     not touched - see .gbox. */
  h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
- .tbend .synced{display:flex;gap:5px;align-items:baseline;font-size:11px}
- .tbend .synced b{display:inline;font-size:11px;white-space:nowrap}
+ .tbend .synced{display:flex;gap:5px;align-items:baseline;font-size:12px}
+ .tbend .synced b{display:inline;font-size:12px;white-space:nowrap}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
- .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:11.5px}
+ .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:12px}
  /* the segmented control never breaks into a second row - it scrolls.
     overflow-y is pinned to hidden so the pills' -6px hit pseudo can never
     open a phantom vertical scroll on the capsule. */
@@ -1573,16 +1627,17 @@ button:disabled{opacity:.5;cursor:default}
  .filterrow .filters .f{padding:5px 11px 7px}
  .grid{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:14px}
  /* phone filmstrip: tiles stay legible (64x89) and the strip bleeds to the
-    card's own padding edge (-10px here, matching .card below) so the last
-    tile runs off the sheet edge - the honest "there is more" cue. The scroll
+    card's own padding edge (-14px here, matching .card below) so the last
+    tile runs off the card edge - the honest "there is more" cue. The scroll
     behavior itself now lives on the base .strip rule. */
- .strip{gap:8px;margin:10px -10px 0;padding:0 10px}
+ .strip{gap:8px;margin:12px -14px 0;padding:0 14px}
  .strip img,.morechip{width:64px;height:89px}
- .card{padding:15px 10px;margin:0 -10px}
+ .card{padding:16px 14px;margin:0 0 12px}
+ .card.tlcard{margin:14px 0}
  input,.searchbar{font-size:16px}
  /* 16px only while the tag is EDITABLE: that is the only moment iOS would
     zoom on focus. A readonly owner tag is just text, and at 16px it shouted
-    over the 13px card name it sits under. */
+    over the 14px card name it sits under. */
  .own:not([readonly]){font-size:16px}
  .gc .nm{min-height:0}}
 /* iOS focus-zoom fires on any sub-16px input on a COARSE pointer, not on a
@@ -2215,8 +2270,8 @@ def timeline_html(status, dates=None, aside="", key=""):
     """Stage state as one text line (current stage, accent) above the 4px
     progress capsule. `dates` (stage -> 'Jul 20', from stage_dates) appends when
     the sub entered its current stage - detail pages only, so a dashboard row
-    stays to a single line. `aside` rides the far end of that same line (the
-    row's one link), keeping a ledger row three lines tall.
+    stays to a single line. `aside` (the row's one link) rides the bar's own
+    row as a capsule pill at its right end.
     `key` is the sub number: FX_JS remembers each sub's stage per browser and
     only runs the bar's run-out for one that actually MOVED since the last
     visit, so the motion means "your cards advanced" and not "a page loaded"."""
@@ -2227,6 +2282,10 @@ def timeline_html(status, dates=None, aside="", key=""):
     if since:
         line += f' · since {html.escape(since)}'
     k = f' data-k="{html.escape(str(key))}" data-st="{idx}"' if key else ""
+    # aside rides the far end of the stage line, worn as a quiet capsule pill
+    # (owner calls 2026-08-08: a bar-row placement was tried and reverted same
+    # day - "i like where it was before, but i also like that its a pill").
+    # The bar below stays full width.
     return (f'<div class="stage"><span>{line}</span>{aside}</div>'
             f'<div class="bar"><i style="width:{pct:.1f}%"{k}></i></div>')
 
@@ -2279,9 +2338,10 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
         # the alarm gets its sentence here, in the same muted slot the ship
         # line uses - the red pill above says THAT, this says what it means
         foot = html.escape(HOLD_NOTE)
-    elif s["grades_ready"]:
-        foot = "Grades ready"
     else:
+        # grades_ready no longer prints a foot line (the owner, 2026-08-08: "i
+        # dont need the grades ready tab") - the red grades on the tiles and
+        # the Completing stage already say it
         foot = ""
 
     strip = strip_html(s, fronts)
