@@ -1175,8 +1175,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    drop the value's optical tracking - tracking is inherited, size is not. */
 .ledval span{display:block;font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 /* ---- stage: one text line above a 4px capsule bar ------------------------- */
+/* 16/10, not 15/8: the View pill is 30px tall against the line's 21px text
+   and baseline alignment hangs its bottom ~6px lower, so the old 8px read as
+   pill-almost-touching-bar (the owner, 2026-08-08) */
 .stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
- font-size:14px;color:var(--m1);margin:15px 0 8px}
+ font-size:14px;color:var(--m1);margin:16px 0 10px}
 .stage>span{min-width:0}
 /* 650, matching .num/.ledval: the stage name is a DATA value, not emphasis in a
    sentence. The operator sweeps the column of stage names the same way they
@@ -1204,7 +1207,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* 18px, not 9: .view's padded hit box hangs 12px BELOW the stage line and
    .archbtn's hangs 12px above its own, so at 9px they overlapped by 4px -
    right on top of the stage bar, where a thumb naturally lands, with a
-   navigation link and a state change sharing the target. 8 + 4 + 18 = 30
+   navigation link and a state change sharing the target. 10 + 4 + 18 = 32
    clears the two 12s with room. Ledger rhythm absorbs it; the action row
    reading as separate from the bar is a bonus, not a cost. */
 .foot{padding:0;border:0;margin-top:18px;display:flex;justify-content:space-between;
