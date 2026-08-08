@@ -1,20 +1,22 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="15 17 110 82">
   <!-- FLXTCG mark: fanned hand of cards, F L X bottom-to-top (G3 from the
-       2026-07-22 logo round, the owner's pick). Tonal violet ramp deepening toward
-       the front card, drawn letters (no fonts) in light grey, gold holo dot on
-       the X card. Mid-tone fills so one file reads on dark and light themes.
+       2026-07-22 logo round, the owner's pick; recolored steel blue 2026-08-08 to
+       match the white+blue brand). Tonal blue ramp deepening toward the front
+       card - accent-ambient / accent / accent-fill-hot from DESIGN.md - drawn
+       letters (no fonts) in blue-white, gold holo dot on the X card. Mid-tone
+       fills so one file reads on dark and light themes.
        Lives at /opt/psa-tracker/logo.svg on the box, served at /logo. -->
   <g transform="rotate(-18 70 124)">
-    <rect x="47" y="20" width="46" height="68" rx="6" fill="#a78bfa"/>
-    <path transform="translate(54,26)" d="M0 0H12V4.5H5V8H10.5V12.5H5V20H0Z" fill="#e9e7f1"/>
+    <rect x="47" y="20" width="46" height="68" rx="6" fill="#5b8def"/>
+    <path transform="translate(54,26)" d="M0 0H12V4.5H5V8H10.5V12.5H5V20H0Z" fill="#e9eef8"/>
   </g>
   <g>
-    <rect x="47" y="20" width="46" height="68" rx="6" fill="#8b5cf6"/>
-    <path transform="translate(54,26)" d="M0 0H5V15.5H12V20H0Z" fill="#e9e7f1"/>
+    <rect x="47" y="20" width="46" height="68" rx="6" fill="#3a6fd8"/>
+    <path transform="translate(54,26)" d="M0 0H5V15.5H12V20H0Z" fill="#e9eef8"/>
   </g>
   <g transform="rotate(18 70 124)">
-    <rect x="47" y="20" width="46" height="68" rx="6" fill="#5b34c9"/>
-    <path transform="translate(54,26)" d="M0 0H5L13 20H8Z M8 0H13L5 20H0Z" fill="#e9e7f1"/>
+    <rect x="47" y="20" width="46" height="68" rx="6" fill="#2d57a8"/>
+    <path transform="translate(54,26)" d="M0 0H5L13 20H8Z M8 0H13L5 20H0Z" fill="#e9eef8"/>
     <circle cx="86" cy="28" r="3.4" fill="#f5b73d"/>
   </g>
 </svg>
