@@ -884,10 +884,12 @@ Image at a fixed 1.72/2.4 card ratio with a 6px radius and a hairline — no sha
 container. Below it: grade in Grade Red 600/14px, cert number in monospace micro, card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), the set line demoted below it, value on
-the 17/650 data rung, then the owner tag pinned to the bottom via `margin-top: auto`. Off-screen
-tiles take `content-visibility: auto` with an approximate intrinsic size, so they skip layout,
-paint, and their own loading sweep without moving the scrollbar. While an image loads it carries a 1.1s linear
-shimmer sweep that stops the instant the loaded class lands.
+the 17/650 data rung, then the owner tag pinned to the bottom via `margin-top: auto`. Tiles
+carry **no `content-visibility`** — its paint containment clipped everything that reaches past
+the tile box (focus rings, the hover pill's negative-margin bleed), so it was removed; the
+off-screen cost it targeted is handled in FX_JS instead, which lands the loading sweep only
+when a still-loading tile approaches the viewport. While an image loads it carries a 1.1s
+linear shimmer sweep that stops the instant the loaded class lands.
 
 ### Named Rules
 **The Opt-In Fill Rule.** Filled accent identity is opt-in, per element. It lives on

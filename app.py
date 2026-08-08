@@ -1755,7 +1755,8 @@ THEME_JS = f"""<script>
   function sys(){{return mq.matches?'dark':'light';}}
   function render(){{
     b.innerHTML=(cur==='dark')?SUN:MOON;
-    b.title=b.ariaLabel=(cur==='dark')?'Switch to light mode':'Switch to dark mode';
+    b.title=(cur==='dark')?'Switch to light mode':'Switch to dark mode';
+    b.setAttribute('aria-label',b.title);
   }}
   b.addEventListener('click',function(){{
     cur=(cur==='dark')?'light':'dark';
