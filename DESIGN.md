@@ -574,14 +574,16 @@ and its subtitle, 7–10px inside chips, 12–14px between row elements, 18–24
 stage line is one sentence ("Grading · stage 4 of 8") above the capsule bar; the system never
 renders an eight-label stepper on a phone.
 
-**The No-Wrap Segment Rule.** *Below 640px* the filter capsule never breaks to a second row:
-it becomes a horizontally scrolling strip with the scrollbar hidden,
-`overscroll-behavior-x: contain`, and a 22px shade riding whichever edge still has pills
-beyond it. Above 640px the capsule wraps (`flex-wrap: wrap`) — the sheet is wide enough that
-a second row is rare, and the pills' hit-area pseudo is layered at `z-index: -1` precisely so
-a wrapped row cannot shadow the row above it. Where the capsule scrolls it is an overflow
-box, which clips that pseudo; the phone's real hit target is the capsule's own 38px height,
-a deliberate trade for never wrapping on the narrowest screen.
+**The No-Wrap Segment Rule.** *Below 640px* the filter capsule never breaks to a second row.
+Down to 360px it is not an overflow box either — three pills measure ~247px and fit the
+sheet — so the capsule stays the thin 38px control and the hit pseudo grows past it exactly
+as on desktop (28px pill + 8px each way = the 44px floor). Only *below 360px* does the
+capsule become the horizontally scrolling strip: scrollbar hidden, `overscroll-behavior-x:
+contain`, a 22px shade riding whichever edge still has pills beyond it — and there the
+overflow box clips the pseudo back to the capsule's own height, the narrowest-screen trade
+(WCAG 2.5.8's 24px minimum still holds). Above 640px the capsule wraps (`flex-wrap: wrap`) —
+the sheet is wide enough that a second row is rare, and the pseudo is layered at
+`z-index: -1` precisely so a wrapped row cannot shadow the row above it.
 
 **The Three-Band Row Rule.** A dashboard ledger row is three bands, top to bottom: identity +
 value/status, the filmstrip contact sheet, and stage line + bar with its inline "View cards"
@@ -738,9 +740,10 @@ content — a panel, a sheet, an image, a row — it is not.
   in both directions: pressed it takes `--ac-fill` with a `#fff` label (see the Opt-In Fill
   Rule) and drops its rims (see the Dual-Rim Rule), because it is a view switch and not a
   fourth sort choice.
-- **Hit area:** each pill looks 33px tall and stays that way; a `::before` pseudo at
-  `inset: -6px 0` grows the target past the capsule to clear the 44px floor, vertically only,
-  at `z-index: -1` so a wrapped row can never shadow the pill above it.
+- **Hit area:** each pill looks 30px tall (28px under 640px) and stays that way; a `::before`
+  pseudo at `inset: -7px 0` (`-8px` under 640px) grows the target past the capsule to clear
+  the 44px floor, vertically only, at `z-index: -1` so a wrapped row can never shadow the
+  pill above it.
 - **Search tag (`.pvtag`):** a quiet capsule chip, 11px/500, `3px 9px`, filled with
   `color-mix(in srgb, var(--ac-pale) var(--tagmix), transparent)` — 12% light, 18% dark,
   because a dark ground swallows a low-alpha wash. It is a category label, not a link.

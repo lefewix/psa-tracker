@@ -1105,9 +1105,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    past the capsule instead (30 + 14 = 44, exactly the HIG floor; the 7px was 6
    until the line box above became a stated 16, and it is the cheaper of the two
    places to take the pixel back).
-   On mobile the capsule is an overflow box and CLIPS this pseudo, so the sort
-   pills' real target there is the capsule's own height - see the 640px block
-   for what that costs and why it is a deliberate call.
+   Below 360px the capsule becomes an overflow box and CLIPS this pseudo, so
+   the sort pills' real target there is the capsule's own height - see the
+   640px and 360px blocks for the mechanics and why that residue is accepted.
    Vertical only: inset 0 left/right so a pill never steals its neighbour.
    z-index:-1 keeps it BEHIND every real box, so when the capsule wraps to a
    second row the lower pill's pad can't shadow the upper pill's live edge. */
@@ -1572,26 +1572,21 @@ button:disabled{opacity:.5;cursor:default}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
  .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:12px}
- /* the segmented control never breaks into a second row - it scrolls.
-    overflow-y is pinned to hidden so the pills' -6px hit pseudo can never
-    open a phantom vertical scroll on the capsule. */
- /* the capsule is an overflow box here, so the pills' -6px hit pseudo is CLIPPED
-    to the capsule box - the 45px target the desktop capsule gets for free is cut
-    back to the capsule's own height. This block used to pad the capsule out to
-    45 to buy that back; it no longer does. The row read too tall on a phone and
-    the call was made explicitly for a THINNER control: 4px vertical pad (from 7)
-    and 6px on the pills (from 7) put the capsule at 38px, six under the 44px HIG
-    floor. Honest trade, stated here rather than papered over - the pills are
-    wide (44px+ horizontally), they sit in a row of their own with nothing
-    destructive next to them, and the solo Archived pill outside the overflow box
-    still gets the full pseudo (52px). Horizontal pad stays 3px so the end caps
-    read the same. .sbar is NOT an overflow box (no rule here), so its pseudo
-    still overflows freely and it already clears 44 - it is left alone. */
- .filters{display:flex;flex-wrap:nowrap;max-width:100%;overflow-x:auto;overflow-y:hidden;
-  overscroll-behavior-x:contain;scrollbar-width:none;padding:4px 3px;align-items:center}
- .filters::-webkit-scrollbar{display:none}
+ /* the segmented control never breaks into a second row - and down to 360px it
+    is NOT an overflow box either: three pills measure ~247px and fit any sheet
+    to ~360, so nothing here can actually scroll, and staying un-clipped is what
+    lets the hit pseudo work. The capsule stays the THIN 38px control (4px
+    vertical pad, 5/7 on the pills - the explicit call against a taller row);
+    the 44px HIG floor is met the way the desktop capsule meets it, by growing
+    the pseudo invisibly: 28px pill + 8px each way = 44. Below 360px the pills
+    genuinely can exceed the sheet, so the 360px block turns the capsule back
+    into a scroller and the clip returns there only. .sbar was never an
+    overflow box and already clears 44 - it is left alone. */
+ .filters{display:flex;flex-wrap:nowrap;max-width:100%;padding:4px 3px;align-items:center}
  .filters .f{flex:0 0 auto}
- /* scroll cue: the scrollbar is hidden, so nothing would say there are more
+ .filterrow .filters .f::before{inset:-8px 0}
+ /* scroll cue (live only below 360px, where the capsule actually scrolls):
+    the scrollbar is hidden there, so nothing would say there are more
     pills off the edge. A 22px shade rides each edge that still has content
     beyond it; FX_JS flips .sl/.sr off the scroll position, so both vanish at
     their end and neither appears when the capsule already fits.
@@ -1618,7 +1613,7 @@ button:disabled{opacity:.5;cursor:default}
     back on auto the slack lives BETWEEN the two controls (the row is
     space-between), so the gap is page background, which is what a gap should be.
     min-width:0 stays: it is what still lets the capsule shrink below its content
-    and become a scroller if a phone ever is narrow enough (~<330px) to need it.
+    and become a scroller (via the 360px block) on a phone narrow enough to need it.
     On a 360px sheet it does not engage - three pills at 13/500 measure ~247px,
     and two notches keep it that way: the count leaves the Archived button
     (aria-label keeps it) and the sort pills' side padding goes 14 -> 11.
@@ -1643,6 +1638,16 @@ button:disabled{opacity:.5;cursor:default}
     over the 14px card name it sits under. */
  .own:not([readonly]){font-size:16px}
  .gc .nm{min-height:0}}
+/* sub-360 phones: the pills plus the Archived solo pill can genuinely exceed
+   the sheet, so the capsule becomes the scrolling strip - hidden scrollbar,
+   gesture contained, cue shades driven by FX_JS. This is the one width where
+   the overflow box clips the hit pseudo back to the capsule's padding box
+   (36px); still past WCAG 2.5.8's 24px floor, and the full 44px target
+   resumes at 360. overflow-y pinned to hidden so the -8px pseudo can never
+   open a phantom vertical scroll on the capsule. */
+@media(max-width:359px){
+ .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
+ .filters::-webkit-scrollbar{display:none}}
 /* iOS focus-zoom fires on any sub-16px input on a COARSE pointer, not on a
    narrow viewport - iPad portrait is 768px and still zoomed. The 640px block
    covers phones; this covers the rest of the coarse-pointer range. */
