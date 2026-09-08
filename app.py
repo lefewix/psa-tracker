@@ -3344,22 +3344,25 @@ def people_page(a, owner):
     if act_cards:
         # grouped cards carry no top margin of their own - give them the same
         # breathing room below the search bar the customer home has (28px)
-        grid = '<div style="margin-top:28px">' + grouped(act_cards) + "</div>"
+        # the filterrow's own 12px bottom margin takes over when the pill is there
+        grid = f'<div style="margin-top:{0 if arc_cards else 28}px">' + grouped(act_cards) + "</div>"
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
         grid = f'<div class="empty">All of {html.escape(owner)}’s cards are in archived submissions.</div>'
     else:
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
-    archsec = ""
+    archpill = archsec = ""
     if arc_cards:
-        inner = f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>'
+        archsec = f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>'
         # solo pill, same grammar as the dashboard's: a capsule wrapping a
-        # single pill prints a ring with nothing else inside (see .fsolo)
-        archsec = (f'<button type="button" class="f farch fsolo" id="archtoggle" '
-                   f'style="margin:30px 0 0" aria-expanded="false" aria-controls="archgrid">'
-                   f'Archived · {len(arc_cards)}</button>'
-                   + inner)
+        # single pill prints a ring with nothing else inside (see .fsolo).
+        # It sits in a .filterrow under the search bar like the dashboard's,
+        # not at the page foot where a long grid hid it; the fold itself
+        # stays below the active groups (ARCHFOLD_JS scrolls to it).
+        archpill = (f'<div class="filterrow"><button type="button" class="f farch fsolo" '
+                    f'id="archtoggle" aria-expanded="false" aria-controls="archgrid">'
+                    f'Archived · {len(arc_cards)}</button></div>')
     if unassigned:
         est = ""  # the worklist is about tagging, not money
     else:
@@ -3395,6 +3398,7 @@ def people_page(a, owner):
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
+{archpill}
 {grid}
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
@@ -3442,12 +3446,12 @@ def customer_page(a, email):
     gone = [n for n in order if n in arch]
     body = ("".join(group_html(n, groups[n]) for n in act)
             or '<div class="empty">No cards yet — they appear once the store receives your submission.</div>')
-    archsec = ""
-    if gone:
-        archsec = (f'<button type="button" class="f farch fsolo" id="archtoggle" '
-                   f'style="margin:30px 0 0" aria-expanded="false" aria-controls="archgrid">'
-                   f'Archived · {len(gone)}</button>'
-                   f'<div id="archgrid" style="display:none">'
+    archpill = archsec = ""
+    if gone:  # pill under the search bar (see people_page), fold below the groups
+        archpill = (f'<div class="filterrow"><button type="button" class="f farch fsolo" '
+                    f'id="archtoggle" aria-expanded="false" aria-controls="archgrid">'
+                    f'Archived · {len(gone)}</button></div>')
+        archsec = ('<div id="archgrid" style="display:none">'
                    + "".join(group_html(n, groups[n]) for n in gone) + '</div>')
     total = sum(len(groups[n]) for n in act)
     # freshness stamp + store lockup: the customer home is the store's product
@@ -3463,7 +3467,8 @@ def customer_page(a, email):
 <div class="synced custrow"><div class="custout">Last refreshed<b>{html.escape(stamp)}</b></div>
 <a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 <div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
-<div style="margin-top:28px">{body}</div>
+{archpill}
+<div style="margin-top:{0 if gone else 28}px">{body}</div>
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{APP_JS_TAG}</body></html>"""
