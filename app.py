@@ -1824,12 +1824,6 @@ def tracking_html(carrier, tracking):
     return (f'<a class="tlink" href="{base}{urllib.parse.quote(str(tracking))}" '
             f'target="_blank" rel="noopener">{label}</a>')
 
-# The one thing that can actually go wrong in this product used to be a single
-# red word with no body text anywhere - the detail page didn't even render it.
-# One sentence, one wording, every surface that can show a held sub.
-HOLD_NOTE = ("PSA has paused this submission — the store is following up. "
-             "Grading resumes once it clears; the return estimate will update then.")
-
 def eta_pill(s):
     """Status pill for a sub: return ETA, shipped, hold, or pending.
     Shipped reads at ink level, everything in flight at muted, so the column
@@ -2343,14 +2337,9 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
         foot = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
         if s["carrier"] and s["tracking"]:
             foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
-    elif s["on_hold"]:
-        # the alarm gets its sentence here, in the same muted slot the ship
-        # line uses - the red pill above says THAT, this says what it means
-        foot = html.escape(HOLD_NOTE)
     else:
-        # grades_ready no longer prints a foot line (the owner, 2026-08-08: "i
-        # dont need the grades ready tab") - the red grades on the tiles and
-        # the Completing stage already say it
+        # no foot for holds (the owner, 2026-09-09: the pill is enough) or
+        # grades_ready (2026-08-08: "i dont need the grades ready tab")
         foot = ""
 
     strip = strip_html(s, fronts)
@@ -3229,8 +3218,7 @@ def eta_badge(s, extra=""):
     if s["on_hold"]:
         # a held sub used to render a perfectly normal ETA badge here, so the
         # one page you'd click THROUGH to for an explanation never mentioned it
-        return (f'<div class="synced">Status<b class="holdb">On hold</b>'
-                f'<span class="estnote">{html.escape(HOLD_NOTE)}</span>{extra}</div>')
+        return f'<div class="synced">Status<b class="holdb">On hold</b>{extra}</div>'
     if s["est_start"]:
         val = html.escape(s["est_start"])
         if s["est_end"]:
@@ -3325,8 +3313,6 @@ def people_page(a, owner):
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
-        hold = (f'<div class="foot"><span class="est">{html.escape(HOLD_NOTE)}</span></div>'
-                if s and s["on_hold"] else "")
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
                 # h2, not div: this IS the group's heading. Zero visual delta -
@@ -3334,7 +3320,7 @@ def people_page(a, owner):
                 # type value (17/650/-.012em/1.3), so nothing is inherited.
                 f'<h2 class="num">#{html.escape(str(n))}</h2></a>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
-                f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div>{hold}</div>')
+                f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div></div>')
     def grouped(cs):
         gs = {}
         for c in cs:
@@ -3432,10 +3418,6 @@ def customer_page(a, email):
             if s["carrier"] and s["tracking"]:  # the click they want most once shipped
                 ft += f' · {tracking_html(s["carrier"], s["tracking"])}'
             foot = f'<div class="foot"><span class="est">{ft}</span></div>'
-        elif s and s["on_hold"]:
-            # the customer has no /sub page to click through to, so the only
-            # place her alarm can be explained is right here
-            foot = f'<div class="foot"><span class="est">{html.escape(HOLD_NOTE)}</span></div>'
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><h2 class="num">#{html.escape(str(n))}</h2>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'

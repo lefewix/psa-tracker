@@ -404,20 +404,47 @@ def assign_dv(cards, spec_lines):
             if c.get("declared_value") is None:
                 c["declared_value"] = by_line.get(c["line_number"])
 
+def _names_match(a, b):
+    """PSA's prelim spec description and final cert label differ in formatting but
+    share the card's identifying tokens. Require some real overlap before trusting
+    a line-number match."""
+    ta = {t for t in re.sub(r"[^a-z0-9 ]", " ", (a or "").lower()).split() if len(t) > 2}
+    tb = {t for t in re.sub(r"[^a-z0-9 ]", " ", (b or "").lower()).split() if len(t) > 2}
+    if not ta or not tb:
+        return True  # no name to compare - fall back to line-number trust
+    return len(ta & tb) / min(len(ta), len(tb)) >= 0.5
+
 def carryover_owners(sub_number, old_rows, new_cards):
     """When prelim (spec:) cards are replaced by real cert cards, move owner tags
-    across by line number. old_rows: list of (cert_id, line_number) pre-replacement."""
-    old_by_line = {ln: cid for cid, ln in old_rows if str(cid).startswith("spec:")}
+    across by line number - but only on an unambiguous 1:1 line match whose card
+    names agree. Anything doubtful is left blank (and logged): a blank owner gets
+    noticed and fixed, a wrong owner doesn't. old_rows: (cert_id, line_number, name)."""
+    old_by_line = {}
+    for cid, ln, nm in old_rows:
+        if str(cid).startswith("spec:"):
+            old_by_line.setdefault(ln, []).append((cid, nm))
     targets = [c for c in new_cards if not str(c["cert_id"]).startswith("spec:")]
     if not old_by_line or not targets:
         return
+    tgt_by_line = {}
+    for c in targets:
+        tgt_by_line.setdefault(c["line_number"], []).append(c)
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     oc = sqlite3.connect(OWN_DB)
     oc.execute("CREATE TABLE IF NOT EXISTS owners (cert_id TEXT PRIMARY KEY, owner TEXT, updated_at TEXT)")
     moved = 0
     for c in targets:
-        old_cid = old_by_line.get(c["line_number"])
-        if not old_cid:
+        olds = old_by_line.get(c["line_number"], [])
+        # only carry when the line maps 1:1 and the names agree - a wrong owner
+        # is worse than a blank one
+        if len(olds) != 1 or len(tgt_by_line[c["line_number"]]) != 1:
+            if olds:
+                log(f"sub {sub_number}: line {c['line_number']} ambiguous, owner left blank on cert {c['cert_id']}")
+            continue
+        old_cid, old_name = olds[0]
+        if not _names_match(old_name, c.get("name") or ""):
+            log(f"sub {sub_number}: name mismatch line {c['line_number']} "
+                f"({old_name!r} vs {c.get('name')!r}), owner left blank on cert {c['cert_id']}")
             continue
         row = oc.execute("SELECT owner FROM owners WHERE cert_id=?", (old_cid,)).fetchone()
         if row and row[0]:
@@ -431,7 +458,7 @@ def carryover_owners(sub_number, old_rows, new_cards):
 
 def upsert_cards(conn, sub_number, cards):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    old_rows = conn.execute("SELECT cert_id, line_number FROM cards WHERE sub_number=?",
+    old_rows = conn.execute("SELECT cert_id, line_number, name FROM cards WHERE sub_number=?",
                             (sub_number,)).fetchall()
     carryover_owners(sub_number, old_rows, cards)
     conn.execute("DELETE FROM cards WHERE sub_number=?", (sub_number,))
@@ -545,7 +572,7 @@ def upsert(conn, subs):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     changes, touched = [], []
     for s in subs:
-        row = conn.execute("SELECT status, grades_ready FROM subs WHERE sub_number=?",
+        row = conn.execute("SELECT status, grades_ready, on_hold FROM subs WHERE sub_number=?",
                            (s["sub_number"],)).fetchone()
         vals = (s["order_number"], s["service"], s["status"], s["card_count"],
                 s["destination"], s["arrived"], s["est_start"], s["est_end"],
@@ -569,6 +596,11 @@ def upsert(conn, subs):
                 touched.append(s["sub_number"])
             if not row[1] and s["grades_ready"]:
                 changes.append(f"sub #{s['sub_number']}: grades are ready")
+                touched.append(s["sub_number"])
+            # a hold usually flips with the stage unchanged (14956985 went on
+            # hold at QA Check, 2026-09) - status diff alone never saw it
+            if bool(row[2]) != s["on_hold"]:
+                changes.append(f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
                 touched.append(s["sub_number"])
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
