@@ -54,6 +54,7 @@ PYEOF
     full=0
     case " $LOGIN_HOURS " in *" $hour "*) full=1 ;; esac
     [ -z "$PSA_COOKIE" ] && full=1
+    [ -f "$dir/otp.armed" ] && full=1   # "Send code" pressed in Settings
     if [ "$full" = 1 ]; then
       if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
         set -a; . "$envf"; set +a   # reload: pick up the fresh PSA_COOKIE

@@ -1953,13 +1953,26 @@ def is_settings_pw(given):
     return bool(SETTINGS_HASH) and hmac.compare_digest(
         hashlib.sha256(given.encode()).hexdigest(), SETTINGS_HASH)
 
+def otp_state(acct_id):
+    """Marker files psa_login.py leaves beside account.env: needed (PSA asked
+    for a code while we were unarmed), armed (Send code pressed), waiting (the
+    SMS went out; otp.code is being polled)."""
+    d = os.path.dirname(account_env_path(acct_id))
+    st = {}
+    for k in ("needed", "armed", "waiting"):
+        try:
+            st[k] = open(os.path.join(d, f"otp.{k}")).read().strip() or "yes"
+        except OSError:
+            st[k] = ""
+    return st
+
 def account_env_path(acct_id):
     return os.path.join(ACCOUNTS_DIR, acct_id, "account.env")
 
 def settings_gate(error=""):
     inv = ' aria-invalid="true"' if error else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>{refresh}
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
@@ -1978,7 +1991,8 @@ def settings_page(msg="", err=""):
     per-account webhook have their own panels. All credentials write-only."""
     accts = load_accounts()
     multi = len(accts) > 1
-    achips, wchips, wpanes, schips, spanes = [], [], [], [], []
+    achips, wchips, wpanes, schips, spanes, ochips, opanes = [], [], [], [], [], [], []
+    live = False  # any account mid-verification -> page auto-refreshes
     for i, a in enumerate(accts.values()):
         env = read_env_file(account_env_path(a["id"]))
         email = env.get("PSA_LOGIN_EMAIL", "") or a["id"]
@@ -1997,6 +2011,34 @@ def settings_page(msg="", err=""):
                           f'data-pane="wpane{i}">{email_html}</button>')
             schips.append(f'<button type="button" class="f schip{on}" data-group="s" '
                           f'data-pane="spane{i}">{email_html}</button>')
+        if multi:
+            ochips.append(f'<button type="button" class="f schip{on}" data-group="o" '
+                          f'data-pane="opane{i}">{email_html}</button>')
+        ost = otp_state(a["id"])
+        if ost["waiting"]:
+            live = True
+            ometa = "Code sent to the phone on this PSA account. Enter it within 10 minutes."
+        elif ost["armed"]:
+            live = True
+            ometa = "Signing in now — the code is on its way to the account's phone. This page refreshes itself."
+        elif ost["needed"]:
+            ometa = f"PSA is asking to verify this sign-in (since {html.escape(ost['needed'])}). Scans are paused until a code goes through."
+        else:
+            ometa = "Only needed when PSA asks to verify a new sign-in."
+        if ost["waiting"] or ost["armed"]:
+            obody = f"""<form method="POST" action="/settings/account" class="srow">
+<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="otp_code">
+<input name="value" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Verification code"
+ aria-label="PSA verification code" maxlength="8">
+<button type="submit" class="fillbtn sbtn">Send</button></form>"""
+        else:
+            obody = f"""<form method="POST" action="/settings/account" class="srow">
+<input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="otp_send">
+<button type="submit" class="fillbtn sbtn">Send code</button></form>"""
+        opanes.append(f"""<div class="spane sg-o" id="opane{i}"{hide}>
+<div class="meta">{ometa}</div>
+{obody}
+</div>""")
         remove_btn = (f'<form method="POST" action="/settings/account" style="margin:0">'
                       f'<input type="hidden" name="acct" value="{aid}">'
                       f'<input type="hidden" name="action" value="webhook_clear">'
@@ -2022,9 +2064,11 @@ def settings_page(msg="", err=""):
     note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err else
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
+    obar = f'<div class="sbar">{"".join(ochips)}</div>' if multi else ""
+    refresh = '<meta http-equiv="refresh" content="20">' if live else ""
     sbar2 = f'<div class="sbar">{"".join(schips)}</div>' if multi else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>{refresh}
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
@@ -2034,6 +2078,11 @@ def settings_page(msg="", err=""):
 <div class="card sblock" style="margin-top:22px">
 <h2 class="stitle">PSA accounts</h2>
 <div class="sbar">{"".join(achips)}<button type="button" class="f" id="saddbtn">Add account</button></div>
+</div>
+<div class="card sblock">
+<h2 class="stitle">Verification code</h2>
+{obar}
+{"".join(opanes)}
 </div>
 <div class="card sblock">
 <h2 class="stitle">Discord webhook</h2>
@@ -3890,6 +3939,24 @@ class H(BaseHTTPRequestHandler):
                 if action == "webhook_clear":
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": ""})
                     return self.send(200, settings_page(msg="Webhook removed."))
+                if action in ("otp_send", "otp_code"):
+                    d = os.path.dirname(account_env_path(acct_id))
+                    if action == "otp_send":
+                        for k in ("code", "waiting"):
+                            try: os.remove(os.path.join(d, f"otp.{k}"))
+                            except FileNotFoundError: pass
+                        open(os.path.join(d, "otp.armed"), "w").write(time.strftime("%Y-%m-%dT%H:%M"))
+                        start_first_scan()
+                        return self.send(200, settings_page(
+                            msg="Sign-in started — PSA texts the code to this account's phone in a minute or two. "
+                                "Come back here and enter it."))
+                    code = re.sub(r"\D", "", value)
+                    if not 4 <= len(code) <= 8:
+                        return self.send(200, settings_page(err="Enter the code PSA texted (digits only)."))
+                    fd = os.open(os.path.join(d, "otp.code"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                    with os.fdopen(fd, "w") as f:
+                        f.write(code)
+                    return self.send(200, settings_page(msg="Code sent — sign-in finishes within a minute."))
                 if action == "unlink":
                     # NOT a rename: the site keeps serving the last known data
                     # (dashboard shows an unlinked banner); the scanner skips the
