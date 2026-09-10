@@ -147,6 +147,9 @@ def parse(ctype, body):
         j = (((res or {}).get("result") or {}).get("data") or {}).get("json")
         if isinstance(j, dict) and "orders" in j:
             orders = j["orders"]
+            if not isinstance(orders, list):
+                log("WARNING: orders is not a list -- PSA changed the payload shape")
+                return []
             total = j.get("totalCount")
             if total and len(orders) < total:
                 log(f"WARNING: got {len(orders)} of {total} orders -- raise page_length")
@@ -160,6 +163,10 @@ def parse(ctype, body):
         step = summary.get("lastCompletedStep") or o.get("status") or ""
         if step in ("QA", "QACheck") and grades_ready:
             step = "GradesReady"
+        try:
+            count = int(o.get("itemCount") or 0)
+        except (TypeError, ValueError):
+            count = 0
         imgs = o.get("image") or []
         thumb = next((i.get("thumbnail") for i in imgs if i.get("imageSide") == 1), "")
         out.append({
@@ -168,7 +175,7 @@ def parse(ctype, body):
             "service": o.get("service") or "",
             "status": CURRENT_STAGE.get(step, step),
             "raw_step": step,
-            "card_count": int(o.get("itemCount") or 0),
+            "card_count": count,
             "destination": "Ship back" if not o.get("isPickup") else "Pickup",
             "arrived": o.get("dateArrived") or "",
             "est_start": (o.get("dueOutDate") or "")[:10],
@@ -576,6 +583,11 @@ def upsert(conn, subs):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     changes, touched = [], []
     for s in subs:
+        if not s["status"]:
+            # a renamed PSA field parses as a blank stage; writing it would wipe
+            # the sub's status, service, card count and tracking
+            log(f"sub #{s['sub_number']}: parsed with no status -- row left untouched")
+            continue
         row = conn.execute("SELECT status, grades_ready, on_hold FROM subs WHERE sub_number=?",
                            (s["sub_number"],)).fetchone()
         vals = (s["order_number"], s["service"], s["status"], s["card_count"],
@@ -628,6 +640,11 @@ def cycle(conn):
     subs = parse(ctype, body)
     if not subs:
         log("parsed 0 subs -- parser needs adjusting or cookie expired; run --probe")
+        return False
+    blank = [s for s in subs if not s["status"]]
+    if len(blank) * 2 > len(subs):
+        log(f"{len(blank)} of {len(subs)} subs parsed with no status -- "
+            "PSA payload shape changed; writing nothing")
         return False
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
