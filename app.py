@@ -2614,7 +2614,7 @@ def strip_html(s, fronts):
         # "+5" alone is not a name: say what the five are and where they live
         sn = html.escape(s["sub_number"])
         tiles.append(f'<a class="morechip" href="/sub/{sn}" '
-                     f'aria-label="{more} more cards in submission #{sn}">'
+                     f'aria-label="{more} more card{"s" if more != 1 else ""} in submission #{sn}">'
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
@@ -2640,6 +2640,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
 
     strip = strip_html(s, fronts)
     sub = html.escape(s['sub_number'])
+    ncards = s['card_count']
     # archiving is the operator's highest-frequency chore and it used to live
     # only on the detail page: four page loads per finished sub. A finished sub
     # is a SHIPPED one, so the control rides the foot line those rows already
@@ -2664,7 +2665,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     # value (17/650/-.012em/1.3), same as the person page's group heading.
     return f"""<div class="card{' arch' if archived else ''}" role="listitem" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
-<div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{led}{pill}</div></div>
+<div class="meta">{html.escape(s['service'])} · {ncards} card{"s" if ncards != 1 else ""}</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
 {timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>', key=sub)}
 {foot_h}</div>"""
@@ -3561,7 +3562,7 @@ def dash_page(a, subs):
     # and not a fourth seat in a capsule labelled "Sort submissions" whose
     # arithmetic assumes exactly three pills (see .filterrow).
     needlink = (f'<a class="f fsolo" href="/cards?owner=unassigned">'
-                f'{untag} need owners</a>') if untag else ""
+                f'{untag} need{"s an owner" if untag == 1 else " owners"}</a>') if untag else ""
     # Archived is a BARE pill beside the sort segment, in the row's plain
     # .rowend box and in no capsule - .fsolo makes the button carry the glass
     # (see .filterrow). The id and classes are unchanged, so the toggle script
@@ -3690,13 +3691,14 @@ def detail_page(a, sub):
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1">Archive</button>'
         tag = ""
+    nc = sub['card_count']
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'])} · {sub['card_count']} cards · {html.escape(sub['status'])}{tag}</div></div>
+<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(sub['status'])}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num)}</div>
 {body}
@@ -3716,18 +3718,18 @@ def people_page(a, owner):
         active_nums = {n for n in subs_by if n not in arch}
         cards = [c for c in load_all_cards(a)
                  if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), "")]
-        title, sub_line = "Unassigned", f"{len(cards)} cards awaiting an owner"
+        title, sub_line = "Unassigned", f'{len(cards)} card{"s" if len(cards) != 1 else ""} awaiting an owner'
     else:
         want = owner.strip().lower()
         cards = [c for c in load_all_cards(a) if owners.get(str(c["cert_id"]), "").lower() == want]
-        title, sub_line = owner, f"{len(cards)} cards with {a['label']}"
+        title, sub_line = owner, f'{len(cards)} card{"s" if len(cards) != 1 else ""} with {a["label"]}'
     svc_map = {n: s["service"] for n, s in subs_by.items()}
     # archived subs' cards stay on the person page but are folded behind an
     # ARCHIVED toggle below the active grid instead of greyed out inline
     act_cards = [c for c in cards if c["sub_number"] not in arch]
     arc_cards = [c for c in cards if c["sub_number"] in arch]
     if not unassigned:
-        sub_line = f"{len(act_cards)} cards with {a['label']}"
+        sub_line = f'{len(act_cards)} card{"s" if len(act_cards) != 1 else ""} with {a["label"]}'
     vals, vas_of, vcur = load_values(a)
     def tiles(cs):
         return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),

@@ -548,6 +548,32 @@ def main():
             if b"<h1>Unassigned</h1>" not in body:
                 fails.append("GET /cards: no owner is missing the worklist heading")
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
+
+            # --- counts pluralize. One card reads "1 card" on the dashboard
+            # row, the sub header, the person header and the group heading, and
+            # the worklist link says needs an owner for a single card (T64)
+            def arch(num, on):
+                return call(url, "/archive", cookie, {"sub": num, "on": on})[0]
+
+            arch("14900001", "1")
+            arch("14900003", "1")
+            check("GET / (one card untagged)", "/", (200,), cookie,
+                  must_have="1 needs an owner")
+            check("GET /cards (one card untagged)", "/cards", (200,), cookie,
+                  must_have="1 card awaiting an owner")
+            arch("14900001", "0")
+            arch("14900003", "0")
+            if call(url, "/owner", cookie,
+                    {"cert_id": "99000002", "owner": "Solo"})[0] != 204:
+                fails.append("POST /owner: tagging one card was refused")
+            check("GET /cards?owner=Solo", "/cards?owner=Solo", (200,), cookie,
+                  must_have="1 card with")
+            check("GET /sub/14900002 (one card)", "/sub/14900002", (200,), cookie,
+                  must_have="1 card \u00b7")
+            for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo"):
+                if re.search(rb"(?<!\d)1 cards", call(url, label, cookie)[1] or b""):
+                    fails.append(f'GET {label}: a single card still reads "1 cards"')
+            call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
             check("GET /search", "/search?q=Charizard", (200,), cookie)
             check("GET /search (empty q)", "/search?q=", (200,), cookie)
             for q in ("%", "_", "\\"):
