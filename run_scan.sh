@@ -9,8 +9,9 @@
 #
 # Failure alerting (2026-07-22): a run whose scan ends non-zero bumps
 # $dir/.scan_fails; at PSA_ALERT_AFTER consecutive failures (default 3) the
-# account's Discord webhook gets ONE warning ping, and one recovery ping when
-# scans come back. A broken PSA login page no longer fails silently.
+# account's Discord webhook gets a warning ping, repeated every 24 runs while it
+# stays broken, and one recovery ping when scans come back. A broken PSA login
+# page no longer fails silently.
 #
 # Env layering: global /etc/psa-tracker.env first, then the account's
 # account.env on top (account wins). PSA_DB/PSA_OWN_DB point the scraper at
@@ -38,7 +39,10 @@ for envf in "$ACCTS"/*/account.env; do
     export PSA_ENV_FILE="$envf" PSA_ACCT_ID="$id" PSA_DB="$dir/psa.db" PSA_OWN_DB="$dir/owners.db"
 
     alert() {  # $1 = message; uses the layered DISCORD_WEBHOOK, never fatal
-      [ -n "${DISCORD_WEBHOOK:-}" ] || return 0
+      if [ -z "${DISCORD_WEBHOOK:-}" ]; then
+        echo "[run_scan] $id: no DISCORD_WEBHOOK set, alert not delivered: $1"
+        return 0
+      fi
       python3 - "$DISCORD_WEBHOOK" "$1" <<'PYEOF'
 import json, sys, urllib.request
 try:
@@ -48,8 +52,8 @@ try:
                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                                "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"})
     urllib.request.urlopen(req, timeout=15).read()
-except Exception:
-    pass
+except Exception as e:
+    print("[run_scan] alert delivery failed: %r" % (e,), file=sys.stderr)
 PYEOF
     }
 
@@ -88,7 +92,9 @@ PYEOF
       n=$(( $(cat "$FAILF" 2>/dev/null || echo 0) + 1 ))
       echo "$n" > "$FAILF"
       echo "[run_scan] $id: scan failed (rc=$rc), consecutive failures: $n"
-      if [ "$n" = "${PSA_ALERT_AFTER:-3}" ]; then
+      after=${PSA_ALERT_AFTER:-3}
+      # at the threshold, then once a day after it: a stuck account keeps pinging
+      if [ "$n" -ge "$after" ] 2>/dev/null && [ $(( (n - after) % 24 )) -eq 0 ]; then
         alert "⚠️ psa-tracker [$id]: $n scans in a row have failed (rc=$rc). Check: journalctl -u psa-scan · screenshots in login_debug/."
       fi
     fi
