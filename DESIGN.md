@@ -550,6 +550,9 @@ and anything a webfont would buy is bought instead with spacing and weight.
 
 A single centered column, `max-width: 820px`, on a page padded `18px 20px 96px`
 (`16px 14px 88px` under 640px). The bottom padding reserves the corner-orb landing zone.
+Both orbs sit in one `<nav aria-label="Site controls">`, and on a touch screen they go inert
+(`pointer-events:none`, `opacity .55`) for 150ms after each scroll event, so a tap that lands
+mid scroll falls through to the card underneath.
 
 Content sits in **raised cards flush with the column**: each submission is a card at
 `padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px

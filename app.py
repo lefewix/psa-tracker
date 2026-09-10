@@ -1502,10 +1502,17 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 #gearbtn,#themeflip{position:fixed;bottom:20px;z-index:40;width:44px;height:44px;
  border-radius:50%;color:var(--m1);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
- transition:color .15s,transform .14s ease-out;text-decoration:none}
+ transition:color .15s,opacity .15s,transform .14s ease-out;text-decoration:none}
 #themeflip{right:20px}
 #gearbtn{right:72px}
 #gearbtn:active,#themeflip:active{transform:scale(.94)}
+/* On a touch screen the orbs float over the owner tag, its pencil and View
+   cards, so a tap that lands while the page is still moving hits an orb the
+   thumb was never aiming at. FX_JS marks the document scrolling for 150ms after
+   each scroll event; while it is set the orbs go inert and dim a touch, so the
+   tap falls through to the card. Pointer devices keep them live throughout. */
+@media(hover:none){
+ html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none;opacity:.55}}
 /* ---- forms --------------------------------------------------------------- */
 /* every single-line control is a capsule; the extra 3px of side padding buys
    the curve back so text never crowds the round end. Content-side radii
@@ -1907,7 +1914,15 @@ THEME_JS = f"""<script>
     d.dataset.theme=cur;
     render();
   }});
-  document.body.appendChild(b);render();
+  /* both orbs live in one landmark. GEAR_HTML ships the nav on pages that have
+     a gear; where it is suppressed (personal mode, the gate) this makes it. */
+  var nav=document.getElementById('sitectl');
+  if(!nav){{
+    nav=document.createElement('nav');nav.id='sitectl';
+    nav.setAttribute('aria-label','Site controls');
+    document.body.appendChild(nav);
+  }}
+  nav.appendChild(b);render();
   mq.addEventListener('change',function(e){{
     var stored=null;try{{stored=localStorage.getItem('psa_theme');}}catch(x){{}}
     if(!stored){{cur=e.matches?'dark':'light';d.dataset.theme=cur;render();}}
@@ -2345,7 +2360,8 @@ def settings_page(msg="", err="", only=""):
 </script>
 </main>{APP_JS_TAG}</body></html>"""
 
-GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
+GEAR_HTML = ('<nav id="sitectl" aria-label="Site controls">'
+             '<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
              '<circle cx="12" cy="12" r="3.2"/>'
@@ -2356,7 +2372,7 @@ GEAR_HTML = ('<a id="gearbtn" href="/settings" title="Settings" aria-label="Sett
              'l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34 1.7 1.7 0 0 0 1-1.55V3'
              'a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06'
              'a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.55 1H21'
-             'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a>')
+             'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a></nav>')
 
 # Store mode vs personal mode (PSA_SETTINGS_GEAR, default 1 = store):
 # STORE - the site-password holder IS the admin, so admin sessions get the
@@ -3139,6 +3155,17 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
     addEventListener('resize',cueR);
     cue();
   });
+})();
+/* the corner orbs step aside mid scroll: .scrolling on <html> for 150ms after
+   every scroll event is what the touch rule hangs off (see #gearbtn's media
+   block). One passive listener, no layout read, so it costs nothing. */
+(function(){
+  var d=document.documentElement,t;
+  addEventListener('scroll',function(){
+    d.classList.add('scrolling');
+    clearTimeout(t);
+    t=setTimeout(function(){d.classList.remove('scrolling');},150);
+  },{passive:true});
 })();
 /* scroll-edge elevation. A sticky bar that casts a full shadow while sitting
    at the top of an unscrolled page is claiming a depth it hasn't got. A 1px

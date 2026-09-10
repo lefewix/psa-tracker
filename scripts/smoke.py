@@ -311,6 +311,11 @@ def main():
                 fails.append("GET /app.css: an archived card is washed with opacity again")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
+            # a tap that lands mid scroll must fall through the corner orbs to
+            # the owner pencil or View card underneath, on touch only (T60)
+            if b"html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none" \
+                    not in css:
+                fails.append("GET /app.css: the corner orbs still take taps mid scroll")
         check("GET /logo", "/logo", (200,))
 
         # --- /img and /logo are cached at the Cloudflare edge on origin TTL, so
@@ -463,6 +468,12 @@ def main():
                 elif (b'aria-label="2 more cards in submission #14900003"'
                       not in chip.group(0)):
                     fails.append("GET /: the overflow chip is named only by its count")
+
+                # --- the corner orbs sit inside one landmark, not loose on the
+                # body: the gear ships the nav, the theme orb joins it (T60)
+                if (b'<nav id="sitectl" aria-label="Site controls"><a id="gearbtn"'
+                        not in body):
+                    fails.append("GET /: the gear orb is outside the Site controls nav")
 
                 # --- a touch keyboard gets Search on the search box (T56)
                 if b'enterkeyhint="search"' not in body:
