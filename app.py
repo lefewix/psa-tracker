@@ -2614,7 +2614,7 @@ def strip_html(s, fronts):
         # "+5" alone is not a name: say what the five are and where they live
         sn = html.escape(s["sub_number"])
         tiles.append(f'<a class="morechip" href="/sub/{sn}" '
-                     f'aria-label="{more} more card{"s" if more != 1 else ""} in submission #{sn}">'
+                     f'aria-label="{more} more cards in submission #{sn}">'
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
