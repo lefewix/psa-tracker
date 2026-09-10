@@ -13,7 +13,8 @@ Env (run_scan.sh sources the global /etc/psa-tracker.env, then accounts/<id>/acc
   PSA_LOGIN_EMAIL, PSA_LOGIN_PW   required - the PSA/Collectors account login.
       NOTE: deliberately NOT PSA_PASSWORD - that name is the site's friends-gate password
       (read by app.py). Keep these separate or you'll clobber the site login.
-  PSA_ENV_FILE              accounts/<id>/account.env  (where PSA_COOKIE is written)
+  PSA_ENV_FILE              where PSA_COOKIE is written. run_scan.sh sets it to
+      accounts/<id>/account.env; falls back to /etc/psa-tracker.env.
   PLAYWRIGHT_BROWSERS_PATH  set by the wrapper to /opt/psa-tracker/.pw-browsers
 """
 import os, sys, time
