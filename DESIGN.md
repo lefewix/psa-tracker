@@ -927,7 +927,9 @@ carry **no `content-visibility`** — its paint containment clipped everything t
 the tile box (focus rings, the hover pill's negative-margin bleed), so it was removed; the
 off-screen cost it targeted is handled in FX_JS instead, which lands the loading sweep only
 when a still-loading tile approaches the viewport. While an image loads it carries a 1.1s
-linear shimmer sweep that stops the instant the loaded class lands.
+linear shimmer sweep that stops the instant the loaded class lands. A scan that fails to load
+is swapped for the same `.ph` placeholder a card with no scan renders, anchor and all, so the
+grid rhythm holds and the dead tile no longer opens the lightbox.
 
 ### Named Rules
 **The Opt-In Fill Rule.** Filled accent identity is opt-in, per element. It lives on

@@ -293,7 +293,16 @@ def main():
         check("GET / (bad token)", "/", (200,), cookie="psa_session=nope.nope.nope",
               must_have='action="/login"')
         css = check("GET /app.css", "/app.css", (200,))
-        check("GET /app.js", "/app.js", (200,))
+        js = check("GET /app.js", "/app.js", (200,))
+        # a scan that 404s is swapped for the no-scan placeholder, anchor and
+        # all, so the grid keeps its rhythm and the dead tile cannot open the
+        # lightbox. A broken image reports .complete, hence the naturalWidth
+        # test on the synchronous path (T62)
+        if js:
+            if b"m.naturalWidth" not in js:
+                fails.append("GET /app.js: a broken scan is treated as loaded again")
+            if b"replaceChild(d,t)" not in js or b"'No image yet'" not in js:
+                fails.append("GET /app.js: a failed scan no longer shows the placeholder")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button

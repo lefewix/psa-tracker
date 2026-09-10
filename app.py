@@ -3067,8 +3067,22 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
     var p=m.parentNode;
     if(p&&p.tagName==='A'){p.classList.add('ld');p.classList.remove('ldg');}
   };
-  if(m.complete){done();}
-  else{m.addEventListener('load',done);m.addEventListener('error',done);}
+  /* a scan that never arrives is swapped for the SAME placeholder a card with
+     no scan renders, so the tile keeps its 1.72/2.4 box and the grid rhythm
+     holds instead of collapsing around a broken image. Replacing the anchor
+     takes the lightbox listener with it, so a dead tile cannot open an empty
+     reveal. A broken image reports .complete with naturalWidth 0, so the
+     synchronous path has to tell the two apart. Only a tile inside .gc is
+     swapped: the filmstrip chip is a different box and keeps its own fill. */
+  var fail=function(){
+    var p=m.parentNode,t=(p&&p.tagName==='A')?p:m;
+    if(!t.parentNode||!t.parentNode.classList.contains('gc')){done();return;}
+    var d=document.createElement('div');
+    d.className='ph'; d.textContent='No image yet';
+    t.parentNode.replaceChild(d,t);
+  };
+  if(m.complete){if(m.naturalWidth)done();else fail();}
+  else{m.addEventListener('load',done);m.addEventListener('error',fail);}
 });
 /* the loading sweep starts only when a still-loading tile approaches the
    viewport (.ldg) - below-the-fold lazy tiles never load, so an always-on
