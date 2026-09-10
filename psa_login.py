@@ -15,8 +15,10 @@ Env (from /etc/psa-tracker.env):
   PSA_ENV_FILE              default /etc/psa-tracker.env  (where PSA_COOKIE is written)
   PLAYWRIGHT_BROWSERS_PATH  set by the wrapper to /opt/psa-tracker/.pw-browsers
 """
-import os, shlex, sys, time
+import os, sys, time
 from playwright.sync_api import sync_playwright
+
+import psa_common
 
 EMAIL = os.environ.get("PSA_LOGIN_EMAIL", "")
 PASSWORD = os.environ.get("PSA_LOGIN_PW", "")
@@ -39,42 +41,7 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 DEBUG_DIR = "/opt/psa-tracker/login_debug"
 
 
-def log(m):
-    print(f"[psa-login:{ACCT}] {m}", flush=True)
-
-
-def write_cookie(cookie):
-    """Replace (or add) the PSA_COOKIE line in the env file, preserving everything else."""
-    quoted = shlex.quote(cookie)  # real shell quoting - no characters silently dropped
-    try:
-        lines = open(ENV_FILE).read().splitlines()
-    except FileNotFoundError:
-        lines = []
-    out, found = [], False
-    for ln in lines:
-        if ln.startswith("PSA_COOKIE="):
-            out.append("PSA_COOKIE=" + quoted); found = True
-        else:
-            out.append(ln)
-    if not found:
-        out.append("PSA_COOKIE=" + quoted)
-    tmp = ENV_FILE + ".tmp"
-    with open(tmp, "w") as f:
-        f.write("\n".join(out) + "\n")
-    os.chmod(tmp, 0o600)
-    os.replace(tmp, ENV_FILE)
-
-
-def notify(text):
-    if not WEBHOOK:
-        return
-    try:
-        import json, urllib.request
-        req = urllib.request.Request(WEBHOOK, data=json.dumps({"content": text}).encode(),
-                                     headers={"Content-Type": "application/json"})
-        urllib.request.urlopen(req, timeout=15).read()
-    except Exception as e:
-        log(f"webhook failed: {e}")
+log = psa_common.log(f"psa-login:{ACCT}")
 
 
 def has_tokens(ctx):
@@ -89,8 +56,8 @@ def mfa_flow(page, ctx):
     if not os.path.exists(marker("armed")):
         if not os.path.exists(marker("needed")):
             open(marker("needed"), "w").write(time.strftime("%Y-%m-%dT%H:%M"))
-            notify(f"🔐 psa-tracker [{ACCT}]: PSA wants a verification code for this account. "
-                   "Settings → Verification code → Send code, then enter the code it texts.")
+            psa_common.notify(WEBHOOK, f"🔐 psa-tracker [{ACCT}]: PSA wants a verification code for this "
+                              "account. Settings → Verification code → Send code, then enter the code it texts.")
         log("MFA screen and not armed - skipping (arm it from Settings)")
         return False
     for name in ("code", "waiting"):
@@ -101,7 +68,7 @@ def mfa_flow(page, ctx):
     page.screenshot(path=os.path.join(DEBUG_DIR, f"mfa_code_{ACCT}.png"))
     open(marker("waiting"), "w").write(time.strftime("%Y-%m-%dT%H:%M"))
     log("code requested - waiting up to 10 min for otp.code from Settings")
-    notify(f"📲 psa-tracker [{ACCT}]: code sent to the account's phone - enter it in Settings within 10 min.")
+    psa_common.notify(WEBHOOK, f"📲 psa-tracker [{ACCT}]: code sent to the account's phone - enter it in Settings within 10 min.")
     code = ""
     deadline = time.time() + 600
     while time.time() < deadline:
@@ -244,7 +211,7 @@ def do_login():
             if "accessToken" not in have:  # cookies may sit on the collectors domain
                 cookies = ctx.cookies()
                 header = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
-            write_cookie(header)
+            psa_common.env_set(ENV_FILE, {"PSA_COOKIE": header})
             log(f"SUCCESS: refreshed cookie ({len(cookies)} cookies) -> {ENV_FILE}")
             try: os.remove(marker("armed"))
             except FileNotFoundError: pass

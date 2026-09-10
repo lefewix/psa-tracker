@@ -28,10 +28,13 @@ import json, os, re, sqlite3, sys, time
 from datetime import datetime, timezone, timedelta
 from playwright.sync_api import sync_playwright
 
+import psa_common
+
 DB_PATH = os.environ.get("PSA_DB", "/opt/psa-tracker/psa.db")
 ACCT = os.environ.get("PSA_ACCT_ID", "account")
 BATCH = int(os.environ.get("PSA_VALUES_BATCH", "40"))
 MAX_AGE_DAYS = int(os.environ.get("PSA_VALUES_MAX_AGE", "14"))
+log = psa_common.log(f"psa-values:{ACCT}")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 
@@ -86,10 +89,6 @@ def fetch_fx(conn):
         except Exception as ex:
             log(f"fx fetch failed ({url.split('/')[2]}): {str(ex)[:80]}")
     return False
-
-
-def log(m):
-    print(f"[psa-values:{ACCT}] {m}", flush=True)
 
 
 def parse_cert_text(text):

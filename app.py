@@ -31,6 +31,7 @@ import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from zoneinfo import ZoneInfo
+from psa_common import env_set
 
 SECRET = os.environ.get("PSA_SECRET", "").encode()
 BIND = os.environ.get("PSA_BIND", "0.0.0.0")
@@ -1862,31 +1863,6 @@ def env_ok(v):
     character truncates the file for every later reader, which silently drops
     the account and used to reopen the public setup form."""
     return v.isprintable()
-
-def env_set(path, updates):
-    """Update KEY='value' lines in an env file, preserving all other lines.
-    Empty value removes the key. Atomic write, chmod 600."""
-    try:
-        lines = open(path).read().splitlines()
-    except FileNotFoundError:
-        lines = []
-    out, seen = [], set()
-    for ln in lines:
-        k = ln.split("=", 1)[0] if ("=" in ln and not ln.lstrip().startswith("#")) else None
-        if k in updates:
-            seen.add(k)
-            if updates[k] != "":
-                out.append(f"{k}={shlex.quote(updates[k])}")
-        else:
-            out.append(ln)
-    for k, v in updates.items():
-        if k not in seen and v != "":
-            out.append(f"{k}={shlex.quote(v)}")
-    tmp = path + ".tmp"
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write("\n".join(out) + "\n")
-    os.replace(tmp, path)
 
 def settings_token(exp):
     sig = hmac.new(SECRET, f"settings.{exp}".encode(), hashlib.sha256).hexdigest()

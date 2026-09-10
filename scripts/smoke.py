@@ -252,6 +252,32 @@ def env_checks(fails):
             fails.append(f"app.py: {name} is back, it is retired styling (T84)")
 
 
+def common_checks(fails):
+    """log, notify and env_set live in psa_common.py only, every caller imports
+    them, and deploy.sh ships the file beside app.py (T86)."""
+    for mod in ("app.py", "psa_watch.py", "psa_login.py", "psa_values.py"):
+        src = open(os.path.join(ROOT, mod), encoding="utf-8").read()
+        if "psa_common" not in src:
+            fails.append(f"{mod}: does not use psa_common (T86)")
+        for name in ("notify", "env_set", "log"):
+            if f"def {name}(" in src:
+                fails.append(f"{mod}: defines {name} again, psa_common owns it (T86)")
+    if "psa_common.py" not in open(os.path.join(ROOT, "deploy.sh"), encoding="utf-8").read():
+        fails.append("deploy.sh: does not ship psa_common.py (T86)")
+    sys.path.insert(0, ROOT)
+    import psa_common
+    envf = os.path.join(tempfile.mkdtemp(prefix="psa-smoke-env-"), "account.env")
+    open(envf, "w", encoding="utf-8").write("# keep\nLABEL='Demo'\nPSA_COOKIE='old'\n")
+    psa_common.env_set(envf, {"PSA_COOKIE": "a b'c"})
+    psa_common.env_set(envf, {"LABEL": ""})
+    got = open(envf, encoding="utf-8").read()
+    want = "# keep\nPSA_COOKIE='a b'\"'\"'c'\n"
+    if got != want:
+        fails.append(f"psa_common.env_set: wrote {got!r}, want {want!r}")
+    if oct(os.stat(envf).st_mode & 0o777) != "0o600":
+        fails.append("psa_common.env_set: env file is not chmod 600")
+
+
 def tracking_checks(fails):
     """An unrecognized carrier whose tracking field only repeats it says the
     word once, a real carrier plus number still says both (T69)."""
@@ -494,6 +520,7 @@ def main():
         setup_instance_checks(fails)
         copy_checks(fails)
         env_checks(fails)
+        common_checks(fails)
         tracking_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)

@@ -46,7 +46,7 @@ Per-account files (`/opt/psa-tracker/accounts/<id>/`):
 
 ```bash
 # 1. code
-mkdir -p /opt/psa-tracker && cp app.py psa_watch.py psa_login.py run_scan.sh add_account.sh /opt/psa-tracker/
+mkdir -p /opt/psa-tracker && cp app.py psa_common.py psa_watch.py psa_login.py run_scan.sh add_account.sh /opt/psa-tracker/
 chmod +x /opt/psa-tracker/run_scan.sh /opt/psa-tracker/add_account.sh
 
 # 2. deps

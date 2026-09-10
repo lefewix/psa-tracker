@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """psa-watch: poll PSA orders page, upsert sub statuses into SQLite."""
-import base64, json, os, re, sqlite3, sys, time, urllib.parse, urllib.request
+import base64, json, os, re, sqlite3, sys, time, urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
+
+import psa_common
 
 # Locale/region of the PSA account being scraped (US self-hosters: en-US / US)
 LOCALE = os.environ.get("PSA_LOCALE", "en-CA")
@@ -27,6 +29,7 @@ DB_PATH = os.environ.get("PSA_DB", "/opt/psa-tracker/psa.db")
 OWN_DB = os.environ.get("PSA_OWN_DB", os.path.join(os.path.dirname(DB_PATH) or ".", "owners.db"))
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
+ACCT = os.environ.get("PSA_ACCT_ID", "account")  # tags this run's log lines
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 # orders.list reports progressSummary.lastCompletedStep, but psacard.com displays
@@ -89,8 +92,7 @@ CREATE TABLE IF NOT EXISTS cards (
 CREATE INDEX IF NOT EXISTS idx_cards_sub ON cards(sub_number);
 """
 
-def log(msg):
-    print(f"[{datetime.now().isoformat(timespec='seconds')}] {msg}", flush=True)
+log = psa_common.log(f"psa-watch:{ACCT}")
 
 def db():
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
@@ -555,16 +557,6 @@ def discord_mentions(conn, sub_numbers):
             ids.append(did)
     return ids
 
-def notify(text):
-    if not WEBHOOK:
-        return
-    try:
-        req = urllib.request.Request(WEBHOOK, data=json.dumps({"content": text}).encode(),
-                                     headers={"Content-Type": "application/json"})
-        urllib.request.urlopen(req, timeout=15).read()
-    except Exception as e:
-        log(f"webhook failed: {e}")
-
 def upsert(conn, subs):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     changes, touched = [], []
@@ -634,7 +626,7 @@ def cycle(conn):
         ids = discord_mentions(conn, touched)
         if ids:
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
-        notify(msg)
+        psa_common.notify(WEBHOOK, msg)
     refresh_cards(conn, subs, prev, full="--full" in sys.argv)
     return True
 
