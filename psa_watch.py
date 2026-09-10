@@ -28,7 +28,6 @@ DB_PATH = os.environ.get("PSA_DB", "/opt/psa-tracker/psa.db")
 # App owns owners.db; we only touch it to carry an owner tag from a prelim (spec-keyed)
 # card to its real cert_id once a sub gets graded. Keyed the same as the app.
 OWN_DB = os.environ.get("PSA_OWN_DB", os.path.join(os.path.dirname(DB_PATH) or ".", "owners.db"))
-POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
 # Days after a sub ships before we stop waiting on a card's missing grade. Some
 # certs never carry one, and without this the sub re-fetches every scan forever.
 GRADE_GRACE_DAYS = 7
@@ -130,16 +129,6 @@ def fetch(url):
     }
     r = creq.get(url, headers=headers, impersonate="chrome", timeout=30)
     return r.headers.get("content-type", ""), r.text
-
-def probe():
-    ctype, body = fetch(build_url())
-    out = Path("probe_dump"); out.mkdir(exist_ok=True)
-    ext = "json" if "json" in ctype else "html"
-    p = out / f"orders_{datetime.now():%Y%m%d_%H%M%S}.{ext}"
-    p.write_text(body)
-    log(f"content-type={ctype} bytes={len(body)} -> {p}")
-    if "login" in body.lower()[:4000] and "password" in body.lower():
-        log("WARNING: response looks like a login page -- cookie likely expired/invalid")
 
 # set by parse when PSA's payload is truncated; drained into the change list by
 # cycle. A truncated page also hides subs, so cycle skips the missing check then.
@@ -720,7 +709,7 @@ def cycle(conn):
         return 4
     subs = parse(ctype, body)
     if not subs:
-        log("parsed 0 subs -- parser needs adjusting or cookie expired; run --probe")
+        log("parsed 0 subs -- parser needs adjusting or cookie expired")
         return 3
     blank = [s for s in subs if not s["status"]]
     if len(blank) * 2 > len(subs):
@@ -770,18 +759,7 @@ def cycle(conn):
     return 0
 
 def main():
-    if "--probe" in sys.argv:
-        probe(); return
-    conn = db()
-    if "--once" in sys.argv:
-        sys.exit(cycle(conn))
-    log(f"daemon start, interval {POLL_INTERVAL}s")
-    while True:
-        try:
-            cycle(conn)
-        except Exception as e:
-            log(f"cycle error: {e}")
-        time.sleep(POLL_INTERVAL)
+    sys.exit(cycle(db()))
 
 if __name__ == "__main__":
     main()
