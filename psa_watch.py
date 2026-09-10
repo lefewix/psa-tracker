@@ -585,19 +585,34 @@ def discord_mentions(conn, sub_numbers):
             ids.append(did)
     return ids
 
+def split_message(text, limit=1900):
+    """Discord 400s anything over 2000 characters - break on line boundaries."""
+    parts, cur = [], ""
+    for line in text.split("\n"):
+        line = line[:limit]
+        if cur and len(cur) + 1 + len(line) > limit:
+            parts.append(cur)
+            cur = line
+        else:
+            cur = f"{cur}\n{line}" if cur else line
+    if cur:
+        parts.append(cur)
+    return parts
+
 def notify(text):
     if not WEBHOOK:
         return
-    try:
-        req = urllib.request.Request(WEBHOOK, data=json.dumps({"content": text}).encode(),
-                                     headers={"Content-Type": "application/json",
-                                              "User-Agent": UA})
-        urllib.request.urlopen(req, timeout=15).read()
-    except urllib.error.HTTPError as e:
-        # Cloudflare 403s a missing User-Agent; Discord 404s a deleted webhook
-        log(f"webhook returned {e.code}: {e.read(400).decode('utf-8', 'replace').strip()}")
-    except Exception as e:
-        log(f"webhook failed: {e}")
+    for part in split_message(text):
+        try:
+            req = urllib.request.Request(WEBHOOK, data=json.dumps({"content": part}).encode(),
+                                         headers={"Content-Type": "application/json",
+                                                  "User-Agent": UA})
+            urllib.request.urlopen(req, timeout=15).read()
+        except urllib.error.HTTPError as e:
+            # Cloudflare 403s a missing User-Agent; Discord 404s a deleted webhook
+            log(f"webhook returned {e.code}: {e.read(400).decode('utf-8', 'replace').strip()}")
+        except Exception as e:
+            log(f"webhook failed: {e}")
 
 def upsert(conn, subs):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -690,7 +705,11 @@ def cycle(conn):
     log(f"parsed {len(subs)} subs, {len(changes)} changes")
     for c in changes:
         log(f"  {c}")
-    if changes:
+    if changes and not prev:
+        # first scan for this account (or a restored db): the rows are history,
+        # not news - seed them silently
+        log(f"first scan -- {len(changes)} rows seeded, nothing posted")
+    elif changes:
         msg = "**PSA update**\n" + "\n".join(changes)
         ids = discord_mentions(conn, touched)
         if ids:
