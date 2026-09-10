@@ -20,6 +20,8 @@ SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
 HUB_KEY = "smoke-hub-key"
 MAX_FAILS = 8  # app.py's login budget, per IP and site-wide
 NOW = "2026-01-01T00:00:00+00:00"
+# a pre-seeded proxy cache entry, so /img answers from disk and the run stays offline
+IMG_URL = "https://d1htnxwo4o0jhw.cloudfront.net/thumbnail/99000001.jpg"
 
 
 def schema(mod):
@@ -85,6 +87,9 @@ def build_fixture(base):
     c.execute("INSERT INTO fx_rates (pair, rate, fetched_at) VALUES ('USDCAD',1.36,?)", (NOW,))
     c.commit()
     c.close()
+    with open(os.path.join(base, "imgcache",
+                           hashlib.sha256(IMG_URL.encode()).hexdigest() + ".jpg"), "wb") as f:
+        f.write(b"\xff\xd8\xff\xdb" + b"\x00" * 64)
 
 
 def free_port():
@@ -251,6 +256,17 @@ def main():
             if b".own:focus + .ownedit{display:none}" not in css:
                 fails.append("GET /app.css: the pencil no longer hides while the tag is edited")
         check("GET /logo", "/logo", (200,))
+
+        # --- /img and /logo are cached at the Cloudflare edge on origin TTL, so
+        # both must carry a public max-age, and the gate served under an /img URL
+        # must stay no-store or the edge could cache it in an image's place (T21)
+        imgq = "/img?u=" + urllib.parse.quote(IMG_URL, safe="")
+        _, _, ghdrs = call(url, "/logo")
+        if "public, max-age=" not in (ghdrs.get("Cache-Control") or ""):
+            fails.append("GET /logo: no public max-age for the edge to respect")
+        _, _, ihdrs = call(url, imgq)
+        if "no-store" not in (ihdrs.get("Cache-Control") or ""):
+            fails.append("GET /img (no session): the gate page is edge cacheable")
         check("GET /favicon.png", "/favicon.png", (200,))
         check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
@@ -350,6 +366,13 @@ def main():
                         if b"/thumbnail/" not in src:
                             fails.append("GET /: a filmstrip tile is not the "
                                          f"thumbnail asset ({src!r})")
+            icode, _, ihdrs = call(url, imgq, cookie)
+            if icode != 200:
+                fails.append(f"GET /img: got {icode}, want 200")
+            elif "public, max-age=" not in (ihdrs.get("Cache-Control") or ""):
+                fails.append("GET /img: no public max-age for the edge to respect")
+            if ihdrs.get("Set-Cookie"):
+                fails.append("GET /img: a Set-Cookie keeps it out of the edge cache")
             check("GET /cards", "/cards", (200,), cookie)
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
             check("GET /search", "/search?q=Charizard", (200,), cookie)
