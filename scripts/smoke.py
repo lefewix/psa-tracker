@@ -17,6 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE_PW = "smoke-site-pw"
 SET_PW = "smoke-settings-pw"
 SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
+HUB_KEY = "smoke-hub-key"
 NOW = "2026-01-01T00:00:00+00:00"
 
 
@@ -85,7 +86,7 @@ def boot(base, port, log):
                PSA_LOGO=os.path.join(ROOT, "logo.svg"),
                PSA_FAVICON=os.path.join(ROOT, "favicon.png"),
                PSA_TOUCH_ICON=os.path.join(ROOT, "apple-touch-icon.png"),
-               PSA_VALUES="1", PSA_THEME="light")
+               PSA_HUB_KEY=HUB_KEY, PSA_VALUES="1", PSA_THEME="light")
     p = subprocess.Popen([sys.executable, os.path.join(ROOT, "app.py")], env=env,
                          cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
     for _ in range(100):
@@ -202,6 +203,26 @@ def main():
             check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
             check("GET /nope (unknown path)", "/nope", (404,), cookie)
             check("GET /logout", "/logout", (302,), cookie)
+
+            # --- a failed read is a 500 page, never an empty account (T3)
+            hub = "/api/hub.json?key=" + HUB_KEY
+            check("GET /api/hub.json (key)", hub, (200,), must_have='"subs"')
+            dbf = os.path.join(base, "accounts", "demo", "psa.db")
+            lock = sqlite3.connect(dbf, timeout=1)
+            lock.execute("BEGIN EXCLUSIVE")  # readers now block, then time out
+            try:
+                check("GET / (db locked)", "/", (500,), cookie,
+                      must_have="Something went wrong")
+                check("GET /api/hub.json (db locked)", hub, (503,))
+            finally:
+                lock.rollback()
+                lock.close()
+            # destroys the fixture db: keep these last
+            with open(dbf, "wb") as f:
+                f.write(os.urandom(40960))
+            check("GET / (db corrupt)", "/", (500,), cookie,
+                  must_have="Something went wrong")
+            check("GET /sub/14900001 (db corrupt)", "/sub/14900001", (500,), cookie)
     finally:
         if proc and proc.poll() is None:
             proc.send_signal(signal.SIGTERM)

@@ -783,6 +783,9 @@ tint (`color-mix` of 4% ink over the surface) on pointer devices. Archived rows 
 the search preview panel (14px, 6px padding, solid `--surface`) and the modal sheet
 (`min(460px, 94vw)`, 14px, `24px 24px 26px`).
 
+**Failure reuses the 404 card**: a read that fails (locked or unreadable db) answers 500 with the
+same gate box, titled "Something went wrong", never an empty dashboard.
+
 ### Filmstrip (signature)
 Every dashboard row carries its own contact sheet: up to eight card fronts (`STRIP_MAX = 8`)
 in line order, 84×117px at 6px radius with a hairline and a quiet-fill ground, 10px apart,

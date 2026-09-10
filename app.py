@@ -27,7 +27,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
                     (matched most-specific-first in the order given)
 """
-import base64, gzip, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
+import base64, gzip, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time, traceback
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -536,6 +536,7 @@ _OWN_LOCK = threading.Lock()
 
 def own_conn(a):
     c = sqlite3.connect(a["own_db"])
+    c.execute("PRAGMA busy_timeout=5000")  # wait out a concurrent writer, don't error at once
     # schema is created once per db per process, not on every open - own_conn
     # runs several times per page render
     with _OWN_LOCK:
@@ -651,8 +652,16 @@ def set_archived(a, sub_number, on):
 
 def _ro_conn(a):
     conn = sqlite3.connect(f"file:{a['db']}?mode=ro", uri=True)
+    conn.execute("PRAGMA busy_timeout=5000")  # wait out a scanner write, don't error at once
     conn.row_factory = sqlite3.Row
     return conn
+
+def _first_run(e):
+    """True only for the fresh-account case: no psa.db yet, or no tables in it.
+    A locked or corrupt db is a failure and must reach the 500 handler, not
+    render as an empty account."""
+    m = str(e)
+    return "no such table" in m or "unable to open database file" in m
 
 def load_subs(a):
     try:
@@ -661,7 +670,9 @@ def load_subs(a):
             ORDER BY CAST(sub_number AS INTEGER) DESC""").fetchall()
         conn.close()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:  # fresh account: no psa.db until first scan
+    except sqlite3.OperationalError as e:  # fresh account: no psa.db until first scan
+        if not _first_run(e):
+            raise
         return []
 
 def load_sub(a, sub_number):
@@ -670,7 +681,9 @@ def load_sub(a, sub_number):
         row = conn.execute("SELECT * FROM subs WHERE sub_number=?", (sub_number,)).fetchone()
         conn.close()
         return dict(row) if row else None
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if not _first_run(e):
+            raise
         return None
 
 def load_cards(a, sub_number):
@@ -680,7 +693,9 @@ def load_cards(a, sub_number):
                             (sub_number,)).fetchall()
         conn.close()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if not _first_run(e):
+            raise
         return []
 
 def load_all_cards(a):
@@ -689,7 +704,9 @@ def load_all_cards(a):
         rows = conn.execute("SELECT * FROM cards ORDER BY CAST(sub_number AS INTEGER) DESC, line_number").fetchall()
         conn.close()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if not _first_run(e):
+            raise
         return []
 
 def sub_fronts(a):
@@ -703,7 +720,9 @@ def sub_fronts(a):
                             "WHERE front_thumb IS NOT NULL AND front_thumb != '' "
                             "ORDER BY line_number").fetchall()
         conn.close()
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if not _first_run(e):
+            raise
         return {}
     out = {}
     for r in rows:
@@ -819,7 +838,9 @@ def load_cards_by_certs(a, cert_ids):
                 "SELECT sub_number, line_number, cert_id, cert_no, name, front_thumb "
                 f"FROM cards WHERE cert_id IN ({marks})", chunk)]
         conn.close()
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if not _first_run(e):
+            raise
         return []
     # restore load_all_cards' global order: newest sub first, then line order
     out.sort(key=lambda c: (-int(c["sub_number"]) if str(c["sub_number"]).isdigit() else 0,
@@ -842,7 +863,9 @@ def search_cards_sql(a, ql, limit):
             (pat, pat, pat, limit)).fetchall()
         conn.close()
         return [dict(r) for r in rows]
-    except sqlite3.OperationalError:
+    except sqlite3.OperationalError as e:
+        if not _first_run(e):
+            raise
         return []
 
 def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
@@ -1880,15 +1903,20 @@ def gate_page(error=""):
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{GATE_JS if email_on else ""}{THEME_JS}</body></html>"""
 
-def not_found_page(msg="There's no page at this address."):
+def not_found_page(msg="There's no page at this address.", title="Not found"):
     """Branded 404 so a bad link doesn't drop out of the design."""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Not found</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
-{logo_tag()}<h1>Not found</h1><div class="sub">{html.escape(msg)}</div>
+{logo_tag()}<h1>{html.escape(title)}</h1><div class="sub">{html.escape(msg)}</div>
 <a class="view" style="display:inline-block;margin-top:10px" href="/">&larr; Back to the dashboard</a>
 </div></div></main>{THEME_JS}</body></html>"""
+
+def error_page():
+    """Branded 500. A read that failed is a failure, not an empty account."""
+    return not_found_page("The tracker couldn't read your submissions just now. "
+                          "Try again in a minute.", "Something went wrong")
 
 # ---------- settings ----------
 # /settings edits per-account PSA credentials (WRITE-ONLY - existing values are
@@ -3562,6 +3590,7 @@ def search_page(a, q, owner="", customer=False):
 
 class H(BaseHTTPRequestHandler):
     server_version = "psa-tracker"
+    started = False  # set by send_response: a reply has begun
 
     def log_message(self, fmt, *a):
         print(f"{self.address_string()} {fmt % a}", flush=True)
@@ -3709,17 +3738,47 @@ class H(BaseHTTPRequestHandler):
         if not key or not hmac.compare_digest(got, key):
             return self.send(404, "not found", "text/plain")
         subs = []
-        for a in load_accounts().values():
-            arc = archived_set(a)
-            for s in load_subs(a):
-                subs.append({k: s[k] for k in ("sub_number", "status", "card_count",
-                             "arrived", "est_end", "grades_ready", "on_hold",
-                             "shipped", "updated_at")}
-                            | {"archived": 1 if s["sub_number"] in arc else 0})
+        try:
+            for a in load_accounts().values():
+                arc = archived_set(a)
+                for s in load_subs(a):
+                    subs.append({k: s[k] for k in ("sub_number", "status", "card_count",
+                                 "arrived", "est_end", "grades_ready", "on_hold",
+                                 "shipped", "updated_at")}
+                                | {"archived": 1 if s["sub_number"] in arc else 0})
+        except sqlite3.Error:  # a failed read is not "no submissions" - hub must not cache it
+            traceback.print_exc()
+            return self.send(503, '{"error":"unavailable"}',
+                             "application/json; charset=utf-8")
         return self.send(200, json.dumps({"subs": subs}),
                          "application/json; charset=utf-8")
 
+    def send_response(self, *a, **kw):
+        self.started = True  # the guard must not append a 500 to a reply already on the wire
+        BaseHTTPRequestHandler.send_response(self, *a, **kw)
+
+    def guard(self, route):
+        """Any uncaught error is a 500 page, not a dropped connection."""
+        self.started = False  # one handler instance serves a whole keep-alive connection
+        try:
+            route()
+        except Exception:
+            traceback.print_exc()
+            if self.started:
+                self.close_connection = True
+                return
+            try:
+                self.send(500, error_page())
+            except Exception:
+                self.close_connection = True
+
     def do_GET(self):
+        self.guard(self.route_get)
+
+    def do_POST(self):
+        self.guard(self.route_post)
+
+    def route_get(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
         if path == "/logo":
@@ -3799,7 +3858,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, detail_page(acct, sub))
         self.send(404, not_found_page())
 
-    def do_POST(self):
+    def route_post(self):
         path = urllib.parse.urlparse(self.path).path
         if path == "/owner":
             got = self.authed()
