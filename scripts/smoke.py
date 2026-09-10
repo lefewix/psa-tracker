@@ -216,6 +216,27 @@ def main():
             check("GET /nope (unknown path)", "/nope", (404,), cookie)
             check("GET /logout", "/logout", (302,), cookie)
 
+            # --- sign out drops the settings cookie too (T6)
+            _, _, lhdrs = call(url, "/logout", cookie)
+            if not any(h.startswith("psa_settings=;")
+                       for h in (lhdrs.get_all("Set-Cookie") or [])):
+                fails.append("GET /logout: the settings cookie is left alive")
+
+            # --- rotating the site password revokes outstanding cookies (T6)
+            def site_pw(value):
+                return call(url, "/settings/account", scookie,
+                            {"acct": "demo", "action": "site_pw",
+                             "value": value, "value2": value})[0]
+
+            if site_pw(SITE_PW + "-rotated") != 200:
+                fails.append("POST /settings/account site_pw: rotation refused")
+            check("GET / (cookie after a password rotation)", "/", (200,), cookie,
+                  must_have='action="/login"')
+            if site_pw(SITE_PW) != 200:
+                fails.append("POST /settings/account site_pw: restore refused")
+            check("GET / (cookie after the password is restored)", "/", (200,),
+                  cookie, must_have="14900001")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),

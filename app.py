@@ -450,6 +450,13 @@ def _b64e(s):
 def _b64d(s):
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4)).decode()
 
+def pw_slug(acct_id):
+    """Fingerprint of the account's current site password, mixed into admin
+    session signatures: rotate the password and every old cookie stops
+    verifying, which is the only way to revoke a session here."""
+    a = load_accounts().get(acct_id)
+    return hashlib.sha256((a["password"] if a else "").encode()).hexdigest()[:8]
+
 def make_token(acct_id, exp, email=""):
     """Admin (site-password) token: acct.exp.sig
     Customer token carries the email: acct.exp.email_b64.sig"""
@@ -457,7 +464,7 @@ def make_token(acct_id, exp, email=""):
         msg = f"{acct_id}.{exp}.customer.{email}".encode()
         sig = hmac.new(SECRET, msg, hashlib.sha256).hexdigest()
         return f"{acct_id}.{exp}.{_b64e(email)}.{sig}"
-    msg = f"{acct_id}.{exp}".encode()
+    msg = f"{acct_id}.{exp}.{pw_slug(acct_id)}".encode()
     sig = hmac.new(SECRET, msg, hashlib.sha256).hexdigest()
     return f"{acct_id}.{exp}.{sig}"
 
@@ -482,7 +489,8 @@ def valid_token(tok):
         good = hmac.new(SECRET, f"{acct_id}.{exp_s}.customer.{email}".encode(),
                         hashlib.sha256).hexdigest()
         return (acct_id, email) if hmac.compare_digest(good.encode(), sig.encode()) else None
-    good = hmac.new(SECRET, f"{acct_id}.{exp_s}".encode(), hashlib.sha256).hexdigest()
+    good = hmac.new(SECRET, f"{acct_id}.{exp_s}.{pw_slug(acct_id)}".encode(),
+                    hashlib.sha256).hexdigest()
     return (acct_id, "") if hmac.compare_digest(good.encode(), sig.encode()) else None
 
 # Per-IP login throttle (in-memory; resets on restart). The 0.4s sleep blunts
@@ -3847,7 +3855,8 @@ class H(BaseHTTPRequestHandler):
         acct, cust = got
         if path == "/logout":
             return self.send(302, "", extra=[("Location", "/"),
-                ("Set-Cookie", "psa_session=; Path=/; Max-Age=0")])
+                ("Set-Cookie", "psa_session=; Path=/; Max-Age=0"),
+                ("Set-Cookie", "psa_settings=; Path=/; Max-Age=0")])
         if cust:
             # customer sessions are pinned server-side to their own email:
             # no dashboard, no other owners, no sub pages (they show other
