@@ -228,6 +228,9 @@ def copy_checks(fails):
     for phrase in ("1am", "1pm"):
         if phrase in src:
             fails.append(f"app.py: {phrase!r} is back, the scan timer is hourly (T68)")
+    if src.count("within the hour") < 2:
+        fails.append("app.py: the setup note and the first sync note must both say "
+                     "within the hour (T68)")
 
 
 def setup_instance_checks(fails):
