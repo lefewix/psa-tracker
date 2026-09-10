@@ -1129,8 +1129,18 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    to be visible the whole time. It is a bare pill, not a second capsule: a
    capsule wrapping a single pill prints a visible ring around it with nothing
    else inside, which reads as a mistake. So the button carries the glass
-   itself (.f.fsolo, see the chrome group above). Two controls, one row. */
-.filterrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
+   itself (.f.fsolo, see the chrome group above).
+   The "N need owners" worklist link rides here too, at .fsolo: it navigates
+   away, so it is no fourth seat inside a capsule whose arithmetic assumes
+   exactly three pills, and its width spilled the capsule onto the Archived
+   pill on every phone. Two solo pills now, so the row WRAPS at its own 10px
+   gap - the capsule keeps its measured width instead of shrinking into a
+   scroller, and the pair drops to a second line on a phone. .rowend holds the
+   pair as ONE flex item so they wrap together; as loose children they split
+   2/1 at 414px and stranded Archived alone under a right-aligned link. Bare
+   flex box, no chrome of its own. */
+.filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
+.rowend{display:flex;align-items:center;gap:10px}
 /* the row owns the margin now; the standalone .filters rule above still serves
    the person-page archived sections, which have no row around them */
 .filterrow .filters{margin:0}
@@ -3288,15 +3298,18 @@ def dash_page(a, subs):
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
                   '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>',
                   '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>']
-    if untag:
-        pills.append(f'<a class="f" href="/cards?owner=unassigned">{untag} need owners</a>')
-    # role=group, not navigation: three sort toggles and at most one link are
-    # not a navigation landmark. Styled and queried by CLASS everywhere, so
-    # the role carries no layout weight.
+    # role=group, not navigation: three sort toggles are not a navigation
+    # landmark. Styled and queried by CLASS everywhere, so the role carries no
+    # layout weight.
     filters = (f'<div class="filters" role="group" aria-label="Sort submissions">'
                f'{"".join(pills)}</div>') if pills else ""
-    # Archived is a BARE pill beside the sort segment, a direct child of the row
-    # with no wrapper capsule - .fsolo makes the button carry the glass itself
+    # the worklist link navigates away, so it is a row control beside Archived
+    # and not a fourth seat in a capsule labelled "Sort submissions" whose
+    # arithmetic assumes exactly three pills (see .filterrow).
+    needlink = (f'<a class="f fsolo" href="/cards?owner=unassigned">'
+                f'{untag} need owners</a>') if untag else ""
+    # Archived is a BARE pill beside the sort segment, in the row's plain
+    # .rowend box and in no capsule - .fsolo makes the button carry the glass
     # (see .filterrow). The id and classes are unchanged, so the toggle script
     # doesn't care (it only flips classes and aria-pressed, never textContent -
     # so .archn is safe). The count lives in its own span so the 640px block can
@@ -3304,8 +3317,10 @@ def dash_page(a, subs):
     archpill = (f'<button type="button" class="f farch fsolo" '
                f'id="archtoggle" aria-pressed="false" aria-label="Archived · {len(gone)}">'
                f'Archived<span class="archn"> · {len(gone)}</span></button>') if gone else ""
-    filterrow = (f'<div class="filterrow">{filters}{archpill}</div>'
-                 if (filters or archpill) else "")
+    rowend = (f'<div class="rowend">{needlink}{archpill}</div>'
+              if (needlink or archpill) else "")
+    filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'
+                 if (filters or rowend) else "")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}

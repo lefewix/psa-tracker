@@ -243,7 +243,18 @@ def main():
             fails.append(f"POST /login: got {code}, no session cookie")
             cookie = None
         if cookie:
-            check("GET /", "/", (200,), cookie, must_have="14900001")
+            body = check("GET /", "/", (200,), cookie, must_have="14900001")
+
+            # --- the need-owners link is a row control, not a fourth sort pill:
+            # it sits outside the sort capsule so it cannot spill it (T15)
+            if body:
+                cap = re.search(rb'<div class="filters".*?</div>', body, re.S)
+                if not cap:
+                    fails.append("GET /: no sort capsule")
+                elif b"need owners" in cap.group(0):
+                    fails.append("GET /: the need-owners link is inside the sort capsule")
+                if b'class="f fsolo" href="/cards?owner=unassigned"' not in body:
+                    fails.append("GET /: the need-owners link is missing from the filter row")
             check("GET /cards", "/cards", (200,), cookie)
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
             check("GET /search", "/search?q=Charizard", (200,), cookie)

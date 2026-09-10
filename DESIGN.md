@@ -731,7 +731,11 @@ content — a panel, a sheet, an image, a row — it is not.
   glass itself rather than riding in a wrapper, because a single pill inside a capsule prints
   a ring around nothing. It reads one rung quieter than the sort pills (12px/500 vs 13px) and
   lands at exactly 38px, the sort capsule's outer height at both breakpoints. It is the
-  archived disclosure on all three list pages.
+  archived disclosure on all three list pages, and the dashboard's "N need owners" worklist
+  link, which navigates away and so never sits inside the sort capsule.
+- **Filter row (`.filterrow`):** sort capsule at one end, the solo pills paired in `.rowend` at
+  the other. The row wraps at the same 10px gap, so on a phone the pair drops to a second line
+  and the capsule keeps its full width instead of shrinking into a scroller.
 - **Sort pills:** Newest, Order type, Return. Three, always the same three — a "Grades ready"
   fourth pill shipped briefly and was removed with the rest of the grades promotion
   (2026-08-02 owner ruling).
