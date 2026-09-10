@@ -9,23 +9,8 @@ a tracked PSA account. Each account has its OWN site password; the login form
 routes whoever types a password to the matching account - the account chooser is
 invisible by design. Site passwords must therefore be unique across accounts.
 
-Global env (systemd EnvironmentFile):
-  PSA_SECRET        required - random string for session-cookie signing
-  PSA_BIND          default 0.0.0.0
-  PSA_PORT          default 8080
-  PSA_ACCOUNTS_DIR  default /opt/psa-tracker/accounts
-  PSA_IMG_CACHE     default /opt/psa-tracker/imgcache (shared; images are public CDN)
-  SITE_TITLE        default "Submissions"   (dashboard heading + page titles)
-  SITE_TAGLINE      default "PSA grading tracker" (login-gate subtitle)
-  COOKIE_DAYS       default 30
-  PSA_COOKIE_SECURE default 1 - set 0 if hosting over plain HTTP (no TLS proxy)
-
-Per-account account.env (written by add_account.sh, chmod 600):
-  LABEL             display name on that account's pages
-  SITE_PASSWORD     the password that logs friends into THIS account
-  PSA_LOGIN_EMAIL / PSA_LOGIN_PW / PSA_COOKIE - used by psa_login.py/psa_watch.py
-  PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
-                    (matched most-specific-first in the order given)
+Config: every environment key this file reads, global (systemd EnvironmentFile)
+and per-account (account.env), is listed with its default in deploy/example.env.
 """
 import base64, gzip, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time
 import urllib.parse, urllib.request

@@ -105,21 +105,10 @@ tick (or `systemctl start psa-scan.service`).
 
 ## Configuration
 
-Global (`/etc/psa-tracker.env`): `PSA_SECRET` (required), `PSA_BIND`,
-`PSA_PORT`, `SITE_TITLE`, `SITE_TAGLINE`, `PSA_COOKIE_SECURE`, `PSA_DISPLAY_TZ` (IANA name for displayed times, default America/Toronto), `PSA_LOCALE` /
-`PSA_LOCATION` (US accounts: `en-US` / `US`), `DISCORD_WEBHOOK` (optional
-status-change pings), `PSA_VALUES=1` (card values on; `PSA_VALUES_BATCH` caps
-cert pages per run, default 40, `PSA_VALUES_MAX_AGE` is the refresh age in days,
-default 14), `PSA_SETTINGS_GEAR=0` for **personal instances** where
-password holders are friends, not admins: hides the settings gear AND makes
-/settings always require the separate settings password. In the default
-store mode, the admin (site-password) login opens /settings directly - the
-admin login IS the settings credential.
-
-Per-account (`account.env`): `LABEL`, `SITE_PASSWORD`, `PSA_LOGIN_EMAIL`,
-`PSA_LOGIN_PW`, optional `PSA_PRICES` fee table
-(`"regular:109,max:89.99,bulk:34.99,value:45.99"`, matched most-specific-first)
-used for the per-person estimated-cost badge.
+Every key the code reads, global and per-account, is listed with its default and
+a one-line note in [`deploy/example.env`](deploy/example.env). Copy it to
+`/etc/psa-tracker.env` and edit; per-account keys go in
+`accounts/<id>/account.env`, which `add_account.sh` writes.
 
 Each person's page also shows **INSURED COVERAGE** - the sum of the real
 per-card declared values PSA has on file (captured automatically from the
