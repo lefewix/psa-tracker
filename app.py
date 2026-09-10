@@ -3848,7 +3848,7 @@ def people_page(a, owner):
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     # back on the left, the export on the right: the sub page's own foot row,
     # with its 18px top margin dropped so the header sits where it always did
-    back = ('<div class="foot" style="border:0;padding:0;margin:0">'
+    back = ('<div class="foot" style="margin:0">'
             '<a class="view" id="backlk" href="/">← Back</a>'
             f'<span class="footacts"><a class="view" href="/cards?owner='
             f'{urllib.parse.quote(owner)}&amp;format=csv">Export CSV</a></span></div>')
@@ -3886,10 +3886,9 @@ def people_csv(a, owner):
     w = csv.writer(buf)
     w.writerow(["submission", "cert", "card", "grade", "service", "status",
                 "archived", f"est_value_{vcur.lower()}"])
-    def order(c):  # the page's own order: active groups newest first, archived last
-        n = c["sub_number"]
-        return (n in arch, -int(n) if str(n).isdigit() else 0, c["line_number"] or 0)
-    for c in sorted(cards, key=order):
+    # load_all_cards already reads newest sub first, then line number: a stable
+    # sort on the archived flag alone leaves the page's own order intact
+    for c in sorted(cards, key=lambda c: c["sub_number"] in arch):
         s = subs_by.get(c["sub_number"])
         v = vals.get(c["cert_no"] or "")
         # a card PSA has not graded has no cert number yet, and the tile says so
