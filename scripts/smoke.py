@@ -637,6 +637,18 @@ def main():
             if js and b"if(again)_say(SAID[m][rev?1:0])" not in js:
                 fails.append("GET /app.js: a sort reversal is not announced")
 
+            # --- the submission list is a list and every row's sub number is
+            # that row's heading, so a screen reader can skip rows instead of
+            # tabbing through ten controls apiece (T55)
+            dash = check("GET / (list semantics)", "/", (200,), cookie)
+            if dash:
+                if b'id="list" tabindex="-1" role="list"' not in dash:
+                    fails.append("GET /: #list carries no list role")
+                if dash.count(b'role="listitem"') != 3:
+                    fails.append("GET /: the submission rows are not list items")
+                if dash.count(b'<h2 class="num">') != 3:
+                    fails.append("GET /: a submission row has no heading")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),

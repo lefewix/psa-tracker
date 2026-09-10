@@ -2610,8 +2610,12 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
     foot_h = (f'<div class="foot"><span class="est">{foot}</span>{act}</div>'
               if (foot or act) else "")
-    return f"""<div class="card{' arch' if archived else ''}" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
-<div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><div class="num">#{sub}</div></a>
+    # role=listitem + the h2: every card_html row lands in the dashboard's
+    # role=list #list, and the sub number is that row's heading. Zero visual
+    # delta - the global reset zeroes h2 margins and .num supplies every type
+    # value (17/650/-.012em/1.3), same as the person page's group heading.
+    return f"""<div class="card{' arch' if archived else ''}" role="listitem" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
+<div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
 <div class="meta">{html.escape(s['service'])} · {s['card_count']} cards</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
 {timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>', key=sub)}
@@ -3484,6 +3488,9 @@ def dash_page(a, subs):
               if (needlink or archpill) else "")
     filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'
                  if (filters or rowend) else "")
+    # role=list only when the rows are really there: with no subs the one child
+    # is the .empty placeholder, and a list of one non-listitem is a lie.
+    listrole = ' role="list"' if subs else ''
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
@@ -3492,7 +3499,7 @@ def dash_page(a, subs):
 {toolbar}
 {hint}
 {filterrow}
-<div id="list" tabindex="-1">{body}</div>
+<div id="list" tabindex="-1"{listrole}>{body}</div>
 <div class="vh" id="live" aria-live="polite"></div>
 </main>
 <script>

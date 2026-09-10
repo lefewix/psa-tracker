@@ -848,6 +848,9 @@ Not a retrofit — a visible part of the system, and it has house styling.
 - **Skip link (`.skip`):** the dashboard's first tab stop, parked off-screen and sliding to
   14px on focus. It is a glass-solid capsule with an accent label and a hairline — chrome
   grammar, because it is chrome.
+- **Submission list (`#list`):** the dashboard's rows are a real list, `role="list"` on `#list`
+  (only while rows exist) and `role="listitem"` per card, with each row's sub number as an `h2`
+  under the masthead `h1`. Row headings, not ten tab stops apiece.
 - **Live region (`.vh #live`):** a visually-hidden `aria-live="polite"` region on every list
   page. Saves, save failures, search result counts, and a sort pill's reversal are announced
   there. Two of the three pills keep their label when re-clicked, so the flip is speech only.
