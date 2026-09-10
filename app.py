@@ -3709,7 +3709,7 @@ def people_page(a, owner):
     owners = owners_map(a)
     arch = archived_set(a)
     # no owner in the query is the same request as owner=unassigned: the
-    # operator worklist. Without this an empty owner printed an empty h1.
+    # operator worklist
     unassigned = owner.strip().lower() in ("", "unassigned")
     subs_by = {s["sub_number"]: s for s in load_subs(a)}
     if unassigned:  # operator worklist: untagged cards in active subs
