@@ -17,3 +17,6 @@ __pycache__/
 # deliberate brand assets (deployed like logo.svg) - exempt from *.png above
 !favicon.png
 !apple-touch-icon.png
+
+# design tool sidecar - DESIGN.md is the design record
+.impeccable/

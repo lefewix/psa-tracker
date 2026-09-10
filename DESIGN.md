@@ -2,18 +2,20 @@
 name: PSA Submission Tracker
 description: A white-label grading tracker executed at Apple fidelity — grouped ground, raised content cards, lensed glass chrome.
 colors:
+  # every share below is clamped per accent by _share() in app.py and emitted in
+  # THEME_VARS; these are the values for the default #3a6fd8.
   accent: "#3a6fd8"
   accent-ambient: "#5b8def"
   accent-text-light: "color-mix(in srgb,var(--ac) 92%,black)"
   accent-text-dark: "color-mix(in srgb,var(--ac) 45%,white)"
   accent-hot-light: "color-mix(in srgb,var(--ac) 82%,black)"
-  accent-hot-dark: "color-mix(in srgb,var(--ac) 77%,white)"
+  accent-hot-dark: "color-mix(in srgb,var(--ac) 73%,white)"
   accent-fill: "color-mix(in srgb,var(--ac) 86%,black)"
   accent-fill-hot: "color-mix(in srgb,var(--ac) 78%,black)"
   accent-bar-light: "color-mix(in srgb,var(--ac) 100%,black)"
-  accent-bar-dark: "color-mix(in srgb,var(--ac) 89%,white)"
+  accent-bar-dark: "color-mix(in srgb,var(--ac) 85%,white)"
   accent-ring-light: "color-mix(in srgb,var(--ac) 100%,black)"
-  accent-ring-dark: "color-mix(in srgb,var(--ac) 100%,white)"
+  accent-ring-dark: "color-mix(in srgb,var(--ac) 96%,white)"
   ground-light: "#f2f2f7"
   ground-dark: "#101113"
   card-light: "#ffffff"
@@ -479,8 +481,8 @@ darker.
 **The Reserved Red Rule.** Red belongs to a landed grade (on the scan tile), an alert, or a
 hold. It never *announces* — **owner ruling, 2026-08-02**: a critique argued the grades-landed
 event deserved red in the status column, that shipped as a "N grades landed" pill plus a red
-detail badge, and the owner rejected both on sight. Grades-ready is a muted footer line and a
-lowercase detail note; the news is the grade printed under the scan, not a banner about it.
+detail badge, and the owner rejected both on sight. Grades-ready is a lowercase detail note and
+nothing else; the news is the grade printed under the scan, not a banner about it.
 Red is never a heading color, a hover state, an emphasis device, or an event announcement.
 
 **The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
@@ -512,8 +514,9 @@ on Segoe and Roboto.
   keeps 13.
 - **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
 - **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
-  pills, links, owner tags, card names, empty states. (Lifted from 13/1.45 on 2026-08-08 —
-  owner found the sheet claustrophobic and the text small.)
+  pills, links, owner tags, card names, empty states. The stage name sits here too, at body
+  size with the data rung's 650 weight (`.stage b`), the one place the two rungs cross.
+  (Lifted from 13/1.45 on 2026-08-08 — owner found the sheet claustrophobic and the text small.)
 - **Control** (500, 13px, 16px line box): control labels only — filter pills, compact
   buttons, the skip link. Stays at 13 because the capsule height arithmetic (38px at both
   breakpoints) is stated in the CSS and depends on the 16px line box.
@@ -797,18 +800,17 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
   clear 4.5:1 at 14px on the white sheet, so the clock icon and the label carry the
   difference, not a color step.
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
-  see the Reserved Red Rule for the grades pill that was tried here and removed.
-Grades-ready is not a pill: it is a muted `.est` footer line ("Grades ready") on the row, and
-a lowercase `.estnote` under the detail page's ETA badge.
+  see the Reserved Red Rule for the grades pill that was tried here and removed. The pill stands
+  alone: no explaining sentence on any surface (the owner, 2026-09-09 · the pill is enough). The
+  detail page states the same alarm at the value rung, replacing its ETA figure with a red
+  "On hold" (`.synced b.holdb`); a held sub rendering a normal ETA badge is a bug.
+Grades-ready is not a pill and not a row footer line either (the owner, 2026-08-08): it is a
+lowercase `.estnote` under the detail page's ETA badge, and nowhere else.
 
-**The Named-Alarm Rule.** A hold is the only thing in this product that can actually go
-wrong, and a red word is not an explanation. Every surface that can show a held submission
-also states `HOLD_NOTE` — one sentence, one wording, server-side constant: the dashboard row
-and the person-page group print it as the muted `.est` footer line, the customer group prints
-it in the same slot (she has no detail page to click through to), and the detail page leads
-its badge with "On hold" at the value rung. The hold never HIDES the return date: the row
-prints both pills and the badge prints the hold above a "Back" line (T65). A held sub
-rendering nothing but a normal ETA is still a bug, not a layout choice.
+**The Hold Rule.** A hold never hides the return date: the dashboard row prints the hold pill
+beside the return pill, and the detail badge leads with "On hold" above a "Back" line (T65).
+The pill stands alone; the explanatory sentence was retired on 2026-09-09.
+
 Archived rows carry no status pill at all: every archived sub is finished, the foot already
 says so, and the extra pill made the column taller than the header and knocked the filmstrip
 out of the rows' rhythm.
@@ -1004,7 +1006,6 @@ standing in for icons, no raster icons.
   colors propagate everywhere, ambient ground included.
 - **Do** clamp a derived token against the ground it is actually painted on, not the ground
   behind that one.
-- **Do** state a hold in words on every surface that can show one (`HOLD_NOTE`).
 - **Do** keep a row on screen, in its new state, while its Undo chip is up — a chip that lives
   inside the row cannot be reachable if the row leaves the view the moment it flips.
 - **Do** give a destructive-ish action the same undo grammar the owner tag uses, and announce
