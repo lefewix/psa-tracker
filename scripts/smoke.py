@@ -299,6 +299,12 @@ def main():
                 fails.append("GET /app.css: the pencil still hides on the row's focus")
             if b".own:focus + .ownedit{display:none}" not in css:
                 fails.append("GET /app.css: the pencil no longer hides while the tag is edited")
+            # archived cards carry grayscale only, in every view: an opacity wash
+            # fades the card's own surface and takes the text under 4.5:1 (T51)
+            if b".card.arch{filter:grayscale(" not in css:
+                fails.append("GET /app.css: archived cards no longer read as past")
+            if b".card.arch{opacity" in css or b"archview .card.arch" in css:
+                fails.append("GET /app.css: an archived card is washed with opacity again")
         check("GET /logo", "/logo", (200,))
 
         # --- /img and /logo are cached at the Cloudflare edge on origin TTL, so

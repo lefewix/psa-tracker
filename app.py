@@ -1584,7 +1584,13 @@ button:disabled{opacity:.5;cursor:default}
 .dstate{font-size:14px;font-weight:500;color:var(--txt);flex:1}
 .dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
-.card.arch{opacity:.5;filter:grayscale(.6)}
+/* No wash on an archived card, in any view: the .5 dim faded the card's own
+   white surface and put every text style in the row at 2.0 to 3.4 on white,
+   which is real content below 1.4.3. "Past" is carried by grayscale alone -
+   the accent stage name, bar and scans all desaturate - while the ink stays on
+   a full-strength card and keeps its 4.5. The call the archived-only view
+   already made (2026-08-08), now made everywhere. */
+.card.arch{filter:grayscale(.55)}
 /* An archived TILE dims its SCAN, not its data. The .5 wash that reads fine on
    a row (which sits among live rows and is folded away by default) put card
    names, cert numbers and values near 1.9:1 on white - and archived tiles
@@ -1594,18 +1600,6 @@ button:disabled{opacity:.5;cursor:default}
    #list.archview, applied where it actually matters. */
 .gc.arch a[href^="/img"],.gc.arch .ph{opacity:.5;filter:grayscale(.6);
  transition:opacity .18s,filter .18s}
-/* ...but only SLIGHTLY in the archived-only view (the owner, 2026-08-01): the full
-   .5 dim exists to push archived rows behind live ones they sit among; with
-   nothing to sit behind it made the whole list hard to read, yet full color
-   read as current. This keeps the rows legible while still saying "past".
-   #list.archview is set by the toggle script, so the scope is exactly that
-   view - the person, cards and search pages (.gc.arch, ARCHFOLD) keep the full
-   dimming, and the sub detail page's .archdim is untouched. */
-/* full opacity in the card era: the .85 wash also faded the card's own white
-   surface, dropping muted text to ~3.8:1 (2026-08-08 audit). "Past" is carried
-   by grayscale alone - the accent stage name, bar and scans all desaturate -
-   while the ink stays on a full-strength card and keeps its 4.5. */
-#list.archview .card.arch{opacity:1;filter:grayscale(.55)}
 .card.tlcard{padding:16px;margin:14px 0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
@@ -1638,11 +1632,10 @@ button:disabled{opacity:.5;cursor:default}
    look, but they are not targets - only the sub-number link inside a group
    is. Tinting the whole surface promised a click it doesn't have. */
 .card.grp:hover,.card.tlcard:hover{background:var(--surface)}
-.card.arch:hover{opacity:.62}
+/* full color on hover - the card still takes the normal .card:hover background
+   highlight, and the grey lifts off. */
+.card.arch:hover{filter:none}
 .gc.arch:hover a[href^="/img"],.gc.arch:hover .ph{opacity:.78;filter:grayscale(.3)}
-/* full color on hover inside the archived view - the row still takes the
-   normal .card:hover background highlight, and the slight grey lifts off. */
-#list.archview .card.arch:hover{opacity:1;filter:none}
 .f:hover{color:var(--fhov)}
 .f.on:hover{color:var(--ac-pale)}
 /* stated AFTER .f.on:hover and at 4 classes so the pressed Archived pill keeps
