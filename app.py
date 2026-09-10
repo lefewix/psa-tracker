@@ -1597,8 +1597,11 @@ button:disabled{opacity:.5;cursor:default}
    render INLINE BY DEFAULT in search results, so that is real content below
    1.4.3, not a deliberately-quieted fold. The greyed image carries "past"; the
    text keeps its own contrast. Same call the owner already made for
-   #list.archview, applied where it actually matters. */
-.gc.arch a[href^="/img"],.gc.arch .ph{opacity:.5;filter:grayscale(.6);
+   #list.archview, applied where it actually matters. The no-scan placeholder is
+   NOT a scan: it is a grey box whose only content is its "No image yet" label,
+   and the .5 wash put that label at 1.9:1. It is already grey, so it has no
+   colour to lose and nothing to say; it stays undimmed. */
+.gc.arch a[href^="/img"]{opacity:.5;filter:grayscale(.6);
  transition:opacity .18s,filter .18s}
 .card.tlcard{padding:16px;margin:14px 0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
@@ -1635,7 +1638,7 @@ button:disabled{opacity:.5;cursor:default}
 /* full color on hover - the card still takes the normal .card:hover background
    highlight, and the grey lifts off. */
 .card.arch:hover{filter:none}
-.gc.arch:hover a[href^="/img"],.gc.arch:hover .ph{opacity:.78;filter:grayscale(.3)}
+.gc.arch:hover a[href^="/img"]{opacity:.78;filter:grayscale(.3)}
 .f:hover{color:var(--fhov)}
 .f.on:hover{color:var(--ac-pale)}
 /* stated AFTER .f.on:hover and at 4 classes so the pressed Archived pill keeps

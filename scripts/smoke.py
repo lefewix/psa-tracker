@@ -305,6 +305,8 @@ def main():
                 fails.append("GET /app.css: archived cards no longer read as past")
             if b".card.arch{opacity" in css or b"archview .card.arch" in css:
                 fails.append("GET /app.css: an archived card is washed with opacity again")
+            if b".gc.arch .ph" in css:
+                fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
         check("GET /logo", "/logo", (200,))
 
         # --- /img and /logo are cached at the Cloudflare edge on origin TTL, so
