@@ -2802,10 +2802,13 @@ ARCH_JS = """<script>
           clearTimeout(t); u.remove(); b.disabled=true;
           post(sub,!on,function(ok2){
             b.disabled=false;
-            back(b,uf);
-            if(!ok2){say("Couldn't undo that");place(row);return;}
-            flip(row,b,!on); place(row);
-            say('Submission '+sub+(on?' restored':' archived again'));
+            if(ok2){flip(row,b,!on);
+              say('Submission '+sub+(on?' restored':' archived again'));}
+            else say("Couldn't undo that");
+            /* focus last: a failed undo leaves the row archived, so place()
+               hides it and the button with it */
+            place(row);
+            back(row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
           });
         });
         back(u,foc);   // the offer is keyboard reachable, not stranded
