@@ -239,6 +239,7 @@ def tracking_checks(fails):
     sys.path.insert(0, ROOT)
     import app
     for carrier, tracking, want in (("Pickup", "pickup", "Pickup"),
+                                    ("LM", "LM-88213", "LM LM-88213"),
                                     ("Loomis", "LM-88213", "Loomis LM-88213"),
                                     ("UPS", "1Z999AA10123456784",
                                      "UPS 1Z999AA10123456784")):

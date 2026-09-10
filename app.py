@@ -1997,11 +1997,9 @@ def tracking_html(carrier, tracking):
     label = html.escape(f"{carrier} {tracking}")
     base = next((u for k, u in _CARRIER_URLS.items() if k in (carrier or "").lower()), "")
     if not base:
-        # "Pickup pickup": an unrecognized carrier whose tracking field only
-        # repeats it. Say the word once.
-        c, t = str(carrier or "").strip(), str(tracking or "").strip()
-        if c and t and (c.lower() in t.lower() or t.lower() in c.lower()):
-            return html.escape(c)
+        c = (carrier or "").strip()
+        if c and c.lower() == str(tracking or "").strip().lower():
+            return html.escape(c)  # "Pickup pickup" is one word
         return label
     return (f'<a class="tlink" href="{base}{urllib.parse.quote(str(tracking))}" '
             f'target="_blank" rel="noopener">{label}</a>')
