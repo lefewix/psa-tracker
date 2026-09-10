@@ -766,12 +766,15 @@ content — a panel, a sheet, an image, a row — it is not.
 The right-hand column of a dashboard row, right-aligned under the value, stacked at 3px. All
 are 14px text with a 5px gap to an inline stroked SVG — no fill, no border, no capsule; a pill
 here is a *word*, not a control. The column scans on two gray levels plus one red:
-- **Dated ETA (`.pill`)**, muted: the default — "Back ~Sep 25".
+- **Dated ETA (`.pill`)**, muted: the default, "Back Sep 25". One vocabulary on every
+  surface (`eta_words`): "Back" plus a short date, carrying the year whenever it is not this
+  one ("Back Jan 20, 2027").
 - **Shipped (`.pill.shipped`)**, ink with a muted icon: done, and real. The icon stays muted so
   the row's only ink outside the lot number is the fact itself.
-- **Pending (`.pill.pending`)**, muted: "ETA pending". The class is a semantic hook only — a
-  third, lighter status gray cannot clear 4.5:1 at 14px on the white sheet, so the clock icon
-  and the label carry the difference, not a color step.
+- **Pending (`.pill.pending`)**, muted: "ETA pending", and "Was due Aug 20" once PSA has blown
+  through the date. The class is a semantic hook only — a third, lighter status gray cannot
+  clear 4.5:1 at 14px on the white sheet, so the clock icon and the label carry the
+  difference, not a color step.
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
   see the Reserved Red Rule for the grades pill that was tried here and removed.
 Grades-ready is not a pill: it is a muted `.est` footer line ("Grades ready") on the row, and
@@ -781,9 +784,10 @@ a lowercase `.estnote` under the detail page's ETA badge.
 wrong, and a red word is not an explanation. Every surface that can show a held submission
 also states `HOLD_NOTE` — one sentence, one wording, server-side constant: the dashboard row
 and the person-page group print it as the muted `.est` footer line, the customer group prints
-it in the same slot (she has no detail page to click through to), and the detail page replaces
-its ETA figure with "On hold" at the value rung plus the sentence as an `.estnote`. A held sub
-rendering a normal ETA badge — which it did until 2026-08-02 — is a bug, not a layout choice.
+it in the same slot (she has no detail page to click through to), and the detail page leads
+its badge with "On hold" at the value rung. The hold never HIDES the return date: the row
+prints both pills and the badge prints the hold above a "Back" line (T65). A held sub
+rendering nothing but a normal ETA is still a bug, not a layout choice.
 Archived rows carry no status pill at all: every archived sub is finished, the foot already
 says so, and the extra pill made the column taller than the header and knocked the filmstrip
 out of the rows' rhythm.

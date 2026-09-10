@@ -10,8 +10,8 @@ the route.
 
   python3 scripts/smoke.py
 """
-import gzip, hashlib, json, os, re, shutil, signal, socket, sqlite3, subprocess
-import sys, tempfile, time, urllib.error, urllib.parse, urllib.request
+import datetime, gzip, hashlib, json, os, re, shutil, signal, socket, sqlite3
+import subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SITE_PW = "smoke-site-pw"
@@ -20,6 +20,17 @@ SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
 HUB_KEY = "smoke-hub-key"
 MAX_FAILS = 8  # app.py's login budget, per IP and site-wide
 NOW = "2026-01-01T00:00:00+00:00"
+# ETA dates are relative to the run: one still to come, one next year (the year
+# has to print), one PSA has blown through (T65)
+TODAY = datetime.date.today()
+ETA_SOON = TODAY + datetime.timedelta(days=45)
+ETA_NEXT_YEAR = datetime.date(TODAY.year + 1, 6, 15)
+ETA_PAST = TODAY - datetime.timedelta(days=45)
+
+
+def eta_text(d):
+    """What short_date must print for a date: 'Sep 25', 'Jun 15, 2027'."""
+    return d.strftime("%b %d") + (f", {d.year}" if d.year != TODAY.year else "")
 # a pre-seeded proxy cache entry, so /img answers from disk and the run stays offline
 IMG_URL = "https://d1htnxwo4o0jhw.cloudfront.net/thumbnail/99000001.jpg"
 
@@ -54,17 +65,19 @@ def build_fixture(base):
     c = sqlite3.connect(os.path.join(acct, "psa.db"))
     c.executescript(schema("psa_watch.py"))
     c.executescript(schema("psa_values.py"))
-    subs = [("14900001", "Completing", 2, "2026-09-10", "", 1, 0),
-            ("14900002", "Arrived", 1, "", "", 0, 1),
-            # a step the stage map does not know (T19)
-            ("14900003", "ReceivedHold", 1, "", "", 0, 0)]
-    for num, status, cnt, shipped, tracking, ready, hold in subs:
+    subs = [("14900001", "Completing", 2, "2026-09-10", "", 1, 0,
+             ETA_NEXT_YEAR - datetime.timedelta(days=7), ETA_NEXT_YEAR),
+            ("14900002", "Arrived", 1, "", "", 0, 1, ETA_SOON, ETA_SOON),
+            # a step the stage map does not know (T19), and an ETA PSA has
+            # already blown through (T65)
+            ("14900003", "ReceivedHold", 1, "", "", 0, 0, ETA_PAST, ETA_PAST)]
+    for num, status, cnt, shipped, tracking, ready, hold, est1, est2 in subs:
         c.execute("INSERT INTO subs (sub_number, order_number, service, status, "
                   "card_count, destination, arrived, est_start, est_end, shipped, "
                   "tracking, carrier, grades_ready, on_hold, thumb, cert_ids, "
                   "first_seen, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                   (num, "O-" + num, "Regular", status, cnt, "Ship back", "2026-08-01",
-                   "2026-09-05", "2026-09-12", shipped, tracking, "UPS", ready, hold,
+                   est1.isoformat(), est2.isoformat(), shipped, tracking, "UPS", ready, hold,
                    "", json.dumps([]), NOW, NOW))
         c.execute("INSERT INTO status_history (sub_number, status, seen_at) VALUES (?,?,?)",
                   (num, status, NOW))
@@ -593,6 +606,53 @@ def main():
                 fails.append("GET /sub/14900003: the unmapped status still draws a stage bar")
             if b"stage 1 of" in body:
                 fails.append("GET /sub/14900003: the unmapped status reads as stage 1")
+            # --- one vocabulary for the return date, and a hold keeps it (T65).
+            # "Back <date>" everywhere, the year whenever it is not this one,
+            # "Was due <date>" in the muted pill once PSA is late, and a held
+            # sub prints the hold AND the date on every surface.
+            soon, nextyr = eta_text(ETA_SOON), eta_text(ETA_NEXT_YEAR)
+            dash = check("GET / (T65 return dates)", "/", (200,), cookie) or b""
+
+            def row(num):
+                for chunk in dash.split(b'<div class="card'):
+                    if b'data-sub="' + num + b'"' in chunk:
+                        return chunk
+                return b""
+
+            if b"Back ~" in dash or b"Estimate pending" in dash:
+                fails.append("GET /: the old ETA wording is still on the dashboard")
+            if b"Back " + nextyr.encode() not in row(b"14900001"):
+                fails.append("GET /: a return date in another year prints no year")
+            held = row(b"14900002")
+            if b'class="pill hold"' not in held or b"Back " + soon.encode() not in held:
+                fails.append("GET /: a held sub does not show both the hold and its return date")
+            late = row(b"14900003")
+            if b'class="pill pending"' not in late or b"Was due " + eta_text(ETA_PAST).encode() not in late:
+                fails.append("GET /: a blown ETA does not read as Was due in the muted pill")
+
+            # a window inside one year prints that year once, on the end
+            for num, want in (("14900001", (ETA_NEXT_YEAR - datetime.timedelta(days=7))
+                               .strftime("%b %d") + " to " + nextyr),
+                              ("14900002", soon),
+                              ("14900003", "Was due " + eta_text(ETA_PAST))):
+                dbody = call(url, "/sub/" + num, cookie)[1] or b""
+                badge = re.search(rb'<div class="synced">.*?</div>', dbody, re.S)
+                badge = badge.group(0) if badge else b""
+                if want.encode() not in badge:
+                    fails.append(f"GET /sub/{num}: the ETA badge does not say {want!r}")
+                if re.search(rb"\d{4}-\d{2}-\d{2}", badge):
+                    fails.append(f"GET /sub/{num}: the ETA badge still prints an ISO date")
+            if b'class="holdb">On hold' not in (call(url, "/sub/14900002", cookie)[1] or b""):
+                fails.append("GET /sub/14900002: the detail badge dropped the hold")
+
+            # the person page runs the same pill, so a held sub reads the same there
+            call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": "Etaperson"})
+            pbody = check("GET /cards?owner=Etaperson", "/cards?owner=Etaperson",
+                          (200,), cookie) or b""
+            if b'class="pill hold"' not in pbody or b"Back " + soon.encode() not in pbody:
+                fails.append("GET /cards?owner=Etaperson: the held sub loses its return date")
+            call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": ""})
+
             check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
             check("GET /nope (unknown path)", "/nope", (404,), cookie)
             check("GET /logout", "/logout", (302,), cookie)

@@ -299,11 +299,15 @@ def fmt_local(iso):
         return iso[:16].replace("T", " ")
 
 def short_date(iso):
-    """'2026-09-25' -> 'SEP 25' for compact pill display."""
+    """'2026-09-25' -> 'Sep 25' for compact display. A date in another year
+    carries it ('Jan 05, 2027'): PSA windows cross New Year and a bare 'Jan 05'
+    reads as ten months ago."""
     try:
-        return datetime.fromisoformat(iso[:10]).strftime("%b %d")
+        d = datetime.fromisoformat(iso[:10])
     except (ValueError, TypeError):
         return iso
+    year = f", {d.year}" if d.year != datetime.now(DISPLAY_TZ).year else ""
+    return d.strftime("%b %d") + year
 
 def fmt_mdy(mdy):
     """PSA's '07/21/26' -> 'Jul 21' (their arrived/shipped date format)."""
@@ -907,8 +911,10 @@ def cust_statline(s):
         return ""
     if s["status"] == "Shipped":
         return f"Shipped {fmt_mdy(s['shipped'])}" if s["shipped"] else "Shipped"
-    eta = s["est_end"] or s["est_start"]
-    return s["status"] + (f" · back ~{short_date(eta)}" if eta else "")
+    if not (s["est_end"] or s["est_start"]):
+        return s["status"]
+    label, val, muted = eta_words(s)
+    return f'{s["status"]} · {val if muted else f"{label} {val}"}'
 
 def load_cards_by_certs(a, cert_ids):
     """The owner-scoped pool for /suggest: only that person's rows, by cert_id,
@@ -1995,18 +2001,29 @@ def tracking_html(carrier, tracking):
     return (f'<a class="tlink" href="{base}{urllib.parse.quote(str(tracking))}" '
             f'target="_blank" rel="noopener">{label}</a>')
 
+def eta_words(s):
+    """One vocabulary for a sub's expected return, everywhere: (label, value,
+    muted). Muted is the two states with nothing to look forward to - no date
+    at all, or a date PSA has already blown through."""
+    d = s["est_end"] or s["est_start"]
+    if not d:
+        return "PSA ETA", "ETA pending", True
+    if d[:10] < datetime.now(DISPLAY_TZ).strftime("%Y-%m-%d"):
+        return "PSA ETA", f"Was due {short_date(d)}", True
+    return "Back", short_date(d), False
+
 def eta_pill(s):
-    """Status pill for a sub: return ETA, shipped, hold, or pending.
+    """Status pill(s) for a sub: the hold, then shipped or the return ETA.
     Shipped reads at ink level, everything in flight at muted, so the column
     scans (the old .done class was emitted for two different states and had
-    no CSS rule at all - the column read as one gray)."""
-    if s["on_hold"]:
-        return f'<span class="pill hold">{ICON_HOLD}On hold</span>'
+    no CSS rule at all - the column read as one gray).
+    A hold no longer swallows the date: both pills render, stacked by .pills."""
+    hold = f'<span class="pill hold">{ICON_HOLD}On hold</span>' if s["on_hold"] else ""
     if s["status"] == "Shipped":
-        return f'<span class="pill shipped">{ICON_CHECK}Shipped</span>'
-    if s["est_end"] or s["est_start"]:
-        return f'<span class="pill">{ICON_CLOCK}Back ~{html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
-    return f'<span class="pill pending">{ICON_CLOCK}ETA pending</span>'
+        return hold + f'<span class="pill shipped">{ICON_CHECK}Shipped</span>'
+    label, val, muted = eta_words(s)
+    txt = html.escape(val if muted else f"{label} {val}")
+    return hold + f'<span class="pill{" pending" if muted else ""}">{ICON_CLOCK}{txt}</span>'
 
 # NO grades-landed pill and NO red announcement of grades arriving: shipped
 # briefly on 2026-08-01 (red "N grades landed" pill + a "Grades ready" sort)
@@ -3649,17 +3666,20 @@ def eta_badge(s, extra=""):
         note = (f'<span class="estnote">{tracking_html(s["carrier"], s["tracking"])}</span>'
                 if s["carrier"] and s["tracking"] else "")
         return f'<div class="synced">Shipped<b>{html.escape(fmt_mdy(s["shipped"]))}</b>{note}{extra}</div>'
+    label, val, muted = eta_words(s)
+    if not muted and s["est_end"] and s["est_start"] and s["est_end"] != s["est_start"]:
+        d1, d2 = short_date(s["est_start"]), short_date(s["est_end"])
+        if "," in d1 and d1[-6:] == d2[-6:]:  # one year for the pair, on the end
+            d1 = d1.split(",")[0]
+        val = f"{d1} to {d2}"
+    note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
+    eta = f'{label}<b>{html.escape(val)}</b>'
     if s["on_hold"]:
-        # a held sub used to render a perfectly normal ETA badge here, so the
-        # one page you'd click THROUGH to for an explanation never mentioned it
-        return f'<div class="synced">Status<b class="holdb">On hold</b>{extra}</div>'
-    if s["est_start"]:
-        val = html.escape(s["est_start"])
-        if s["est_end"]:
-            val += f' to {html.escape(s["est_end"])}'
-        note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
-        return f'<div class="synced">PSA ETA<b>{val}</b>{note}{extra}</div>'
-    return f'<div class="synced">PSA ETA<b>Estimate pending</b>{extra}</div>'
+        # the hold leads and the date stays: the one page you click THROUGH for
+        # an explanation used to drop the return window entirely
+        eta = (f'Status<b class="holdb">On hold</b>'
+               f'<span class="lbl2">{label}</span><b>{html.escape(val)}</b>')
+    return f'<div class="synced">{eta}{note}{extra}</div>'
 
 def detail_page(a, sub):
     num = sub["sub_number"]
