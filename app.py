@@ -4093,8 +4093,7 @@ class H(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
             get = lambda k: (form.get(k) or [""])[0].strip()
-            # captured before any write: rotating a site password kills this very
-            # session, and the reply page still belongs to the account that asked
+            # "" holds the instance, an id is that one account: gates both branches
             scope = self.settings_scope()
             if path == "/settings/account":
                 acct_id, action, value = get("acct"), get("action"), get("value")
