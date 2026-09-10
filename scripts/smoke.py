@@ -58,8 +58,11 @@ def build_fixture(base):
     c2.commit()
     c2.close()
     with open(os.path.join(acct, "account.env"), "w", encoding="utf-8") as f:
+        # the fee table is listed least-specific first on purpose: matching is
+        # by longest key, so the order must not change a single price (T73)
         f.write(f"LABEL='Smoke Store'\nSITE_PASSWORD='{SITE_PW}'\n"
                 "PSA_LOGIN_EMAIL='smoke@example.com'\nPSA_LOGIN_PW='x'\n"
+                "PSA_PRICES='value:45.99,bulk:34.99,value max:89.99,regular:109'\n"
                 "PSA_COOKIE='fake'\n")
     open(os.path.join(base, "global.env"), "w").close()
     c = sqlite3.connect(os.path.join(acct, "psa.db"))
@@ -638,6 +641,28 @@ def main():
                 if want not in sbody:
                     fails.append("GET /cards?owner=Solo: the value block is missing "
                                  + want.decode())
+            # the longest key in the service name sets the fee, so a compound
+            # tier does not fall back to the plain "Value" one, and a tier
+            # nobody priced keeps the + and names itself in its title (T73)
+            def priced_as(svc):
+                db = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
+                db.execute("UPDATE subs SET service = ? WHERE sub_number = '14900001'",
+                           (svc,))
+                db.commit()
+                db.close()
+                return call(url, "/cards?owner=Solo", cookie)[1] or b""
+
+            for svc, want in (("Value Bulk 1980-present", b"cost<b>$46 CAD</b>"),
+                              ("Value Max", b"cost<b>$90 CAD</b>"),
+                              ("Regular Toronto Nat 2025", b"cost<b>$109 CAD</b>")):
+                if want not in priced_as(svc):
+                    fails.append(f"GET /cards?owner=Solo: {svc} is not priced "
+                                 + want.decode())
+            if b'$0<span title="no price for Wibble Tier">+</span> CAD' \
+                    not in priced_as("Wibble Tier"):
+                fails.append("GET /cards?owner=Solo: an unpriced service has no "
+                             "+ naming itself in the title")
+            priced_as("Regular")
             check("GET /sub/14900002 (one card)", "/sub/14900002", (200,), cookie,
                   must_have="1 card \u00b7")
             for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo"):

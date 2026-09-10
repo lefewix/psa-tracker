@@ -25,8 +25,8 @@ Per-account account.env (written by add_account.sh, chmod 600):
   LABEL             display name on that account's pages
   SITE_PASSWORD     the password that logs friends into THIS account
   PSA_LOGIN_EMAIL / PSA_LOGIN_PW / PSA_COOKIE - used by psa_login.py/psa_watch.py
-  PSA_PRICES        optional per-card fee table, "regular:109,max:89.99,bulk:34.99,value:45.99"
-                    (matched most-specific-first in the order given)
+  PSA_PRICES        optional per-card fee table, "regular:109,value max:89.99,bulk:34.99,value:45.99"
+                    (the longest key inside the service name wins, order is free)
 """
 import base64, gzip, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time, traceback
 import urllib.parse, urllib.request
@@ -346,7 +346,7 @@ def smart_title(name):
 
 # ---------- accounts ----------
 
-DEFAULT_PRICES = [("regular", 109.0), ("max", 89.99), ("bulk", 34.99), ("value", 45.99)]
+DEFAULT_PRICES = [("regular", 109.0), ("value max", 89.99), ("bulk", 34.99), ("value", 45.99)]
 
 def read_env_file(path):
     """Parse a shell-style KEY=VALUE env file (handles quoting via shlex)."""
@@ -443,11 +443,13 @@ def load_accounts():
     return accts
 
 def service_price(a, service):
+    """The LONGEST key inside the service name wins, so PSA's compound tiers
+    ("Value Bulk", "Value Max") take their own fee and not plain "Value"
+    whichever order the table happens to list."""
     s = (service or "").lower()
-    for key, price in a["prices"]:
-        if key in s:
-            return price
-    return None
+    hit = max((kp for kp in a["prices"] if kp[0] in s),
+              key=lambda kp: len(kp[0]), default=None)
+    return hit[1] if hit else None
 
 # ---------- auth ----------
 
@@ -3817,11 +3819,12 @@ def people_page(a, owner):
     if unassigned:
         est = ""  # the worklist is about tagging, not money
     else:
-        total, unpriced, covered, uncovered = 0.0, 0, 0.0, 0
+        total, unpriced, covered, uncovered = 0.0, set(), 0.0, 0
         for c in act_cards:
-            p = service_price(a, svc_map.get(c["sub_number"], ""))
+            svc = svc_map.get(c["sub_number"], "")
+            p = service_price(a, svc)
             if p is None:
-                unpriced += 1
+                unpriced.add(svc or "unknown service")
             else:
                 total += p
             dv = c.get("declared_value")
@@ -3835,8 +3838,12 @@ def people_page(a, owner):
         vline = (f'<span class="lbl2">Est. value · graded</span><b>${vtot:,.0f} {vcur}</b>'
                  if vtot else "")
         vnote = f'<br>values = PSA estimate or last sale · as of {html.escape(vas_of)}' if vline else ""
+        # the + says the total is short a tier; the title names which one, so
+        # the missing price can be added to PSA_PRICES without guessing
+        plus = (f'<span title="no price for '
+                f'{html.escape(", ".join(sorted(unpriced)))}">+</span>') if unpriced else ""
         est = (f'<div class="synced">Est. grading cost<b>${total:,.0f}'
-               f'{"+" if unpriced else ""} CAD</b>{ins}{vline}'
+               f'{plus} CAD</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     back = '<a class="view" id="backlk" href="/">← Back</a>'
