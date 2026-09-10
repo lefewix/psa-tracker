@@ -2566,7 +2566,10 @@ def strip_html(s, fronts):
         # reads the href, so strip tiles open the same zoom overlay
         tiles.append(f'<a href="{big}"><img loading="lazy" src="{src}" alt="{alt}"></a>')
     if more:
-        tiles.append(f'<a class="morechip" href="/sub/{html.escape(s["sub_number"])}">'
+        # "+5" alone is not a name: say what the five are and where they live
+        sn = html.escape(s["sub_number"])
+        tiles.append(f'<a class="morechip" href="/sub/{sn}" '
+                     f'aria-label="{more} more cards in submission #{sn}">'
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
@@ -2630,7 +2633,8 @@ def search_box(value="", owner="", ph=None):
             'stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'
             '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>')
     return (f'<div class="searchwrap">{icon}<input class="searchbar" id="q" type="search" '
-            f'autocomplete="off" spellcheck="false" placeholder="{html.escape(ph)}" '
+            f'autocomplete="off" spellcheck="false" enterkeyhint="search" '
+            f'placeholder="{html.escape(ph)}" '
             f'aria-label="{html.escape(ph)}" data-owner="{html.escape(owner)}" '
             f'role="combobox" aria-expanded="false" aria-autocomplete="list" '
             f'aria-controls="preview" '
@@ -3378,12 +3382,15 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     # readonly until OWNER_JS unlocks it: one click opens the person's page,
     # a second click (or typing) switches the field into edit mode
+    # ONE sentence, tooltip and accessibility tree alike: sighted and screen
+    # reader users were being told two different things about the same control
+    ownlbl = (f"Owner: {owner}. Click or press Enter to open their cards, "
+              "click again or type to rename.") if owner else ""
     own_input = ("" if customer else
                  f'<div class="ownrow"><input class="own" data-cert="{cid}" value="{owner}" readonly'
-                 + (f' title="Click opens their page · click twice to edit"'
-                    f' aria-label="Owner: {owner}. Press Enter to open their cards, type to rename."'
+                 + (f' title="{ownlbl}" aria-label="{ownlbl}"'
                     if owner else ' aria-label="Add owner name"')
-                 + ' placeholder="+ owner name">'
+                 + ' enterkeyhint="done" placeholder="+ owner name">'
                    '<button type="button" class="ownedit" aria-label="Edit owner tag">'
                    '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">'
                    '<path d="M11.1 2.2a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3L6.4 12.3l-3.1.8.8-3.1z" '

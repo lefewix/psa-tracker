@@ -74,6 +74,10 @@ def build_fixture(base):
     cards = [("99000001", "14900001", "99000001", "Charizard 4/102 Base Set Holo", 1, "10"),
              ("99000002", "14900001", "99000002", "Pikachu VMAX 044/185", 2, "9"),
              ("spec:14900002:1", "14900002", "", "Umbreon VMAX 215/203", 1, "")]
+    # nine imaged cards on one sub, so its filmstrip overflows STRIP_MAX and
+    # renders the "+N" chip the overflow-naming check needs (T56)
+    cards += [("9700000%d" % i, "14900003", "9700000%d" % i,
+               "Snorlax %d/165" % i, i, "") for i in range(1, 10)]
     for cid, num, cert_no, name, line, grade in cards:
         c.execute("INSERT INTO cards (cert_id, sub_number, cert_no, name, line_number, "
                   "front_thumb, back_thumb, grade, declared_value, updated_at) "
@@ -450,6 +454,19 @@ def main():
                         if b"/thumbnail/" not in src:
                             fails.append("GET /: a filmstrip tile is not the "
                                          f"thumbnail asset ({src!r})")
+
+                # --- the overflow chip is NAMED: "+2" alone tells a screen
+                # reader neither what the two are nor where they live (T56)
+                chip = re.search(rb'<a class="morechip"[^>]*>', body)
+                if not chip:
+                    fails.append("GET /: no filmstrip overflow chip")
+                elif (b'aria-label="2 more cards in submission #14900003"'
+                      not in chip.group(0)):
+                    fails.append("GET /: the overflow chip is named only by its count")
+
+                # --- a touch keyboard gets Search on the search box (T56)
+                if b'enterkeyhint="search"' not in body:
+                    fails.append("GET /: the search box carries no enter-key hint")
             # --- a dead PSA link is said out loud: run_scan writes .last_ok
             # after every successful scan, the dashboard reads its stamp (T24)
             okf = os.path.join(base, "accounts", "demo", ".last_ok")
@@ -582,8 +599,22 @@ def main():
                 fails.append("POST /owner (foreign Origin): the tag was written anyway")
             if call(url, "/owner", cookie, tag, {"Origin": url})[0] != 204:
                 fails.append("POST /owner (own Origin): refused, the page's own posts break")
-            check("GET /sub/14900001 (after the page's own POST)", "/sub/14900001",
-                  (200,), cookie, must_have="Mallory")
+            body = check("GET /sub/14900001 (after the page's own POST)", "/sub/14900001",
+                         (200,), cookie, must_have="Mallory")
+            # --- the owner tag says ONE sentence, tooltip and accessibility
+            # tree alike, and hints Done on a touch keyboard (T56)
+            own = re.search(rb'<input class="own"[^>]*>', body or b"")
+            sent = (b"Owner: Mallory. Click or press Enter to open their cards, "
+                    b"click again or type to rename.")
+            if not own:
+                fails.append("GET /sub/14900001: no owner tag")
+            else:
+                o = own.group(0)
+                if b'title="' + sent + b'"' not in o or b'aria-label="' + sent + b'"' not in o:
+                    fails.append("GET /sub/14900001: the owner tag's tooltip and "
+                                 "accessible name are not the same sentence")
+                if b'enterkeyhint="done"' not in o:
+                    fails.append("GET /sub/14900001: the owner tag carries no enter-key hint")
 
             # --- a tag for a cert that has no card is refused, so owners.db
             # never grows an orphan row (T32)

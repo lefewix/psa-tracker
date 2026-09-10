@@ -901,8 +901,9 @@ border, inherited type. Hover reveals a hairline underline; focus turns the unde
 a successful save flashes `--ok` green and a failure alert-red. Behavior is load-bearing:
 **Enter saves and never navigates** — but that governs the *editing* state only. On a filled
 readonly tag, Enter visits that person's page, mirroring the click; the tag's own label says
-so ("Press Enter to open their cards, type to rename"). A click on a tag on that person's own
-page is a no-op. Under `pointer:coarse` a pencil sits beside the field as the edit affordance,
+so ("Click or press Enter to open their cards, click again or type to rename"). A click on a tag on that person's own
+page is a no-op. Tooltip and accessible name are the **same one sentence**, never two different
+sets of instructions. Under `pointer:coarse` a pencil sits beside the field as the edit affordance,
 since a tap navigates instantly; it hides on `.own:focus` so the underline runs full width
 while editing, never on the row's `:focus-within`, which swallowed its own tap.
 
