@@ -18,6 +18,7 @@ SITE_PW = "smoke-site-pw"
 SET_PW = "smoke-settings-pw"
 SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
 HUB_KEY = "smoke-hub-key"
+MAX_FAILS = 8  # app.py's login budget, per IP and site-wide
 NOW = "2026-01-01T00:00:00+00:00"
 
 
@@ -108,12 +109,14 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
 OPENER = urllib.request.build_opener(NoRedirect)
 
 
-def call(base_url, path, cookie=None, form=None):
+def call(base_url, path, cookie=None, form=None, headers=None):
     """-> (status, body bytes, headers). Raises on a dropped connection."""
     data = urllib.parse.urlencode(form).encode() if form else None
     r = urllib.request.Request(base_url + path, data=data)
     if cookie:
         r.add_header("Cookie", cookie)
+    for k, v in (headers or {}).items():
+        r.add_header(k, v)
     try:
         with OPENER.open(r, timeout=30) as resp:
             return resp.status, resp.read(), resp.headers
@@ -137,9 +140,10 @@ def main():
             print("FAIL  app.py did not start:\n" + open(logpath).read().strip())
             return 1
 
-        def check(label, path, want, cookie=None, form=None, must_have=None):
+        def check(label, path, want, cookie=None, form=None, must_have=None,
+                  headers=None):
             try:
-                code, body, _ = call(url, path, cookie, form)
+                code, body, _ = call(url, path, cookie, form, headers)
             except Exception as e:  # dropped connection = a crashed handler
                 fails.append(f"{label}: no reply ({e.__class__.__name__}: {e})")
                 return b""
@@ -203,6 +207,24 @@ def main():
             check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
             check("GET /nope (unknown path)", "/nope", (404,), cookie)
             check("GET /logout", "/logout", (302,), cookie)
+
+            # --- login throttle: a spoofed header neither locks anyone else out
+            # nor buys a fresh budget (T4). Keep before the db damage below.
+            check("POST /login (wrong, spoofed header)", "/login", (200,),
+                  form={"password": "nope"}, headers={"X-Forwarded-For": "9.9.9.9"},
+                  must_have="Incorrect password")
+            code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+            if code != 302 or not (hdrs.get("Set-Cookie") or ""):
+                fails.append("POST /login after a spoofed-header failure: "
+                             f"got {code}, another visitor is locked out")
+            for i in range(MAX_FAILS):  # a rotating header still fills one budget
+                check(f"POST /login (rotating header {i})", "/login", (200,),
+                      form={"password": "nope"},
+                      headers={"X-Forwarded-For": f"10.0.0.{i}"},
+                      must_have="Incorrect password")
+            check("POST /login (rotating header, locked)", "/login", (200,),
+                  form={"password": "nope"}, headers={"X-Forwarded-For": "10.0.1.1"},
+                  must_have="Too many attempts")
 
             # --- a failed read is a 500 page, never an empty account (T3)
             hub = "/api/hub.json?key=" + HUB_KEY

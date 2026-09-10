@@ -491,28 +491,49 @@ _FAILS = {}  # ip -> [count, window_start]
 _FAILS_LOCK = threading.Lock()
 MAX_FAILS = 8
 FAIL_WINDOW = 900  # 15 min
+# Backstop: a guess spread over many IPs never trips the per-IP counter, so the
+# same budget also applies site-wide. Any successful login clears it, so real
+# people fumbling the password never lock the site.
+_ALL_FAILS = [0, 0.0]  # count, window_start
+
+def _evict(d, window):
+    """Drop stale entries once a dict of ip -> [count, start] grows large."""
+    if len(d) > 4000:
+        cut = time.time() - window
+        for k in [k for k, v in d.items() if v[1] < cut]:
+            del d[k]
 
 def login_locked(ip):
     with _FAILS_LOCK:
+        now = time.time()
+        if _ALL_FAILS[0] >= MAX_FAILS and now - _ALL_FAILS[1] <= FAIL_WINDOW:
+            return True
         rec = _FAILS.get(ip)
         if not rec:
             return False
-        if time.time() - rec[1] > FAIL_WINDOW:
+        if now - rec[1] > FAIL_WINDOW:
             del _FAILS[ip]
             return False
         return rec[0] >= MAX_FAILS
 
 def login_fail(ip):
     with _FAILS_LOCK:
+        now = time.time()
+        if now - _ALL_FAILS[1] > FAIL_WINDOW:
+            _ALL_FAILS[:] = [1, now]
+        else:
+            _ALL_FAILS[0] += 1
         rec = _FAILS.get(ip)
-        if rec and time.time() - rec[1] <= FAIL_WINDOW:
+        if rec and now - rec[1] <= FAIL_WINDOW:
             rec[0] += 1
         else:
-            _FAILS[ip] = [1, time.time()]
+            _FAILS[ip] = [1, now]
+        _evict(_FAILS, FAIL_WINDOW)
 
 def login_ok(ip):
     with _FAILS_LOCK:
         _FAILS.pop(ip, None)
+        _ALL_FAILS[0] = 0
 
 # Light per-IP cap on /suggest so a valid session can't hammer full-table scans.
 _SUG = {}  # ip -> [count, window_start]
@@ -526,6 +547,7 @@ def suggest_allowed(ip):
         if not rec or now - rec[1] > 10:
             _SUG[ip] = [1, now]
             return True
+        _evict(_SUG, 10)
         rec[0] += 1
         return rec[0] <= SUGGEST_MAX
 
@@ -3597,8 +3619,16 @@ class H(BaseHTTPRequestHandler):
         print(f"{self.address_string()} {fmt % a}", flush=True)
 
     def client_ip(self):
+        """Throttle key. Cloudflare writes CF-Connecting-IP; in X-Forwarded-For
+        only the LAST hop is written by the proxy in front of us, every earlier
+        hop is text the client sent, so never key on the first one."""
+        cf = self.headers.get("CF-Connecting-IP", "").strip()
+        if cf:
+            return cf[:64]
         xff = self.headers.get("X-Forwarded-For", "")
-        return xff.split(",")[0].strip() if xff else self.address_string()
+        if xff.strip():
+            return xff.rsplit(",", 1)[-1].strip()[:64]
+        return self.client_address[0]
 
     def authed(self):
         """Return (account dict, customer_email) for this session, or None.
