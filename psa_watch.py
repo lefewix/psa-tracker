@@ -297,6 +297,7 @@ def parse_completed_lines(body):
     for ln in (summary.get("submissionLines") or []):
         spec = ln.get("specId")
         if spec is None:
+            log(f"completed line {ln.get('lineNumber')} skipped: no specId")
             continue
         qty = int(ln.get("quantity") or 1)
         # declaredValue is the LINE total (per-card value × quantity) - store per card
@@ -484,6 +485,7 @@ def refresh_cards(conn, subs, prev=None, full=False):
     prev = prev or {}
     total = 0
     skipped = 0
+    short = 0
     # seen_at is always a UTC isoformat, so a string compare is the date math
     grade_cutoff = (datetime.now(timezone.utc)
                     - timedelta(days=GRADE_GRACE_DAYS)).isoformat(timespec="seconds")
@@ -541,6 +543,10 @@ def refresh_cards(conn, subs, prev=None, full=False):
             if cards:
                 upsert_cards(conn, sub, cards)
                 total += len(cards)
+                want = s.get("card_count") or 0
+                if want and len(cards) != want:
+                    short += 1
+                    log(f"sub {sub}: stored {len(cards)} cards, PSA counts {want}")
                 # give the dashboard a cover for subs whose orders.list had no image
                 if not s.get("thumb"):
                     front = next((c["front_thumb"] for c in cards if c["front_thumb"]), "")
@@ -551,7 +557,8 @@ def refresh_cards(conn, subs, prev=None, full=False):
         except Exception as e:
             log(f"detail {sub} error: {e}")
         time.sleep(0.3)
-    log(f"cards refreshed: {total}" + (f" ({skipped} stable shipped subs skipped)" if skipped else ""))
+    log(f"cards refreshed: {total}" + (f" ({skipped} stable shipped subs skipped)" if skipped else "")
+        + (f", {short} sub(s) off PSA's card count" if short else ""))
 
 def discord_mentions(conn, sub_numbers):
     """Distinct Discord IDs to @-mention: owners whose cards sit in the changed
