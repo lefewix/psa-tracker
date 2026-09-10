@@ -217,6 +217,11 @@ def main():
             finally:
                 lock.rollback()
                 lock.close()
+            if os.geteuid() != 0:  # root reads a 000 file anyway
+                os.chmod(dbf, 0)
+                check("GET / (db unreadable)", "/", (500,), cookie,
+                      must_have="Something went wrong")
+                os.chmod(dbf, 0o644)
             # destroys the fixture db: keep these last
             with open(dbf, "wb") as f:
                 f.write(os.urandom(40960))

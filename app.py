@@ -656,12 +656,13 @@ def _ro_conn(a):
     conn.row_factory = sqlite3.Row
     return conn
 
-def _first_run(e):
+def _first_run(a, e):
     """True only for the fresh-account case: no psa.db yet, or no tables in it.
-    A locked or corrupt db is a failure and must reach the 500 handler, not
-    render as an empty account."""
+    A locked, unreadable or corrupt db is a failure and must reach the 500
+    handler, not render as an empty account."""
     m = str(e)
-    return "no such table" in m or "unable to open database file" in m
+    return "no such table" in m or ("unable to open database file" in m
+                                    and not os.path.exists(a["db"]))
 
 def load_subs(a):
     try:
@@ -671,7 +672,7 @@ def load_subs(a):
         conn.close()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as e:  # fresh account: no psa.db until first scan
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return []
 
@@ -682,7 +683,7 @@ def load_sub(a, sub_number):
         conn.close()
         return dict(row) if row else None
     except sqlite3.OperationalError as e:
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return None
 
@@ -694,7 +695,7 @@ def load_cards(a, sub_number):
         conn.close()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as e:
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return []
 
@@ -705,7 +706,7 @@ def load_all_cards(a):
         conn.close()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as e:
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return []
 
@@ -721,7 +722,7 @@ def sub_fronts(a):
                             "ORDER BY line_number").fetchall()
         conn.close()
     except sqlite3.OperationalError as e:
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return {}
     out = {}
@@ -839,7 +840,7 @@ def load_cards_by_certs(a, cert_ids):
                 f"FROM cards WHERE cert_id IN ({marks})", chunk)]
         conn.close()
     except sqlite3.OperationalError as e:
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return []
     # restore load_all_cards' global order: newest sub first, then line order
@@ -864,7 +865,7 @@ def search_cards_sql(a, ql, limit):
         conn.close()
         return [dict(r) for r in rows]
     except sqlite3.OperationalError as e:
-        if not _first_run(e):
+        if not _first_run(a, e):
             raise
         return []
 
