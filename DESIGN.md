@@ -584,7 +584,9 @@ so graded and ungraded neighbours in one row share a baseline.
 Spacing rhythm runs on a coarse 2 / 4 / 7 / 10 / 14 / 18 / 24 ladder: 2px between a title
 and its subtitle, 7–10px inside chips, 12–14px between row elements, 18–24px between sections.
 
-**Breakpoint:** one, at 640px.
+**Breakpoint:** one, at 640px. Under it the page-header `.synced` block goes full width and
+left aligned, so its `.estnote` drops the `margin-left: auto` that right-aligns the 34ch measure
+on desktop.
 
 ### Named Rules
 **The Current-Stage-Only Rule.** Under 640px only the *current* stage is ever named. The

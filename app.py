@@ -1736,6 +1736,10 @@ button:disabled{opacity:.5;cursor:default}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
  .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:12px}
+ /* the 34ch measure keeps its width here but not its right edge: with the
+    block full-width and left-aligned, margin-left:auto floated the note
+    into the middle of the column */
+ .hrow>.synced .estnote{margin-left:0}
  /* the segmented control never breaks into a second row - and down to 360px it
     is NOT an overflow box either: three pills measure ~247px and fit any sheet
     to ~360, so nothing here can actually scroll, and staying un-clipped is what

@@ -396,6 +396,11 @@ def main():
                 fails.append("GET /app.css: the header figure is off the 17/650 data rung")
             if b".synced b{display:block;font-size:13px" not in css:
                 fails.append("GET /app.css: the toolbar freshness stamp left 13px")
+            # under 640 the header note goes full width and left aligned, so its
+            # right-align margin must be cleared or it floats mid column (T79)
+            if b".hrow>.synced .estnote{margin-left:0}" not in css:
+                fails.append("GET /app.css: the header note keeps its right-align "
+                             "margin on phones")
             # a tap that lands mid scroll must fall through the corner orbs to
             # the owner pencil or View card underneath, on touch only (T60)
             if b"html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none" \
