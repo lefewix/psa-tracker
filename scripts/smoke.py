@@ -10,7 +10,7 @@ the route.
 
   python3 scripts/smoke.py
 """
-import hashlib, json, os, re, shutil, signal, socket, sqlite3, subprocess
+import gzip, hashlib, json, os, re, shutil, signal, socket, sqlite3, subprocess
 import sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -319,6 +319,13 @@ def main():
                  for _ in range(10)}
         if len(shots) != 1:
             fails.append("GET /app.css: ten fetches did not return identical bytes")
+        elif css:
+            try:
+                ok = gzip.decompress(shots.pop()) == css
+            except OSError:
+                ok = False  # not gzip at all
+            if not ok:
+                fails.append("GET /app.css: the gzip bundle is not the stylesheet")
         for label, hdrs in (("/logo", ghdrs),
                             ("/app.css", call(url, "/app.css")[2]),
                             ("/favicon.png", call(url, "/favicon.png")[2])):
