@@ -375,6 +375,10 @@ def main():
                 fails.append("GET /app.css: archived cards no longer read as past")
             if b".card.arch{opacity" in css or b"archview .card.arch" in css:
                 fails.append("GET /app.css: an archived card is washed with opacity again")
+            # a held sub's bar drops to the muted grey, so it stops painting
+            # full accent under the red hold pill (T75)
+            if b".card.hold .bar i{background:var(--m1)}" not in css:
+                fails.append("GET /app.css: a held card still paints an accent stage bar")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
             # a tap that lands mid scroll must fall through the corner orbs to
@@ -737,6 +741,11 @@ def main():
             held = row(b"14900002")
             if b'class="pill hold"' not in held or b"Back " + soon.encode() not in held:
                 fails.append("GET /: a held sub does not show both the hold and its return date")
+            # the row wears the hold class the muted-bar rule keys off (T75)
+            if not held.startswith(b' hold"'):
+                fails.append("GET /: a held row carries no hold class, its bar stays accent")
+            if row(b"14900001").startswith(b' hold"'):
+                fails.append("GET /: a live row is marked held, its bar is muted for nothing")
             late = row(b"14900003")
             if b'class="pill pending"' not in late or b"Was due " + eta_text(ETA_PAST).encode() not in late:
                 fails.append("GET /: a blown ETA does not read as Was due in the muted pill")

@@ -692,7 +692,9 @@ Borders are always exactly 1px and always `--hair` (or `--hair2` in a settings d
 There is no second border weight and no colored border except the owner tag's focus underline
 and its transient save states.
 
-Every progress bar is a 4px capsule (2px radius) — track plus fill, nothing else.
+Every progress bar is a 4px capsule (2px radius) — track plus fill, nothing else. The fill is
+`--bar` only while the sub is moving: an archived (`.card.arch`) or held (`.card.hold`) row
+drops it to `--m1`, so grey agrees with the red hold pill instead of arguing with it.
 
 ### Named Rules
 **The Hairline Rule.** One border weight (1px) and one border color (`--hair`) across the

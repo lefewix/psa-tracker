@@ -1324,7 +1324,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    track (raw steel blue measured 2.48:1 against the dark track). */
 .bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
  transition:width .55s cubic-bezier(.23,1,.32,1)}
-.card.arch .bar i{background:var(--m1)}
+/* a held sub is not advancing and an archived one is done, so neither earns the
+   accent fill: grey agrees with the red hold pill instead of arguing with it */
+.card.arch .bar i,.card.hold .bar i{background:var(--m1)}
 /* the row's one link is a visible quiet capsule at the stage line's far end
    (App Store's row action, owner-tuned 2026-08-08). Label is --ac-hot, the
    accent shade already clamped 4.5:1 against --surface3 in both themes.
@@ -2687,7 +2689,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     # role=list #list, and the sub number is that row's heading. Zero visual
     # delta - the global reset zeroes h2 margins and .num supplies every type
     # value (17/650/-.012em/1.3), same as the person page's group heading.
-    return f"""<div class="card{' arch' if archived else ''}" role="listitem" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
+    return f"""<div class="card{' arch' if archived else ''}{' hold' if s['on_hold'] else ''}" role="listitem" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
 <div class="meta">{html.escape(s['service'])} · {ncards} card{"s" if ncards != 1 else ""}</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
