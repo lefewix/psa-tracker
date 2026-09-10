@@ -545,9 +545,9 @@ def suggest_allowed(ip):
         rec = _SUG.get(ip)
         now = time.time()
         if not rec or now - rec[1] > 10:
+            _evict(_SUG, 10)
             _SUG[ip] = [1, now]
             return True
-        _evict(_SUG, 10)
         rec[0] += 1
         return rec[0] <= SUGGEST_MAX
 
