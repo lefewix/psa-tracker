@@ -13,6 +13,7 @@ UNIT_DIR=${PSA_UNIT_DIR:-/etc/systemd/system}
 OUT=$ROOT/backups
 KEEP=14
 mkdir -p "$OUT"
+chmod 700 "$OUT"  # the archives hold account.env and the DBs: owner only
 ts=$(date +%Y%m%d_%H%M%S)
 
 stage=$(mktemp -d)
@@ -44,6 +45,8 @@ for f in "$ENV_FILE" \
   cp -a "$f" "$stage/${f#/}"
 done
 
-tar -czf "$OUT/auto-$ts.tar.gz" -C "$stage" .
+# umask only around the tar: a global one would also cut the staged dir modes,
+# which the restore untars back over /opt and /etc.
+(umask 077; tar -czf "$OUT/auto-$ts.tar.gz" -C "$stage" .)
 ls -1t "$OUT"/auto-*.tar.gz | tail -n +$((KEEP + 1)) | while read -r old; do rm -f "$old"; done
 echo "backup done: auto-$ts.tar.gz ($(du -h "$OUT/auto-$ts.tar.gz" | cut -f1)), $(ls "$OUT"/auto-*.tar.gz | wc -l) kept"

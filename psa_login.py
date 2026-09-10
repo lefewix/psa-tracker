@@ -59,9 +59,10 @@ def write_cookie(cookie):
     if not found:
         out.append("PSA_COOKIE=" + quoted)
     tmp = ENV_FILE + ".tmp"
-    with open(tmp, "w") as f:
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)  # a leftover tmp from a crashed run keeps its old mode
+    with os.fdopen(fd, "w") as f:
         f.write("\n".join(out) + "\n")
-    os.chmod(tmp, 0o600)
     os.replace(tmp, ENV_FILE)
 
 
@@ -152,8 +153,8 @@ def do_login():
     if not EMAIL or not PASSWORD:
         log("PSA_LOGIN_EMAIL / PSA_LOGIN_PW not set - aborting")
         return 2
-    os.makedirs(DEBUG_DIR, exist_ok=True)
-    os.makedirs(PROFILE_DIR, exist_ok=True)
+    os.makedirs(DEBUG_DIR, mode=0o700, exist_ok=True)
+    os.makedirs(PROFILE_DIR, mode=0o700, exist_ok=True)
     with sync_playwright() as p:
         def launch():
             return p.chromium.launch_persistent_context(
