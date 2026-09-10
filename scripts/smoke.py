@@ -209,8 +209,9 @@ def keepalive_checks(port, fails):
 
 
 def copy_checks(fails):
-    """One typographic vocabulary in the shipped copy: no em dash anywhere, and
-    the curly ’ is the only apostrophe encoding (T66)."""
+    """One typographic vocabulary in the shipped copy: no em dash anywhere, the
+    curly ’ is the only apostrophe encoding (T66), one name for the settings
+    password and one word for the PSA fetch (T67)."""
     src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
     for dash in ("—", "\\u2014"):
         if dash in src:
@@ -218,6 +219,12 @@ def copy_checks(fails):
     for ent in ("&#39;", "&#x27;", "&apos;", "&rsquo;", "&#8217;", "\\u2019"):
         if ent in src:
             fails.append(f"app.py: {ent} is a second apostrophe encoding")
+    for phrase in ("Admin password", "admin password"):
+        if phrase in src:
+            fails.append(f"app.py: {phrase!r} is back, the panel is the settings password")
+    for phrase in ("Last refreshed", "hourly scan", "Scans are", "scans stop"):
+        if phrase in src:
+            fails.append(f"app.py: {phrase!r} calls the sync something else")
 
 
 def setup_instance_checks(fails):

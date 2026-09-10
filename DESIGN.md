@@ -542,6 +542,10 @@ letter-spaced label caps, no kickers or eyebrows anywhere in the system.
 **The One Punctuation Rule.** Shipped copy carries no em dash: a period, a colon or a comma
 instead. The curly `’` is the only apostrophe, entity forms never ship.
 
+**The One Word Per Thing Rule.** The PSA fetch is a *sync* in every string (never scan, which
+is the card image, and never refresh, which is the browser reloading); the credential that opens
+/settings is the *settings password* on the gate, in the panel and in every error.
+
 **The Tabular Rule.** `font-variant-numeric: tabular-nums` is set globally on `body`. Values,
 dates, and lot numbers align in a column without per-element intervention.
 

@@ -621,14 +621,14 @@ def discord_widget(a, owner):
         inner = (f'<div class="srow" style="margin-top:16px"><span class="dstate">Discord pings on</span>'
                  f'<button type="button" class="sbtn sdel f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button></div>'
                  f'<div class="dhint">You’ll be @-mentioned in the site’s Discord channel '
-                 f'when a sub with your cards updates.</div>')
+                 f'when a submission with your cards updates.</div>')
     else:
         inner = (f'<div class="srow" style="margin-top:16px">'
                  f'<input type="password" id="did" placeholder="Discord user ID" '
                  f'aria-label="Discord user ID" '
                  f'autocomplete="off" inputmode="numeric" maxlength="20">'
                  f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Enable</button></div>'
-                 f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a sub with '
+                 f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a submission with '
                  f'your cards updates. Discord: Settings &rarr; Advanced &rarr; Developer Mode, then '
                  f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
     return (btn + f'<div class="smodal" id="dmodal" role="dialog" aria-modal="true" '
@@ -2198,7 +2198,7 @@ def settings_page(msg="", err="", only=""):
     """Four panels, styled like the rest of the site. Accounts panel: chips by
     email; clicking one opens a popup (new PSA password / unlink - the email
     never changes), Add opens a popup asking only PSA email + password (label
-    and a one-time site password are generated). Site/admin passwords and the
+    and a one-time site password are generated). Site and settings passwords and the
     per-account webhook have their own panels. All credentials write-only.
     only=<account id> renders that one account alone (a gear-mode session is
     one account's admin, not the instance's)."""
@@ -2247,7 +2247,7 @@ def settings_page(msg="", err="", only=""):
             ometa = ("Signing in now. The code is on its way to the account’s phone; "
                      "the field for it appears here as soon as PSA sends it.")
         elif ost["needed"]:
-            ometa = f"PSA is asking to verify this sign-in (since {html.escape(ost['needed'])}). Scans are paused until a code goes through."
+            ometa = f"PSA is asking to verify this sign-in (since {html.escape(ost['needed'])}). Syncs are paused until a code goes through."
         else:
             ometa = "Only needed when PSA asks to verify a new sign-in."
         if ost["waiting"]:
@@ -2288,13 +2288,13 @@ def settings_page(msg="", err="", only=""):
 </div>""")
     add_btn = '<button type="button" class="f" id="saddbtn">Add account</button>'
     pwpanel = "" if only else """<div class="card sblock">
-<h2 class="stitle">Admin password</h2>
+<h2 class="stitle">Settings password</h2>
 <div class="meta">opens this settings page</div>
 <form method="POST" action="/settings/password" class="srow">
-<input name="new_pw" type="password" placeholder="New admin password"
- aria-label="New admin password" autocomplete="new-password">
+<input name="new_pw" type="password" placeholder="New settings password"
+ aria-label="New settings password" autocomplete="new-password">
 <input name="confirm_pw" type="password" placeholder="Repeat"
- aria-label="Repeat new admin password" autocomplete="new-password">
+ aria-label="Repeat new settings password" autocomplete="new-password">
 <button type="submit" class="fillbtn sbtn">Save</button></form>
 </div>"""
     note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err else
@@ -2309,7 +2309,7 @@ def settings_page(msg="", err="", only=""):
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
-<div class="sub">Changes apply from the next hourly scan.</div></div></div>
+<div class="sub">Changes apply from the next hourly sync.</div></div></div>
 {note}
 <div class="card sblock" style="margin-top:22px">
 <h2 class="stitle">PSA accounts</h2>
@@ -2342,7 +2342,7 @@ def settings_page(msg="", err="", only=""):
  aria-label="New PSA password" autocomplete="new-password">
 <button type="submit" class="fillbtn sbtn">Save</button></form>
 <div class="sdanger"><form method="POST" action="/settings/account"
- onsubmit="return confirm('Unlink this account? The site keeps showing its last known data; scans stop until you save a new PSA password.')">
+ onsubmit="return confirm('Unlink this account? The site keeps showing its last known data; syncs stop until you save a new PSA password.')">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="unlink">
 <button type="submit" class="sbtn sdel">Unlink account</button></form></div>
 </div></div>
@@ -2520,7 +2520,7 @@ def first_sync_note(a):
     if env.get("PSA_COOKIE"):
         return ""
     if scan_active():
-        return "First sync with PSA is running. Refresh in a minute or two."
+        return "First sync with PSA is running. Reload in a minute or two."
     return ('Waiting for the first PSA sync (runs at 1am/1pm, or start it now with '
             '<span class="mono">systemctl start psa-scan</span>). Wrong PSA login? '
             '<a href="/setup">Re-enter it</a>.')
@@ -3547,7 +3547,7 @@ def dash_page(a, subs):
     toolbar = (f'<header class="toolbar"><div class="tbtop">'
                f'<div class="brand">{logo_tag()}<div><h1>{html.escape(SITE_TITLE)}</h1>'
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
-               f'<div class="tbend"><div class="synced">Last refreshed<b>{html.escape(stamp)}</b></div>'
+               f'<div class="tbend"><div class="synced">Last synced<b>{html.escape(stamp)}</b></div>'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
                f'</div></div>{search_box()}</header>')
     hint = (f'<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
@@ -3555,7 +3555,7 @@ def dash_page(a, subs):
     # unlinked account: keep serving everything, say why it stopped moving
     if a.get("unlinked"):
         hint = ('<div class="hint" role="status">This account is unlinked, showing its last '
-                'known status from PSA. Scans are off; save a new PSA password in settings '
+                'known status from PSA. Syncs are off; save a new PSA password in settings '
                 'to relink.</div>') + hint
     else:
         # scans run hourly: several missed in a row means the PSA link is down,
@@ -3563,7 +3563,7 @@ def dash_page(a, subs):
         stale = scan_stale_hours(a)
         if stale is not None and stale >= 6:
             hint = ('<div class="hint" role="status">Not connecting to PSA. The last '
-                    f'successful check was {int(stale)} hours ago, so these statuses '
+                    f'successful sync was {int(stale)} hours ago, so these statuses '
                     'may be behind.</div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
@@ -3905,7 +3905,7 @@ def customer_page(a, email):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="hrow" style="margin-top:14px"><div><div class="brand">{logo_tag()}<h1>Your cards</h1></div>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
-<div class="synced custrow"><div class="custout">Last refreshed<b>{html.escape(stamp)}</b></div>
+<div class="synced custrow"><div class="custout">Last synced<b>{html.escape(stamp)}</b></div>
 <a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 <div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
 {archpill}
@@ -4466,7 +4466,7 @@ class H(BaseHTTPRequestHandler):
                     env_set(account_env_path(acct_id),
                             {"PSA_LOGIN_PW": value, "PSA_COOKIE": "", "UNLINKED": ""})
                     return self.see(flash(
-                        msg="PSA password saved. The next hourly scan signs in fresh with it."))
+                        msg="PSA password saved. The next hourly sync signs in fresh with it."))
                 if action == "site_pw":
                     if len(value) < 4:
                         return self.see(flash(err="Site password needs at least 4 characters."))
@@ -4515,7 +4515,7 @@ class H(BaseHTTPRequestHandler):
                             {"UNLINKED": "1", "PSA_COOKIE": "", "PSA_LOGIN_PW": ""})
                     return self.see(flash(
                         msg="Account unlinked. The site keeps showing its last known data; "
-                            "scans stop. Save a new PSA password on it to relink."))
+                            "syncs stop. Save a new PSA password on it to relink."))
                 return self.send(400, "unknown action", "text/plain")
             if scope:  # a gear session administers its own account, no others
                 return self.send(403, "settings auth", "text/plain")
