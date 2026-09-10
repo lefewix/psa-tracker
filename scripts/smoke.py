@@ -208,6 +208,17 @@ def keepalive_checks(port, fails):
         fails.append("POST /nope: the reply does not close the connection")
 
 
+def copy_checks(fails):
+    """One typographic vocabulary in the shipped copy: no em dash anywhere, and
+    the curly ’ is the only apostrophe encoding (T66)."""
+    src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
+    if "—" in src:
+        fails.append("app.py: an em dash is back in the copy")
+    for ent in ("&#39;", "&#x27;", "&apos;", "&rsquo;", "&#8217;"):
+        if ent in src:
+            fails.append(f"app.py: {ent} is a second apostrophe encoding")
+
+
 def setup_instance_checks(fails):
     """An instance whose single account has never connected: the setup form is
     the owner's retry, not a public takeover, and an account.env that stops
@@ -396,6 +407,7 @@ def main():
         check("GET /setup (setup closed)", "/setup", (302,))
         keepalive_checks(port, fails)
         setup_instance_checks(fails)
+        copy_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)
         check("GET /api/hub.json (non-ASCII key)", "/api/hub.json?key=caf%C3%A9", (404,))

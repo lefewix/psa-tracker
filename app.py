@@ -620,7 +620,7 @@ def discord_widget(a, owner):
     if linked:
         inner = (f'<div class="srow" style="margin-top:16px"><span class="dstate">Discord pings on</span>'
                  f'<button type="button" class="sbtn sdel f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button></div>'
-                 f'<div class="dhint">You&rsquo;ll be @-mentioned in the site&rsquo;s Discord channel '
+                 f'<div class="dhint">You’ll be @-mentioned in the site’s Discord channel '
                  f'when a sub with your cards updates.</div>')
     else:
         inner = (f'<div class="srow" style="margin-top:16px">'
@@ -2068,7 +2068,7 @@ def gate_page(error=""):
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{GATE_JS if email_on else ""}{THEME_JS}</body></html>"""
 
-def not_found_page(msg="There's no page at this address.", title="Not found"):
+def not_found_page(msg="There’s no page at this address.", title="Not found"):
     """Branded 404 so a bad link doesn't drop out of the design."""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>
@@ -2080,7 +2080,7 @@ def not_found_page(msg="There's no page at this address.", title="Not found"):
 
 def error_page():
     """Branded 500. A read that failed is a failure, not an empty account."""
-    return not_found_page("The tracker couldn't read your submissions just now. "
+    return not_found_page("The tracker couldn’t read your submissions just now. "
                           "Try again in a minute.", "Something went wrong")
 
 # ---------- settings ----------
@@ -2244,7 +2244,7 @@ def settings_page(msg="", err="", only=""):
             ometa = "Code sent to the phone on this PSA account. Enter it within 10 minutes."
         elif ost["armed"]:
             live = True
-            ometa = ("Signing in now. The code is on its way to the account's phone; "
+            ometa = ("Signing in now. The code is on its way to the account’s phone; "
                      "the field for it appears here as soon as PSA sends it.")
         elif ost["needed"]:
             ometa = f"PSA is asking to verify this sign-in (since {html.escape(ost['needed'])}). Scans are paused until a code goes through."
@@ -2520,7 +2520,7 @@ def first_sync_note(a):
     if env.get("PSA_COOKIE"):
         return ""
     if scan_active():
-        return "First sync with PSA is running — refresh in a minute or two."
+        return "First sync with PSA is running. Refresh in a minute or two."
     return ('Waiting for the first PSA sync (runs at 1am/1pm, or start it now with '
             '<span class="mono">systemctl start psa-scan</span>). Wrong PSA login? '
             '<a href="/setup">Re-enter it</a>.')
@@ -2531,7 +2531,7 @@ def setup_page(error="", label="", psa_email=""):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)} · Setup</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
-{logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">First-time setup — connect your PSA account</div>
+{logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">First-time setup: connect your PSA account</div>
 <form method="POST" action="/setup" class="setupform">
 <input name="label" placeholder="Store or site name" aria-label="Store or site name"
  maxlength="40" value="{html.escape(label)}">
@@ -2847,8 +2847,8 @@ ARCH_JS = """<script>
       post(sub,on,function(ok){
         b.disabled=false;
         if(!ok){
-          b.textContent="Couldn't "+label.toLowerCase()+" \\u00b7 retry";
-          say("Couldn't "+label.toLowerCase()+" submission "+sub);
+          b.textContent="Couldn’t "+label.toLowerCase()+" \\u00b7 retry";
+          say("Couldn’t "+label.toLowerCase()+" submission "+sub);
           setTimeout(function(){b.textContent=label;},6000);
           back(b,foc);
           return;
@@ -2877,7 +2877,7 @@ ARCH_JS = """<script>
             b.disabled=false;
             if(ok2){flip(row,b,!on);
               say('Submission '+sub+(on?' restored':' archived again'));}
-            else say("Couldn't undo that");
+            else say("Couldn’t undo that");
             /* focus last: a failed undo leaves the row archived, so place()
                hides it and the button with it */
             place(row);
@@ -2956,7 +2956,7 @@ document.querySelectorAll('.own').forEach(function(i){
   }
   function fail(val,old){
     i.classList.add('errsave'); setTimeout(function(){i.classList.remove('errsave')},1200);
-    _say("Couldn't save the owner tag");
+    _say("Couldn’t save the owner tag");
     /* a failed save must say so in words and offer the retry - the red border
        flash alone was invisible to a screen reader and easy to miss at speed */
     chip('undo uerr','Couldn\\u2019t save \\u00b7 Retry',function(){ save(val,old); });
@@ -3554,7 +3554,7 @@ def dash_page(a, subs):
             f'<button type="button" class="hintx" id="hintx" aria-label="Dismiss hint">{ICON_X}</button></div>')
     # unlinked account: keep serving everything, say why it stopped moving
     if a.get("unlinked"):
-        hint = ('<div class="hint" role="status">This account is unlinked — showing its last '
+        hint = ('<div class="hint" role="status">This account is unlinked, showing its last '
                 'known status from PSA. Scans are off; save a new PSA password in settings '
                 'to relink.</div>') + hint
     else:
@@ -3886,7 +3886,7 @@ def customer_page(a, email):
     act = [n for n in order if n not in arch]
     gone = [n for n in order if n in arch]
     body = ("".join(group_html(n, groups[n]) for n in act)
-            or '<div class="empty">No cards yet — they appear once the store receives your submission.</div>')
+            or '<div class="empty">No cards yet. They appear once the store receives your submission.</div>')
     archpill = archsec = ""
     if gone:  # pill under the search bar (see people_page), fold below the groups
         archpill = (f'<div class="filterrow"><button type="button" class="f farch fsolo" '
@@ -3946,7 +3946,7 @@ def search_page(a, q, owner="", customer=False):
         grid = '<div class="empty">Type a card name or number to search.</div>'
     count = f"{total} match" + ("es" if total != 1 else "") if ql else "All cards"
     if total > len(res):
-        count += f" · showing the first {len(res)} — narrow the search"
+        count += f" · showing the first {len(res)}, narrow the search"
     if customer:
         count += " · your cards only"
         back = '<a class="view" href="/">← Your cards</a>'
@@ -4327,7 +4327,7 @@ class H(BaseHTTPRequestHandler):
             num = path.split("/sub/", 1)[1].strip("/")
             sub = load_sub(acct, num)
             if not sub:
-                return self.send(404, not_found_page("That submission isn't here."))
+                return self.send(404, not_found_page("That submission isn’t here."))
             return self.send(200, detail_page(acct, sub))
         self.send(404, not_found_page())
 
@@ -4431,7 +4431,7 @@ class H(BaseHTTPRequestHandler):
             if not env_ok(new_pw):  # same env file, same truncation
                 return self.see(flash(err="The password has to be a single line of text."))
             if new_pw != confirm:
-                return self.see(flash(err="The two passwords don't match."))
+                return self.see(flash(err="The two passwords don’t match."))
             if any(hmac.compare_digest(new_pw.encode(), a["password"].encode()) for a in load_accounts().values()):
                 return self.see(flash(err="That password already routes to an account at the gate."))
             global SETTINGS_HASH
@@ -4440,8 +4440,8 @@ class H(BaseHTTPRequestHandler):
                 env_set(GLOBAL_ENV, {"PSA_SETTINGS_PW_HASH": SETTINGS_HASH})
             except OSError:
                 return self.see(flash(
-                    err=f"Password active for now, but writing {GLOBAL_ENV} failed — it reverts on restart."))
-            return self.see(flash(msg="Settings password changed — it works immediately."))
+                    err=f"Password active for now, but writing {GLOBAL_ENV} failed. It reverts on restart."))
+            return self.see(flash(msg="Settings password changed. It works immediately."))
         if path in ("/settings/account", "/settings/add"):
             if not self.settings_ok():
                 return self.send(403, "settings auth", "text/plain")
@@ -4466,25 +4466,25 @@ class H(BaseHTTPRequestHandler):
                     env_set(account_env_path(acct_id),
                             {"PSA_LOGIN_PW": value, "PSA_COOKIE": "", "UNLINKED": ""})
                     return self.see(flash(
-                        msg="PSA password saved — the next hourly scan signs in fresh with it."))
+                        msg="PSA password saved. The next hourly scan signs in fresh with it."))
                 if action == "site_pw":
                     if len(value) < 4:
                         return self.see(flash(err="Site password needs at least 4 characters."))
                     if value != get("value2"):
-                        return self.see(flash(err="The two site passwords don't match."))
+                        return self.see(flash(err="The two site passwords don’t match."))
                     if is_settings_pw(value):
-                        return self.see(flash(err="That's the settings password — pick a different one."))
+                        return self.see(flash(err="That’s the settings password. Pick a different one."))
                     if any(i != acct_id and hmac.compare_digest(value.encode(), a["password"].encode())
                            for i, a in accts.items()):
                         return self.see(flash(err="That site password already routes to another account."))
                     env_set(account_env_path(acct_id), {"SITE_PASSWORD": value})
-                    return self.see(flash(msg="Site password changed — it works at the gate right away."))
+                    return self.see(flash(msg="Site password changed. It works at the gate right away."))
                 if action == "webhook":
                     if not (value.startswith("https://discord.com/api/webhooks/")
                             or value.startswith("https://discordapp.com/api/webhooks/")):
                         return self.see(flash(err="Webhook must be a discord.com/api/webhooks/… URL."))
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": value})
-                    return self.see(flash(msg="Webhook saved — status changes for this account ping it."))
+                    return self.see(flash(msg="Webhook saved. Status changes for this account ping it."))
                 if action == "webhook_clear":
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": ""})
                     return self.see(flash(msg="Webhook removed."))
@@ -4497,7 +4497,7 @@ class H(BaseHTTPRequestHandler):
                         open(os.path.join(d, "otp.armed"), "w").write(time.strftime("%Y-%m-%dT%H:%M"))
                         start_first_scan()
                         return self.see(flash(
-                            msg="Sign-in started — PSA texts the code to this account's phone in a minute or two. "
+                            msg="Sign-in started. PSA texts the code to this account’s phone in a minute or two. "
                                 "Come back here and enter it."))
                     code = re.sub(r"\D", "", value)
                     if not 4 <= len(code) <= 8:
@@ -4505,7 +4505,7 @@ class H(BaseHTTPRequestHandler):
                     fd = os.open(os.path.join(d, "otp.code"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                     with os.fdopen(fd, "w") as f:
                         f.write(code)
-                    return self.see(flash(msg="Code sent — sign-in finishes within a minute."))
+                    return self.see(flash(msg="Code sent. Sign-in finishes within a minute."))
                 if action == "unlink":
                     # NOT a rename: the site keeps serving the last known data
                     # (dashboard shows an unlinked banner); the scanner skips the
@@ -4514,7 +4514,7 @@ class H(BaseHTTPRequestHandler):
                     env_set(account_env_path(acct_id),
                             {"UNLINKED": "1", "PSA_COOKIE": "", "PSA_LOGIN_PW": ""})
                     return self.see(flash(
-                        msg="Account unlinked — the site keeps showing its last known data; "
+                        msg="Account unlinked. The site keeps showing its last known data; "
                             "scans stop. Save a new PSA password on it to relink."))
                 return self.send(400, "unknown action", "text/plain")
             if scope:  # a gear session administers its own account, no others
@@ -4541,7 +4541,7 @@ class H(BaseHTTPRequestHandler):
             write_account_env(acct_id, label, gen_pw, psa_email, psa_pw)
             start_first_scan()
             return self.see(flash(
-                msg=f"Account added — its site password is {gen_pw} (shown once; "
+                msg=f"Account added. Its site password is {gen_pw} (shown once; "
                     f"visitors type it to see this account, change it under Site password)."))
         if path != "/login":
             return self.send(404, "not found", "text/plain")
@@ -4572,7 +4572,7 @@ class H(BaseHTTPRequestHandler):
                 matched, email = hit, given.strip().lower()
         if not matched:
             login_fail(ip)
-            msg = ("No cards found for that email yet — check with the store "
+            msg = ("No cards found for that email yet. Check with the store "
                    "which email your cards are tagged under." if "@" in given
                    else "Incorrect password.")
             return self.send(200, gate_page(msg))

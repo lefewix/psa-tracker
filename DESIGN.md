@@ -539,6 +539,9 @@ letter-spacing to normal, because tracking inherits and size does not.
 **The Sentence Case Rule.** Every string is sentence case. No `text-transform: uppercase`, no
 letter-spaced label caps, no kickers or eyebrows anywhere in the system.
 
+**The One Punctuation Rule.** Shipped copy carries no em dash: a period, a colon or a comma
+instead. The curly `’` is the only apostrophe, entity forms never ship.
+
 **The Tabular Rule.** `font-variant-numeric: tabular-nums` is set globally on `body`. Values,
 dates, and lot numbers align in a column without per-element intervention.
 
