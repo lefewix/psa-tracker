@@ -1171,14 +1171,14 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
 /* the data rung: 17/650. Segoe/Roboto snap 650 to 600 or 700, both fine - it only has to
-   out-weigh 13/400. */
+   out-weigh 14/400. */
 .num{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
 /* two gray levels: Shipped = ink, in flight = muted. A third, lighter gray cannot clear 4.5:1
-   at 13px, so pending keeps --m1 and its clock icon. No red status pill. */
+   at 14px, so pending keeps --m1 and its clock icon. No red status pill. */
 .pill.shipped{color:var(--txt)}
 .pill.shipped svg{color:var(--m1)}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
@@ -1216,7 +1216,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  align-items:center;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:14px;font-weight:400;color:var(--m1)}
-/* bare 13px text actions: pad the hit box to about 43px and cancel it with an equal negative
+/* bare 14px text actions: pad the hit box to about 43px and cancel it with an equal negative
    margin, so the resting layout is byte-identical. */
 .view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
@@ -1464,7 +1464,7 @@ button:disabled{opacity:.5;cursor:default}
 .gbox{width:min(340px,100%);text-align:center;background:var(--surface);
  border:1px solid var(--hair2);border-radius:20px;padding:28px 22px;
  box-shadow:0 2px 10px var(--shc3)}
-/* the gate is a 300px card, not a page: a title sized for an 820px sheet wraps a two-word
+/* the gate is a narrow card, not a page: a title sized for an 820px sheet wraps a two-word
    name. One step down, and unchanged on phones. */
 .gbox h1{font-size:24px;letter-spacing:-.02em}
 .gbox input{text-align:center}
@@ -1935,11 +1935,12 @@ def flash(msg="", err=""):
     return "/settings?m=" + tok
 
 def settings_page(msg="", err="", only=""):
-    """Four panels, styled like the rest of the site. Accounts panel: chips by
+    """Panels styled like the rest of the site. Accounts panel: chips by
     email; clicking one opens a popup (new PSA password / unlink - the email
     never changes), Add opens a popup asking only PSA email + password (label
-    and a one-time site password are generated). Site and settings passwords and the
-    per-account webhook have their own panels. All credentials write-only.
+    and a one-time site password are generated). The verification code, site
+    password, settings password and per-account webhook each have their own panel.
+    All credentials write-only.
     only=<account id> renders that one account alone (a gear-mode session is
     one account's admin, not the instance's)."""
     accts = load_accounts()

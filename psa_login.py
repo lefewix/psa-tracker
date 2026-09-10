@@ -4,15 +4,16 @@
 PSA/Collectors auth is a confidential OAuth2 client (secret lives server-side), so the
 scraper can't mint tokens itself. Instead we log in the way a human does - drive a real
 Chromium (headful, under xvfb, to pass Cloudflare) through the collectors.com sign-in,
-then harvest the fresh psacard.com cookie and write it into /etc/psa-tracker.env.
+then harvest the fresh psacard.com cookie and write it into the account's env file.
 
-Runs before each scheduled scan so PSA_COOKIE never goes stale.
+run_scan.sh runs this per account at PSA_LOGIN_HOURS, on an empty cookie, on an armed
+OTP, or after a scan reports the cookie dead.
 
-Env (from /etc/psa-tracker.env):
+Env (run_scan.sh sources the global /etc/psa-tracker.env, then accounts/<id>/account.env):
   PSA_LOGIN_EMAIL, PSA_LOGIN_PW   required - the PSA/Collectors account login.
       NOTE: deliberately NOT PSA_PASSWORD - that name is the site's friends-gate password
       (read by app.py). Keep these separate or you'll clobber the site login.
-  PSA_ENV_FILE              default /etc/psa-tracker.env  (where PSA_COOKIE is written)
+  PSA_ENV_FILE              accounts/<id>/account.env  (where PSA_COOKIE is written)
   PLAYWRIGHT_BROWSERS_PATH  set by the wrapper to /opt/psa-tracker/.pw-browsers
 """
 import os, sys, time

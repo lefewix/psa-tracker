@@ -294,6 +294,23 @@ def tracking_checks(fails):
                          f"want {want!r}")
 
 
+def comment_checks(fails):
+    """Comments name what sits beside them: the reading rung is 14px, the gate
+    card and the settings panel count are not pinned to a stale number, and
+    psa_login points at the account env file, not the global one (T96)."""
+    src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
+    for phrase in ("Four panels", "five panels", "300px", "13/400",
+                   "13px text actions"):
+        if phrase in src:
+            fails.append(f"app.py: {phrase!r} is a stale comment (T96)")
+    doc = open(os.path.join(ROOT, "psa_login.py"), encoding="utf-8").read().split('"""')[1]
+    if "account.env" not in doc:
+        fails.append("psa_login.py: the docstring does not name account.env (T96)")
+    if "Env (from /etc/psa-tracker.env)" in doc:
+        fails.append("psa_login.py: the docstring still sends account secrets to "
+                     "the global env (T96)")
+
+
 def setup_instance_checks(fails):
     """An instance whose single account has never connected: the setup form is
     the owner's retry, not a public takeover, and an account.env that stops
@@ -522,6 +539,7 @@ def main():
         env_checks(fails)
         common_checks(fails)
         tracking_checks(fails)
+        comment_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)
         check("GET /api/hub.json (non-ASCII key)", "/api/hub.json?key=caf%C3%A9", (404,))
