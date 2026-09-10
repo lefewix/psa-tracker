@@ -19,6 +19,11 @@
 # stays broken, and one recovery ping when scans come back. A broken PSA login
 # page no longer fails silently.
 #
+# Time budget (2026-09-10): every browser/scan call runs under `timeout`, so one
+# hung account cannot eat the whole run. Login 600s (900s while otp.armed - the
+# code screen itself waits up to 10 min), scan 420s, values 420s. Worst case per
+# account is ~29 min; psa-scan.service's TimeoutStartSec covers the fleet.
+#
 # Env layering: global /etc/psa-tracker.env first, then the account's
 # account.env on top (account wins). PSA_DB/PSA_OWN_DB point the scraper at
 # that account's databases; PSA_ENV_FILE tells psa_login.py where to write the
@@ -75,6 +80,10 @@ PYEOF
       may_login=0; why="PSA wants an SMS code - arm one in Settings"
     fi
 
+    # a login that is going to sit on the code screen needs the 10 min OTP wait
+    login_budget=600
+    [ -f "$dir/otp.armed" ] && login_budget=900
+
     full=$slot
     [ -z "$PSA_COOKIE" ] && full=1
     [ -f "$dir/otp.armed" ] && full=1   # "Send code" pressed in Settings
@@ -83,20 +92,20 @@ PYEOF
       full=0
     fi
     if [ "$full" = 1 ]; then
-      if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
+      if timeout "$login_budget" xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
         set -a; . "$envf"; set +a   # reload: pick up the fresh PSA_COOKIE
       else
         echo "[run_scan] $id: login failed - scanning with existing cookie"
       fi
     fi
-    python3 /opt/psa-tracker/psa_watch.py --once "$@"
+    timeout 420 python3 /opt/psa-tracker/psa_watch.py --once "$@"
     rc=$?
     if [ "$rc" = 3 ] && [ "$full" = 0 ]; then
       if [ "$may_login" = 1 ]; then
         echo "[run_scan] $id: cookie looks dead - browser login + rescan"
-        if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
+        if timeout "$login_budget" xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
           set -a; . "$envf"; set +a
-          python3 /opt/psa-tracker/psa_watch.py --once "$@"
+          timeout 420 python3 /opt/psa-tracker/psa_watch.py --once "$@"
           rc=$?
         fi
       else
@@ -127,7 +136,7 @@ PYEOF
     # Card market values (PSA_VALUES=1 in the env enables; remove to disable).
     # Public cert pages, so failures never block the scan.
     if [ "$full" = 1 ] && [ "$rc" = 0 ] && [ "${PSA_VALUES:-0}" = "1" ]; then
-      xvfb-run -a python3 /opt/psa-tracker/psa_values.py \
+      timeout 420 xvfb-run -a python3 /opt/psa-tracker/psa_values.py \
         || echo "[run_scan] $id: values fetch failed (non-fatal)"
     fi
   )
