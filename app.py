@@ -3162,11 +3162,13 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
    under your thumb. Measured rather than hardcoded: the brand row's height
    depends on the label wrapping. 10 = the bar's resting sticky offset. Only the
    dashboard has a <header class="toolbar">; the .tbq bars are divs and already
-   compact, so they're never touched. */
+   compact, so they're never touched. Short viewports condense too: a landscape
+   phone is WIDER than 640px and only ~390px tall, so the width test alone left
+   the masthead holding a third of the screen. */
 (function(){
   var tb=document.querySelector('header.toolbar'),tt=tb&&tb.querySelector('.tbtop');
   if(!tb||!tt||!window.matchMedia)return;
-  var mq=matchMedia('(max-width:640px)');
+  var mq=matchMedia('(max-width:640px),(max-height:500px)');
   function settop(){
     if(!mq.matches){tb.style.top='';return;}
     var cs=getComputedStyle(tb),g=parseFloat(cs.rowGap);

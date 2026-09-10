@@ -688,6 +688,11 @@ def main():
             if css and b"cursor:zoom-out;overscroll-behavior:contain" not in css:
                 fails.append("GET /app.css: a drag on the lightbox scrim still chains")
 
+            # --- a landscape phone is wider than 640px and half as tall, so the
+            # masthead condenses on height as well as width (T58)
+            if js and b"matchMedia('(max-width:640px),(max-height:500px)')" not in js:
+                fails.append("GET /app.js: the masthead does not condense on a short viewport")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),
