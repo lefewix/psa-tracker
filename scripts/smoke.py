@@ -271,6 +271,13 @@ def main():
                 fails.append("GET /settings (gear session): another account's chip renders")
             if body and b'data-acct="demo"' not in body:
                 fails.append("GET /settings (gear session): the session's own chip is missing")
+            genv = os.path.join(base, "global.env")
+            gwas = open(genv, "rb").read()
+            if call(url, "/settings/password", cookie,
+                    {"new_pw": "hijacked1", "confirm_pw": "hijacked1"})[0] != 403:
+                fails.append("POST /settings/password (gear session): got a reply, want 403")
+            if open(genv, "rb").read() != gwas:
+                fails.append("POST /settings/password (gear session): the settings password was rotated")
 
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.

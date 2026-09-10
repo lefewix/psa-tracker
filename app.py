@@ -2125,6 +2125,16 @@ def settings_page(msg="", err="", only=""):
 <button type="submit" class="fillbtn sbtn">Save</button></form>
 </div>""")
     add_btn = '<button type="button" class="f" id="saddbtn">Add account</button>'
+    pwpanel = "" if only else """<div class="card sblock">
+<h2 class="stitle">Admin password</h2>
+<div class="meta">opens this settings page</div>
+<form method="POST" action="/settings/password" class="srow">
+<input name="new_pw" type="password" placeholder="New admin password"
+ aria-label="New admin password" autocomplete="new-password">
+<input name="confirm_pw" type="password" placeholder="Repeat"
+ aria-label="Repeat new admin password" autocomplete="new-password">
+<button type="submit" class="fillbtn sbtn">Save</button></form>
+</div>"""
     note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err else
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
@@ -2153,16 +2163,7 @@ def settings_page(msg="", err="", only=""):
 {wbar}
 {"".join(wpanes)}
 </div>
-<div class="card sblock">
-<h2 class="stitle">Admin password</h2>
-<div class="meta">opens this settings page</div>
-<form method="POST" action="/settings/password" class="srow">
-<input name="new_pw" type="password" placeholder="New admin password"
- aria-label="New admin password" autocomplete="new-password">
-<input name="confirm_pw" type="password" placeholder="Repeat"
- aria-label="Repeat new admin password" autocomplete="new-password">
-<button type="submit" class="fillbtn sbtn">Save</button></form>
-</div>
+{pwpanel}
 <div class="card sblock">
 <h2 class="stitle">Site password</h2>
 <div class="meta">what visitors type to enter the site</div>
@@ -3678,9 +3679,6 @@ class H(BaseHTTPRequestHandler):
         got = self.authed()
         return got[0]["id"] if (SETTINGS_GEAR and got and not got[1]) else ""
 
-    def spage(self, msg="", err=""):
-        return settings_page(msg, err, only=self.settings_scope())
-
     def _gz(self, data):
         """gzip a text response when the client accepts it. The dashboard is
         ~106KB raw and 9KB gzipped, and it repeats every navigation under
@@ -3863,7 +3861,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, setup_page())
         if path == "/settings":
             if self.settings_ok():  # store admins walk straight in
-                return self.send(200, self.spage())
+                return self.send(200, settings_page(only=self.settings_scope()))
             if not SETTINGS_HASH:
                 return self.send(404, "not found", "text/plain")
             return self.send(200, settings_gate())
@@ -3996,26 +3994,28 @@ class H(BaseHTTPRequestHandler):
             return self.send(302, "", extra=[("Location", "/settings"),
                                              ("Set-Cookie", settings_cookie_hdr())])
         if path == "/settings/password":
-            if not self.settings_ok():
+            # a scoped session must not mint the instance credential and log
+            # back in with it, unscoped
+            if not self.settings_ok() or self.settings_scope():
                 return self.send(403, "settings auth", "text/plain")
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
             new_pw = (form.get("new_pw") or [""])[0]
             confirm = (form.get("confirm_pw") or [""])[0]
             if len(new_pw) < 6:
-                return self.send(200, self.spage(err="Settings password needs at least 6 characters."))
+                return self.send(200, settings_page(err="Settings password needs at least 6 characters."))
             if new_pw != confirm:
-                return self.send(200, self.spage(err="The two passwords don't match."))
+                return self.send(200, settings_page(err="The two passwords don't match."))
             if any(hmac.compare_digest(new_pw.encode(), a["password"].encode()) for a in load_accounts().values()):
-                return self.send(200, self.spage(err="That password already routes to an account at the gate."))
+                return self.send(200, settings_page(err="That password already routes to an account at the gate."))
             global SETTINGS_HASH
             SETTINGS_HASH = hashlib.sha256(new_pw.encode()).hexdigest()
             try:
                 env_set(GLOBAL_ENV, {"PSA_SETTINGS_PW_HASH": SETTINGS_HASH})
             except OSError:
-                return self.send(200, self.spage(
+                return self.send(200, settings_page(
                     err=f"Password active for now, but writing {GLOBAL_ENV} failed — it reverts on restart."))
-            return self.send(200, self.spage(msg="Settings password changed — it works immediately."))
+            return self.send(200, settings_page(msg="Settings password changed — it works immediately."))
         if path in ("/settings/account", "/settings/add"):
             if not self.settings_ok():
                 return self.send(403, "settings auth", "text/plain")
