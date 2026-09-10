@@ -6,5 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 ExecStart=/opt/psa-tracker/run_scan.sh
-# generous: browser login (~40s) + scan (~60s) per account
-TimeoutStartSec=1800
+# run_scan.sh caps each account at ~29 min (login 600s, or 900s while otp.armed,
+# + scan 420s + values 420s). Cover the whole fleet so systemd never SIGTERMs the
+# group mid account and leaves otp.armed behind: 4 accounts x that ceiling.
+TimeoutStartSec=7200

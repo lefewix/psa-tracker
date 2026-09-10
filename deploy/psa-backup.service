@@ -1,5 +1,5 @@
 [Unit]
-Description=PSA tracker nightly data snapshot (accounts + env, keep 3)
+Description=PSA tracker nightly data snapshot (accounts + env, keep 14)
 
 [Service]
 Type=oneshot

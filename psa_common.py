@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """Helpers shared by app.py and the three scraper scripts: tagged logging,
 Discord pings, env-file edits. Stdlib only, like the rest of the tracker."""
-import json, os, shlex, urllib.request
+import json, os, shlex, urllib.error, urllib.request
+
+UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+      "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
 
 def log(prefix):
@@ -11,17 +14,37 @@ def log(prefix):
     return _log
 
 
-def notify(webhook, text):
-    """Post one line to a Discord webhook. Never fatal: a dead webhook must
-    not take a scan or a login down with it."""
+def split_message(text, limit=1900):
+    """Discord 400s anything over 2000 characters - break on line boundaries."""
+    parts, cur = [], ""
+    for line in text.split("\n"):
+        line = line[:limit]
+        if cur and len(cur) + 1 + len(line) > limit:
+            parts.append(cur)
+            cur = line
+        else:
+            cur = f"{cur}\n{line}" if cur else line
+    if cur:
+        parts.append(cur)
+    return parts
+
+
+def notify(webhook, text, log=print):
+    """Post to a Discord webhook. Never fatal: a dead webhook must not take a
+    scan or a login down with it. Cloudflare 403s a missing User-Agent and
+    Discord 404s a deleted webhook, so a non 2xx reply is logged with its body."""
     if not webhook:
         return
-    try:
-        req = urllib.request.Request(webhook, data=json.dumps({"content": text}).encode(),
-                                     headers={"Content-Type": "application/json"})
-        urllib.request.urlopen(req, timeout=15).read()
-    except Exception as e:
-        print(f"webhook failed: {e}", flush=True)
+    for part in split_message(text):
+        try:
+            req = urllib.request.Request(webhook, data=json.dumps({"content": part}).encode(),
+                                         headers={"Content-Type": "application/json",
+                                                  "User-Agent": UA})
+            urllib.request.urlopen(req, timeout=15).read()
+        except urllib.error.HTTPError as e:
+            log(f"webhook returned {e.code}: {e.read(400).decode('utf-8', 'replace').strip()}")
+        except Exception as e:
+            log(f"webhook failed: {e}")
 
 
 def env_set(path, updates):
@@ -45,6 +68,7 @@ def env_set(path, updates):
             out.append(f"{k}={shlex.quote(v)}")
     tmp = path + ".tmp"
     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    os.fchmod(fd, 0o600)  # a leftover tmp from a crashed run keeps its old mode
     with os.fdopen(fd, "w") as f:
         f.write("\n".join(out) + "\n")
     os.replace(tmp, path)

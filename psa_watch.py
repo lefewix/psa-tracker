@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """psa-watch: poll PSA orders page, upsert sub statuses into SQLite."""
 import base64, json, os, re, sqlite3, sys, time, urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
 
@@ -27,9 +27,12 @@ DB_PATH = os.environ.get("PSA_DB", "/opt/psa-tracker/psa.db")
 # App owns owners.db; we only touch it to carry an owner tag from a prelim (spec-keyed)
 # card to its real cert_id once a sub gets graded. Keyed the same as the app.
 OWN_DB = os.environ.get("PSA_OWN_DB", os.path.join(os.path.dirname(DB_PATH) or ".", "owners.db"))
-POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
+# Days after a sub ships before we stop waiting on a card's missing grade. Some
+# certs never carry one, and without this the sub re-fetches every scan forever.
+GRADE_GRACE_DAYS = 7
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
 ACCT = os.environ.get("PSA_ACCT_ID", "account")  # tags this run's log lines
+SITE_URL = os.environ.get("PSA_SITE_URL", "https://psa.example.com").rstrip("/")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 # orders.list reports progressSummary.lastCompletedStep, but psacard.com displays
@@ -69,7 +72,8 @@ CREATE TABLE IF NOT EXISTS subs (
   thumb        TEXT,
   cert_ids     TEXT,
   first_seen   TEXT,
-  updated_at   TEXT
+  updated_at   TEXT,
+  missing_since TEXT
 );
 CREATE TABLE IF NOT EXISTS status_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,11 +102,13 @@ def db():
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
-    try:  # migration for DBs created before declared_value existed
-        conn.execute("ALTER TABLE cards ADD COLUMN declared_value REAL")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
+    for stmt in ("ALTER TABLE cards ADD COLUMN declared_value REAL",
+                 "ALTER TABLE subs ADD COLUMN missing_since TEXT"):
+        try:  # migrations for DBs created before these columns existed
+            conn.execute(stmt)
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
     return conn
 
 def fetch(url):
@@ -123,18 +129,13 @@ def fetch(url):
     r = creq.get(url, headers=headers, impersonate="chrome", timeout=30)
     return r.headers.get("content-type", ""), r.text
 
-def probe():
-    ctype, body = fetch(build_url())
-    out = Path("probe_dump"); out.mkdir(exist_ok=True)
-    ext = "json" if "json" in ctype else "html"
-    p = out / f"orders_{datetime.now():%Y%m%d_%H%M%S}.{ext}"
-    p.write_text(body)
-    log(f"content-type={ctype} bytes={len(body)} -> {p}")
-    if "login" in body.lower()[:4000] and "password" in body.lower():
-        log("WARNING: response looks like a login page -- cookie likely expired/invalid")
+# set by parse when PSA's payload is truncated; drained into the change list by
+# cycle. A truncated page also hides subs, so cycle skips the missing check then.
+SHORT_PAGE = []
 
 def parse(ctype, body):
     """Parse PSA tRPC batch response; orders.list is the last result."""
+    SHORT_PAGE.clear()
     try:
         data = json.loads(body)
     except ValueError:
@@ -146,9 +147,14 @@ def parse(ctype, body):
         j = (((res or {}).get("result") or {}).get("data") or {}).get("json")
         if isinstance(j, dict) and "orders" in j:
             orders = j["orders"]
+            if not isinstance(orders, list):
+                log("WARNING: orders is not a list -- PSA changed the payload shape")
+                return []
             total = j.get("totalCount")
             if total and len(orders) < total:
-                log(f"WARNING: got {len(orders)} of {total} orders -- raise page_length")
+                SHORT_PAGE.append(f"PSA listed {total} orders but sent {len(orders)}"
+                                  " - raise page_length")
+                log(f"WARNING: {SHORT_PAGE[-1]}")
             break
     if orders is None:
         return []
@@ -159,6 +165,10 @@ def parse(ctype, body):
         step = summary.get("lastCompletedStep") or o.get("status") or ""
         if step in ("QA", "QACheck") and grades_ready:
             step = "GradesReady"
+        try:
+            count = int(o.get("itemCount") or 0)
+        except (TypeError, ValueError):
+            count = 0
         imgs = o.get("image") or []
         thumb = next((i.get("thumbnail") for i in imgs if i.get("imageSide") == 1), "")
         out.append({
@@ -167,7 +177,7 @@ def parse(ctype, body):
             "service": o.get("service") or "",
             "status": CURRENT_STAGE.get(step, step),
             "raw_step": step,
-            "card_count": int(o.get("itemCount") or 0),
+            "card_count": count,
             "destination": "Ship back" if not o.get("isPickup") else "Pickup",
             "arrived": o.get("dateArrived") or "",
             "est_start": (o.get("dueOutDate") or "")[:10],
@@ -286,6 +296,7 @@ def parse_completed_lines(body):
     for ln in (summary.get("submissionLines") or []):
         spec = ln.get("specId")
         if spec is None:
+            log(f"completed line {ln.get('lineNumber')} skipped: no specId")
             continue
         qty = int(ln.get("quantity") or 1)
         # declaredValue is the LINE total (per-card value × quantity) - store per card
@@ -473,6 +484,10 @@ def refresh_cards(conn, subs, prev=None, full=False):
     prev = prev or {}
     total = 0
     skipped = 0
+    short = 0
+    # seen_at is always a UTC isoformat, so a string compare is the date math
+    grade_cutoff = (datetime.now(timezone.utc)
+                    - timedelta(days=GRADE_GRACE_DAYS)).isoformat(timespec="seconds")
     for s in subs:
         sub = s["sub_number"]
         has_certs = bool(json.loads(s["cert_ids"] or "[]"))
@@ -486,6 +501,13 @@ def refresh_cards(conn, subs, prev=None, full=False):
                 (sub,)).fetchone()
             # only skip once cards are fully imaged, valued, AND graded (if grades ready)
             need_grades = s["grades_ready"] and (row[3] or 0)
+            if need_grades:
+                # a card still ungraded a week after the sub shipped never will be:
+                # let the skip fire instead of re-fetching a frozen sub forever
+                shipped_at = conn.execute("""SELECT max(seen_at) FROM status_history
+                    WHERE sub_number=? AND status='Shipped'""", (sub,)).fetchone()[0]
+                if shipped_at and shipped_at < grade_cutoff:
+                    need_grades = 0
             if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0) and not need_grades:
                 skipped += 1
                 continue
@@ -520,6 +542,10 @@ def refresh_cards(conn, subs, prev=None, full=False):
             if cards:
                 upsert_cards(conn, sub, cards)
                 total += len(cards)
+                want = s.get("card_count") or 0
+                if want and len(cards) != want:
+                    short += 1
+                    log(f"sub {sub}: stored {len(cards)} cards, PSA counts {want}")
                 # give the dashboard a cover for subs whose orders.list had no image
                 if not s.get("thumb"):
                     front = next((c["front_thumb"] for c in cards if c["front_thumb"]), "")
@@ -530,7 +556,8 @@ def refresh_cards(conn, subs, prev=None, full=False):
         except Exception as e:
             log(f"detail {sub} error: {e}")
         time.sleep(0.3)
-    log(f"cards refreshed: {total}" + (f" ({skipped} stable shipped subs skipped)" if skipped else ""))
+    log(f"cards refreshed: {total}" + (f" ({skipped} stable shipped subs skipped)" if skipped else "")
+        + (f", {short} sub(s) off PSA's card count" if short else ""))
 
 def discord_mentions(conn, sub_numbers):
     """Distinct Discord IDs to @-mention: owners whose cards sit in the changed
@@ -557,10 +584,31 @@ def discord_mentions(conn, sub_numbers):
             ids.append(did)
     return ids
 
-def upsert(conn, subs):
+def archived_subs():
+    """Sub numbers archived on the site (app.py owns owners.db). An archived sub is
+    hidden from the dashboard and from hub's hub.json, so Discord stays quiet too."""
+    try:
+        oc = sqlite3.connect(OWN_DB)
+        subs = {r[0] for r in oc.execute("SELECT sub_number FROM archived")}
+        oc.close()
+        return subs
+    except sqlite3.Error:
+        return set()
+
+def upsert(conn, subs, quiet=()):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     changes, touched = [], []
+    def note(sub, text):
+        if sub in quiet:
+            return
+        changes.append(text)
+        touched.append(sub)
     for s in subs:
+        if not s["status"]:
+            # a renamed PSA field parses as a blank stage; writing it would wipe
+            # the sub's status, service, card count and tracking
+            log(f"sub #{s['sub_number']}: parsed with no status -- row left untouched")
+            continue
         row = conn.execute("SELECT status, grades_ready, on_hold FROM subs WHERE sub_number=?",
                            (s["sub_number"],)).fetchone()
         vals = (s["order_number"], s["service"], s["status"], s["card_count"],
@@ -575,74 +623,113 @@ def upsert(conn, subs):
                 (s["sub_number"],) + vals + (now, now))
             conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                          (s["sub_number"], s["status"], now))
-            changes.append(f"new sub #{s['sub_number']} ({s['service']}, {s['card_count']} cards) -- {s['status']}")
-            touched.append(s["sub_number"])
+            note(s["sub_number"],
+                 f"new sub #{s['sub_number']} ({s['service']}, {s['card_count']} cards) -- {s['status']}")
         else:
+            fresh_grades = not row[1] and s["grades_ready"]
             if row[0] != s["status"] and s["status"]:
                 conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                              (s["sub_number"], s["status"], now))
-                changes.append(f"sub #{s['sub_number']}: {row[0]} -> {s['status']}")
-                touched.append(s["sub_number"])
-            if not row[1] and s["grades_ready"]:
-                changes.append(f"sub #{s['sub_number']}: grades are ready")
-                touched.append(s["sub_number"])
+                # grades flipping with the stage is one event, as hub reads it
+                note(s["sub_number"], f"sub #{s['sub_number']}: {row[0]} -> {s['status']}"
+                     + (" - grades ready" if fresh_grades else ""))
+            elif fresh_grades:
+                note(s["sub_number"], f"sub #{s['sub_number']}: grades are ready")
             # a hold usually flips with the stage unchanged (14956985 went on
             # hold at QA Check, 2026-09) - status diff alone never saw it
             if bool(row[2]) != s["on_hold"]:
-                changes.append(f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
-                touched.append(s["sub_number"])
+                note(s["sub_number"],
+                     f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
-                carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?
+                carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?,
+                missing_since=NULL
                 WHERE sub_number=?""", vals + (now, s["sub_number"]))
     conn.commit()
     return changes, touched
 
 def cycle(conn):
+    # exit codes: 0 ok, 3 cookie-dead (a JSON answer with no subs in it), 4 not
+    # a cookie problem (transport error, non-JSON body, changed payload shape).
+    # run_scan only spends a browser login on 3.
     # one retry on the orders.list fetch - a transient blip otherwise loses a
     # whole scan window (we only run twice a day now)
     ctype = body = ""
+    err = None
     for attempt in (1, 2):
         try:
             ctype, body = fetch(build_url())
+            err = None
             break
         except Exception as e:
+            err = e
             log(f"orders.list fetch attempt {attempt} failed: {e}")
             if attempt == 1:
                 time.sleep(5)
+    if err is not None:
+        log("orders.list unreachable -- transport failure, not a dead cookie")
+        return 4
+    if body.lstrip()[:1] not in ("[", "{"):
+        low = body.lower()
+        if "login" in low[:4000] and "password" in low:
+            log("orders.list answered a login page -- cookie expired/invalid")
+            return 3
+        log(f"orders.list answered {len(body)} non-JSON bytes (content-type {ctype!r}) "
+            "-- blocked or erroring upstream, not a dead cookie")
+        return 4
     subs = parse(ctype, body)
     if not subs:
-        log("parsed 0 subs -- parser needs adjusting or cookie expired; run --probe")
-        return False
+        log("parsed 0 subs -- parser needs adjusting or cookie expired")
+        return 3
+    blank = [s for s in subs if not s["status"]]
+    if len(blank) * 2 > len(subs):
+        log(f"{len(blank)} of {len(subs)} subs parsed with no status -- "
+            "PSA payload shape changed; writing nothing")
+        return 4
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
     prev = {r[0]: r[1] for r in conn.execute("SELECT sub_number, status FROM subs")}
-    changes, touched = upsert(conn, subs)
+    quiet = archived_subs()
+    changes, touched = upsert(conn, subs, quiet)
+    if SHORT_PAGE:
+        changes += SHORT_PAGE
+    else:
+        # a sub PSA stopped listing freezes in place - say so once, then stamp it
+        # so later scans stay quiet (a sub that comes back clears the stamp)
+        seen = {s["sub_number"] for s in subs}
+        gone = [r[0] for r in conn.execute(
+            "SELECT sub_number FROM subs WHERE missing_since IS NULL").fetchall()
+            if r[0] not in seen and r[0] not in quiet]
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for sub in gone:
+            conn.execute("UPDATE subs SET missing_since=? WHERE sub_number=?", (stamp, sub))
+            changes.append(f"sub #{sub}: no longer listed by PSA")
+            touched.append(sub)
+        if gone:
+            conn.commit()
     log(f"parsed {len(subs)} subs, {len(changes)} changes")
     for c in changes:
         log(f"  {c}")
+    if changes and not prev:
+        # first scan for this account (or a restored db): the rows are history,
+        # not news - seed them silently
+        log(f"first scan -- {len(changes)} rows seeded, nothing posted")
+        changes = []
+    refresh_cards(conn, subs, prev, full="--full" in sys.argv)
+    # post after refresh_cards: a first-seen sub only has its cards rows by now,
+    # so discord_mentions can resolve its owner on the same run
     if changes:
         msg = "**PSA update**\n" + "\n".join(changes)
+        if SITE_URL:
+            msg += f"\n{SITE_URL}"
         ids = discord_mentions(conn, touched)
         if ids:
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
-        psa_common.notify(WEBHOOK, msg)
-    refresh_cards(conn, subs, prev, full="--full" in sys.argv)
-    return True
+        psa_common.notify(WEBHOOK, msg, log)
+    return 0
 
 def main():
-    if "--probe" in sys.argv:
-        probe(); return
-    conn = db()
-    if "--once" in sys.argv:
-        sys.exit(0 if cycle(conn) else 3)
-    log(f"daemon start, interval {POLL_INTERVAL}s")
-    while True:
-        try:
-            cycle(conn)
-        except Exception as e:
-            log(f"cycle error: {e}")
-        time.sleep(POLL_INTERVAL)
+    sys.exit(cycle(db()))
 
 if __name__ == "__main__":
     main()
