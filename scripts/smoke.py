@@ -136,6 +136,67 @@ def call(base_url, path, cookie=None, form=None, headers=None):
         return e.code, e.read(), e.headers
 
 
+def setup_instance_checks(fails):
+    """An instance whose single account has never connected: the setup form is
+    the owner's retry, not a public takeover, and an account.env that stops
+    parsing must not reopen it after a restart (T18)."""
+    base = tempfile.mkdtemp(prefix="psa-smoke-setup-")
+    log = open(os.path.join(base, "app.log"), "w")
+    acct = os.path.join(base, "accounts", "solo")
+    os.makedirs(acct)
+    os.makedirs(os.path.join(base, "imgcache"))
+    envf = os.path.join(acct, "account.env")
+    with open(envf, "w", encoding="utf-8") as f:
+        f.write(f"LABEL='Solo'\nSITE_PASSWORD='{SITE_PW}'\n"
+                "PSA_LOGIN_EMAIL='solo@example.com'\nPSA_LOGIN_PW='x'\nPSA_COOKIE=''\n")
+    c = sqlite3.connect(os.path.join(acct, "psa.db"))
+    c.executescript(schema("psa_watch.py"))
+    c.executescript(schema("psa_values.py"))
+    c.commit()
+    c.close()
+    open(os.path.join(base, "global.env"), "w").close()
+    takeover = {"label": "Mallory", "site_pw": "mallory-pw",
+                "psa_email": "mallory@example.com", "psa_pw": "x"}
+    proc = None
+    try:
+        for label, want_form in (("never connected", True), ("broken account.env", False)):
+            port = free_port()
+            url = f"http://127.0.0.1:{port}"
+            proc = boot(base, port, log)
+            if proc.poll() is not None:
+                fails.append(f"setup instance ({label}): app.py did not start")
+                return
+            was = open(envf, "rb").read()
+            code, _, _ = call(url, "/setup")
+            if code != 302:
+                fails.append(f"GET /setup ({label}, no session): got {code}, want 302")
+            code, _, _ = call(url, "/setup", form=takeover)
+            if code != 403:
+                fails.append(f"POST /setup ({label}, no session): got {code}, want 403")
+            if open(envf, "rb").read() != was:
+                fails.append(f"POST /setup ({label}, no session): account.env was rewritten")
+            if want_form:  # the owner can still re-enter their PSA login
+                _, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+                cookie = (hdrs.get("Set-Cookie") or "").split(";")[0]
+                code, body, _ = call(url, "/setup", cookie)
+                if code != 200 or b'action="/setup"' not in body:
+                    fails.append(f"GET /setup (owner session): got {code}, the retry form is gone")
+            proc.send_signal(signal.SIGTERM)
+            proc.wait(5)
+            proc = None
+            with open(envf, "w", encoding="utf-8") as f:  # what a newline used to leave
+                f.write("LABEL='Solo'\nSITE_PASSWORD='bad\n")
+    finally:
+        if proc and proc.poll() is None:
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        log.close()
+        shutil.rmtree(base, ignore_errors=True)
+
+
 def main():
     base = tempfile.mkdtemp(prefix="psa-smoke-")
     port = free_port()
@@ -188,6 +249,7 @@ def main():
         check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
         check("GET /setup (setup closed)", "/setup", (302,))
+        setup_instance_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)
         check("GET /api/hub.json (non-ASCII key)", "/api/hub.json?key=caf%C3%A9", (404,))
@@ -303,6 +365,18 @@ def main():
                 fails.append("POST /settings/account site_pw: restore refused")
             check("GET / (cookie after the password is restored)", "/", (200,),
                   cookie, must_have="14900001")
+
+            # --- a newline in a settings value used to truncate account.env,
+            # which dropped the account and reopened first-run setup (T18)
+            envf = os.path.join(base, "accounts", "demo", "account.env")
+            ewas = open(envf, "rb").read()
+            site_pw("bad\npw")
+            if open(envf, "rb").read() != ewas:
+                fails.append("POST /settings/account site_pw (newline): account.env was rewritten")
+            code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+            if code != 302 or not (hdrs.get("Set-Cookie") or ""):
+                fails.append(f"POST /login after a newline site password: got {code}, "
+                             "the account no longer logs in")
 
             # --- a gear-mode admin session stays on its own account (T7)
             env2 = os.path.join(base, "accounts", "second", "account.env")

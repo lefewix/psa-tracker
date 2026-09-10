@@ -1977,6 +1977,12 @@ def error_page():
 # layout reads as lag + a jolt (scroll offsets differ), so navigations to and
 # from settings are plain loads. Dashboard<->sub<->person transitions keep it.
 
+def env_ok(v):
+    """A value that survives one KEY='value' line. A newline or control
+    character truncates the file for every later reader, which silently drops
+    the account and used to reopen the public setup form."""
+    return v.isprintable()
+
 def env_set(path, updates):
     """Update KEY='value' lines in an env file, preserving all other lines.
     Empty value removes the key. Atomic write, chmod 600."""
@@ -2304,30 +2310,55 @@ def gear_html(customer=False):
 # ---------- first-run setup ----------
 # A fresh instance (accounts/ empty) serves a one-time setup form instead of the
 # gate: site password + PSA login -> accounts/<id>/account.env + first scan kick.
-# The form stays reachable only until the instance has connected once (a
-# PSA_COOKIE lands or subs exist) - after that it is gone for good.
+# Once an account.env exists the form is the owner's retry (session required),
+# and it is gone for good once the instance has connected (a PSA_COOKIE lands
+# or subs exist), latched in accounts/.setup-done.
 
 _SETUP_CLOSED = False
+SETUP_MARKER = os.path.join(ACCOUNTS_DIR, ".setup-done")
+
+def _close_setup():
+    """Latch setup shut in process and on disk. The marker is what survives a
+    restart: an account.env that stops parsing must never look like a fresh
+    instance and reopen the public form."""
+    global _SETUP_CLOSED
+    _SETUP_CLOSED = True
+    try:
+        open(SETUP_MARKER, "a").close()
+    except OSError:
+        pass
+    return False, None
 
 def setup_state():
-    """(setup_allowed, existing_account_or_None). Allowed on a fresh instance,
-    or for retrying the single account that has never managed to connect.
+    """(setup_allowed, existing_account_or_None). Open to anyone only on a truly
+    fresh instance: no marker and no account.env on disk. Once an account.env
+    exists the form is retry-only and the routes gate it behind a session.
     Setup closes for good once the instance has connected - remember that in
     process so steady-state requests skip the env/db checks entirely."""
     global _SETUP_CLOSED
     if _SETUP_CLOSED:
         return False, None
-    accts = load_accounts()
-    if not accts:
-        return True, None
-    if len(accts) > 1:
+    if os.path.exists(SETUP_MARKER):
         _SETUP_CLOSED = True
+        return False, None
+    try:
+        dirs = sorted(os.listdir(ACCOUNTS_DIR))
+    except OSError:
+        dirs = []
+    envs = [os.path.join(ACCOUNTS_DIR, d, "account.env") for d in dirs
+            if re.fullmatch(r"[a-z0-9-]+", d)
+            and os.path.exists(os.path.join(ACCOUNTS_DIR, d, "account.env"))]
+    if not envs:
+        return True, None
+    if len(envs) > 1:
+        return _close_setup()
+    accts = load_accounts()
+    if len(accts) != 1:  # an account.env that won't parse is not a fresh instance
         return False, None
     a = next(iter(accts.values()))
-    env = read_env_file(os.path.join(ACCOUNTS_DIR, a["id"], "account.env"))
+    env = read_env_file(envs[0])
     if env.get("PSA_COOKIE"):
-        _SETUP_CLOSED = True
-        return False, None
+        return _close_setup()
     try:
         conn = _ro_conn(a)
         n = conn.execute("SELECT COUNT(*) FROM subs").fetchone()[0]
@@ -2335,8 +2366,8 @@ def setup_state():
     except sqlite3.Error:
         n = 0
     if n:
-        _SETUP_CLOSED = True
-    return (n == 0), a
+        return _close_setup()
+    return True, a
 
 def write_account_env(acct_id, label, site_pw, psa_email, psa_pw):
     base = os.path.join(ACCOUNTS_DIR, acct_id)
@@ -3919,7 +3950,8 @@ class H(BaseHTTPRequestHandler):
             return self.serve_img(parsed.query)
         s_allowed, s_retry = setup_state()
         if path == "/setup":
-            if not s_allowed:
+            # a retry is the owner re-entering their PSA login, not a public form
+            if not s_allowed or (s_retry and not self.authed()):
                 return self.send(302, "", extra=[("Location", "/")])
             return self.send(200, setup_page())
         if s_allowed and s_retry is None:  # fresh instance: everything is setup
@@ -4028,7 +4060,7 @@ class H(BaseHTTPRequestHandler):
             return self.send(204, "", "text/plain")
         if path == "/setup":
             allowed, retry = setup_state()
-            if not allowed:
+            if not allowed or (retry and not self.authed()):
                 return self.send(403, "setup is closed", "text/plain")
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
@@ -4036,6 +4068,9 @@ class H(BaseHTTPRequestHandler):
             label = get("label") or "My cards"
             site_pw, psa_email, psa_pw = get("site_pw"), get("psa_email"), get("psa_pw")
             time.sleep(0.4)
+            if not all(env_ok(v) for v in (label, site_pw, psa_email, psa_pw)):
+                return self.send(200, setup_page("Each field has to be a single line of text.",
+                                                 label, psa_email))
             if len(site_pw) < 4:
                 return self.send(200, setup_page("Site password needs at least 4 characters.",
                                                  label, psa_email))
@@ -4075,6 +4110,8 @@ class H(BaseHTTPRequestHandler):
             confirm = (form.get("confirm_pw") or [""])[0]
             if len(new_pw) < 6:
                 return self.see(flash(err="Settings password needs at least 6 characters."))
+            if not env_ok(new_pw):  # same env file, same truncation
+                return self.see(flash(err="The password has to be a single line of text."))
             if new_pw != confirm:
                 return self.see(flash(err="The two passwords don't match."))
             if any(hmac.compare_digest(new_pw.encode(), a["password"].encode()) for a in load_accounts().values()):
@@ -4102,6 +4139,8 @@ class H(BaseHTTPRequestHandler):
                 accts = load_accounts()
                 if acct_id not in accts:
                     return self.send(400, "unknown account", "text/plain")
+                if not env_ok(value):
+                    return self.see(flash(err="That has to be a single line of text."))
                 if action == "psa_pw":
                     if not value:
                         return self.see(flash(err="Enter the new PSA password first."))
@@ -4168,6 +4207,8 @@ class H(BaseHTTPRequestHandler):
             psa_email, psa_pw = get("psa_email"), get("psa_pw")
             if "@" not in psa_email or not psa_pw:
                 return self.see(flash(err="Enter the PSA email and password."))
+            if not (env_ok(psa_email) and env_ok(psa_pw)):
+                return self.see(flash(err="The email and password each have to be a single line of text."))
             accts = load_accounts()
             local = psa_email.split("@")[0]
             label = local[:40]
@@ -4230,7 +4271,9 @@ def main():
     accts = load_accounts()
     if not accts:
         print(f"no accounts in {ACCOUNTS_DIR} - serving FIRST-RUN SETUP at / "
-              "(or run add_account.sh)", flush=True)
+              "(or run add_account.sh)" if setup_state()[0] else
+              f"no readable account in {ACCOUNTS_DIR} - setup stays closed, "
+              "fix the account.env", flush=True)
     dupes = len(accts) - len({a["password"] for a in accts.values()})
     if dupes:
         print(f"WARNING: {dupes} duplicate site password(s) across accounts - "
