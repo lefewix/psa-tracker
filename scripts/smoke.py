@@ -627,6 +627,11 @@ def main():
             if js and b"back(u,foc)" not in js:
                 fails.append("GET /: archiving does not move focus to the Undo chip")
 
+            # --- one Escape closes the search preview: without preventDefault
+            # the native type=search clear fires `input` and reopens it (T53)
+            if js and b"'Escape'){e.preventDefault()" not in js:
+                fails.append("GET /app.js: Escape still lets the search preview reopen")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),

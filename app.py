@@ -2713,7 +2713,9 @@ SEARCH_JS = """<script>
       if(rows[ai]){location.href=rows[ai].href;return;}
       location.href='/search?q='+encodeURIComponent(q.value.trim())+scope;
     }
-    else if(e.key==='Escape'){open(false);}
+    /* type=search clears itself on Escape, and that clear fires `input`,
+       which reopens the preview - so the first press looked ignored */
+    else if(e.key==='Escape'){e.preventDefault();clearTimeout(t);open(false);}
   });
   document.addEventListener('click',function(e){ if(!pv.contains(e.target)&&e.target!==q) open(false); });
 })();
