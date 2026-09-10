@@ -3836,6 +3836,13 @@ class H(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Cache-Control", "no-store")
         self.send_header("X-Frame-Options", "DENY")
+        # everything is same-origin (the /img proxy included); 'unsafe-inline'
+        # stays because the chrome CSS and JS are inline Python strings, and
+        # data: is the favicon's SVG
+        self.send_header("Content-Security-Policy",
+                         "default-src 'self'; img-src 'self' data:; "
+                         "script-src 'self' 'unsafe-inline'; "
+                         "style-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
         # same-origin (not no-referrer): still sends NOTHING cross-site, but keeps
         # internal referrers - BACK_JS needs them to tell "came from inside the
         # site" (history back) apart from a direct/external entry (href fallback)
@@ -3873,6 +3880,7 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "image/jpeg")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=604800")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
@@ -3892,6 +3900,7 @@ class H(BaseHTTPRequestHandler):
         data = self._gz(data)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
@@ -3905,6 +3914,7 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=3600")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
@@ -3919,6 +3929,7 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=3600")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 

@@ -306,6 +306,15 @@ def main():
         _, _, ihdrs = call(url, imgq)
         if "no-store" not in (ihdrs.get("Cache-Control") or ""):
             fails.append("GET /img (no session): the gate page is edge cacheable")
+        # --- pages carry a CSP, and every hand-rolled response carries nosniff (T25)
+        _, _, phdrs = call(url, "/")
+        if "frame-ancestors 'none'" not in (phdrs.get("Content-Security-Policy") or ""):
+            fails.append("GET /: no Content-Security-Policy")
+        for label, hdrs in (("/logo", ghdrs), ("/img", ihdrs),
+                            ("/app.css", call(url, "/app.css")[2]),
+                            ("/favicon.png", call(url, "/favicon.png")[2])):
+            if hdrs.get("X-Content-Type-Options") != "nosniff":
+                fails.append(f"GET {label}: no nosniff")
         check("GET /favicon.png", "/favicon.png", (200,))
         check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
