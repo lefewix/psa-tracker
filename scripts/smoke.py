@@ -311,6 +311,20 @@ def main():
             if open(genv, "rb").read() != gwas:
                 fails.append("POST /settings/password (gear session): the settings password was rotated")
 
+            # --- a POST carrying a foreign Origin is refused (T14)
+            tag = {"cert_id": "99000001", "owner": "Mallory"}
+            if call(url, "/owner", cookie, tag,
+                    {"Origin": "https://demo.example.com"})[0] != 403:
+                fails.append("POST /owner (foreign Origin): got a reply, want 403")
+            body = check("GET /sub/14900001 (after a foreign-Origin POST)",
+                         "/sub/14900001", (200,), cookie)
+            if b"Mallory" in body:
+                fails.append("POST /owner (foreign Origin): the tag was written anyway")
+            if call(url, "/owner", cookie, tag, {"Origin": url})[0] != 204:
+                fails.append("POST /owner (own Origin): refused, the page's own posts break")
+            check("GET /sub/14900001 (after the page's own POST)", "/sub/14900001",
+                  (200,), cookie, must_have="Mallory")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),

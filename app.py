@@ -3660,6 +3660,21 @@ class H(BaseHTTPRequestHandler):
             return xff.rsplit(",", 1)[-1].strip()[:64]
         return self.client_address[0]
 
+    def origin_ok(self):
+        """CSRF guard for POSTs. A browser sets Origin on every form post, so a
+        request carrying someone else's origin is cross-site: the sibling
+        example.com sites are same-site for SameSite=Lax, which alone is no
+        defence. No Origin at all (curl, older clients) is left alone."""
+        origin = self.headers.get("Origin", "").strip()
+        if not origin:
+            return True
+        host = (self.headers.get("X-Forwarded-Host")
+                or self.headers.get("Host") or "").split(",")[0].strip()
+        proto = (self.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip()
+        # behind Caddy the app speaks http while the browser origin is https
+        schemes = (proto,) if proto else ("https", "http")
+        return bool(host) and any(origin == f"{s}://{host}" for s in schemes)
+
     def authed(self):
         """Return (account dict, customer_email) for this session, or None.
         customer_email == "" means a full site-password (admin) session."""
@@ -3930,6 +3945,9 @@ class H(BaseHTTPRequestHandler):
         self.send(404, not_found_page())
 
     def route_post(self):
+        if not self.origin_ok():
+            self.close_connection = True  # the unread body is not a next request
+            return self.send(403, "bad origin", "text/plain")
         path = urllib.parse.urlparse(self.path).path
         if path == "/owner":
             got = self.authed()
