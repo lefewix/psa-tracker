@@ -3301,6 +3301,24 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
             f'{own_input}'
             f'</div>')
 
+def scan_stale_hours(a):
+    """Hours since this account's last successful scan, or None when unknown.
+    run_scan.sh writes accounts/<id>/.last_ok after every scan that returned 0,
+    hourly. No marker (a box that has not scanned since) says nothing."""
+    path = os.path.join(ACCOUNTS_DIR, a["id"], ".last_ok")
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = f.read().strip()
+        when = os.stat(path).st_mtime
+    except OSError:
+        return None
+    try:
+        dt = datetime.fromisoformat(raw)
+        when = (dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt).timestamp()
+    except ValueError:
+        pass  # unreadable stamp: the file's own mtime is the same fact
+    return (time.time() - when) / 3600
+
 def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
@@ -3351,6 +3369,14 @@ def dash_page(a, subs):
         hint = ('<div class="hint" role="status">This account is unlinked — showing its last '
                 'known status from PSA. Scans are off; save a new PSA password in settings '
                 'to relink.</div>') + hint
+    else:
+        # scans run hourly: several missed in a row means the PSA link is down,
+        # and the statuses below are older than they look
+        stale = scan_stale_hours(a)
+        if stale is not None and stale >= 6:
+            hint = ('<div class="hint" role="status">Not connecting to PSA. The last '
+                    f'successful check was {int(stale)} hours ago, so these statuses '
+                    'may be behind.</div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',

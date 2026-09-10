@@ -406,6 +406,24 @@ def main():
                         if b"/thumbnail/" not in src:
                             fails.append("GET /: a filmstrip tile is not the "
                                          f"thumbnail asset ({src!r})")
+            # --- a dead PSA link is said out loud: run_scan writes .last_ok
+            # after every successful scan, the dashboard reads its stamp (T24)
+            okf = os.path.join(base, "accounts", "demo", ".last_ok")
+
+            def last_ok(ago):
+                with open(okf, "w", encoding="utf-8") as f:
+                    f.write(time.strftime("%Y-%m-%dT%H:%M:%S+00:00",
+                                          time.gmtime(time.time() - ago)))
+
+            last_ok(2 * 86400)
+            body = check("GET / (scans two days stale)", "/", (200,), cookie)
+            if b"Not connecting to PSA" not in body:
+                fails.append("GET /: two days without a scan and the dashboard says nothing")
+            last_ok(0)
+            body = check("GET / (scans current)", "/", (200,), cookie)
+            if b"Not connecting to PSA" in body:
+                fails.append("GET /: a fresh scan still reads as a broken PSA link")
+
             icode, _, ihdrs = call(url, imgq, cookie)
             if icode != 200:
                 fails.append(f"GET /img: got {icode}, want 200")

@@ -76,6 +76,7 @@ PYEOF
     # consecutive-failure counter -> one warning ping, one recovery ping
     FAILF="$dir/.scan_fails"
     if [ "$rc" = 0 ]; then
+      date -Is > "$dir/.last_ok"   # the dashboard warns when this goes stale
       if [ -f "$FAILF" ]; then
         n=$(cat "$FAILF" 2>/dev/null || echo 0)
         [ "$n" -ge "${PSA_ALERT_AFTER:-3}" ] 2>/dev/null && \
