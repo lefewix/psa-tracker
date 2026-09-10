@@ -237,7 +237,8 @@ def copy_checks(fails):
 
 
 def env_checks(fails):
-    """Knobs nothing sets are constants, not os.environ lookups (T83)."""
+    """Knobs nothing sets are constants, not os.environ lookups (T83), and the
+    retired logo blend and settings label class stay deleted (T84)."""
     for mod, names in (("app.py", ("COOKIE_DAYS", "PSA_SETTINGS_MINUTES")),
                        ("psa_watch.py", ("PSA_ORDERS_URL", "PSA_SPEC_DEPT_ID"))):
         src = open(os.path.join(ROOT, mod), encoding="utf-8").read()
@@ -245,6 +246,10 @@ def env_checks(fails):
             if f'"{name}"' in src:
                 fails.append(f"{mod}: {name} is read from the env again, "
                              "it is a dead knob (T83)")
+    src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
+    for name in ("logoblend", "mix-blend-mode", ".slbl"):
+        if name in src:
+            fails.append(f"app.py: {name} is back, it is retired styling (T84)")
 
 
 def tracking_checks(fails):

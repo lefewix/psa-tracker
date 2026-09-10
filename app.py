@@ -176,7 +176,7 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "txt": "#f2f2f4", "m1": "#98989f", "tert": "#8a8a92",
  "hair": "rgba(255,255,255,.12)", "hairh": "rgba(255,255,255,.3)",
  "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)",
- "logoblend": "normal", "chipfill": "#ffffff", "chippad": "5px 7px",
+ "chipfill": "#ffffff", "chippad": "5px 7px",
  "logofx": "brightness(0) invert(1)",
  # Liquid Glass chrome: translucent ground, one soft cast shadow, and a LENS -
  # --rim is the specular catch along the top edge, --rimb the falloff along the
@@ -202,7 +202,7 @@ _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  "txt": "#1d1d1f", "m1": "#6e6e73", "tert": "#86868b",
  "hair": "rgba(0,0,0,.1)", "hairh": "rgba(0,0,0,.28)",
  "hair2": "rgba(0,0,0,.07)", "track": "#ececef",
- "logoblend": "normal", "chipfill": "transparent", "chippad": "0", "logofx": "none",
+ "chipfill": "transparent", "chippad": "0", "logofx": "none",
  "glass": "rgba(255,255,255,.72)", "glasssolid": "#ffffff", "rim": "rgba(255,255,255,.85)",
  "rimb": "rgba(15,20,30,.06)",
  "segtrack": "rgba(0,0,0,.045)", "segon": "#ffffff",
@@ -1051,7 +1051,7 @@ body{background:transparent;min-height:100vh;color:var(--txt);
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
 .toolbar .sub{font-size:12.5px}
-.logo{display:block;height:30px;width:auto;mix-blend-mode:var(--logoblend,normal)}
+.logo{display:block;height:30px;width:auto}
 .logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:6px;
  box-sizing:content-box;height:26px}
 .logo.sil{filter:var(--logofx,none)}
@@ -1406,7 +1406,6 @@ button:disabled{opacity:.5;cursor:default}
 .stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt)}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
-.slbl{font-size:12px;color:var(--m1);margin-top:18px;line-height:1.6;max-width:460px}
 .snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
