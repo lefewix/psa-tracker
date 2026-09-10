@@ -1888,7 +1888,9 @@ MANIFEST = json.dumps({"name": SITE_TITLE, "short_name": SITE_TITLE, "start_url"
 # theme-color paints the browser and installed-app chrome, so it has to follow
 # the ground token of the theme actually rendered. With no stored choice the
 # head script below renders the SYSTEM scheme, whatever the store default is,
-# so the pair is keyed on prefers-color-scheme to match it.
+# so the pair is keyed on prefers-color-scheme to match it. A stored choice is
+# always the opposite of the system one (the flip deletes the key when they
+# agree), so psaTC collapses the pair to the one color really on screen.
 HEAD_HTML = f"""{_ICONS}
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" media="(prefers-color-scheme: dark)" content="{_DARK['bg']}">
@@ -1896,7 +1898,11 @@ HEAD_HTML = f"""{_ICONS}
 <meta name="description" content="PSA grading submission tracker">
 <script>(function(){{var t=null;try{{t=localStorage.getItem('psa_theme');}}catch(e){{}}
 var sys=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light',cur=t||sys;
-if(cur!=="{THEME}")document.documentElement.dataset.theme=cur;}})()</script>"""
+if(cur!=="{THEME}")document.documentElement.dataset.theme=cur;
+window.psaTC=function(c){{var m=document.querySelectorAll('meta[name=theme-color]');
+for(var i=0;i<m.length-1;i++)m[i].remove();
+if(m.length)m[m.length-1].content=(c==='dark')?"{_DARK['bg']}":"{_LIGHT['bg']}";}};
+if(t)psaTC(cur);}})()</script>"""
 
 _SUN = ('<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
         'stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.4"/>'
@@ -1918,6 +1924,7 @@ THEME_JS = f"""<script>
     b.innerHTML=(cur==='dark')?SUN:MOON;
     b.title=(cur==='dark')?'Switch to light mode':'Switch to dark mode';
     b.setAttribute('aria-label',b.title);
+    if(window.psaTC)psaTC(cur);
   }}
   b.addEventListener('click',function(){{
     cur=(cur==='dark')?'light':'dark';
