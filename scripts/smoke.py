@@ -411,9 +411,8 @@ def main():
             okf = os.path.join(base, "accounts", "demo", ".last_ok")
 
             def last_ok(ago):
-                with open(okf, "w", encoding="utf-8") as f:
-                    f.write(time.strftime("%Y-%m-%dT%H:%M:%S+00:00",
-                                          time.gmtime(time.time() - ago)))
+                open(okf, "w").close()
+                os.utime(okf, (time.time() - ago,) * 2)
 
             last_ok(2 * 86400)
             body = check("GET / (scans two days stale)", "/", (200,), cookie)

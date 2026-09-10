@@ -3303,21 +3303,14 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
 
 def scan_stale_hours(a):
     """Hours since this account's last successful scan, or None when unknown.
-    run_scan.sh writes accounts/<id>/.last_ok after every scan that returned 0,
-    hourly. No marker (a box that has not scanned since) says nothing."""
-    path = os.path.join(ACCOUNTS_DIR, a["id"], ".last_ok")
+    run_scan.sh rewrites accounts/<id>/.last_ok after every scan that returned 0,
+    hourly, so its mtime is the fact. No marker (a box that has not scanned
+    since) says nothing."""
     try:
-        with open(path, encoding="utf-8") as f:
-            raw = f.read().strip()
-        when = os.stat(path).st_mtime
+        seen = os.stat(os.path.join(ACCOUNTS_DIR, a["id"], ".last_ok")).st_mtime
     except OSError:
         return None
-    try:
-        dt = datetime.fromisoformat(raw)
-        when = (dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt).timestamp()
-    except ValueError:
-        pass  # unreadable stamp: the file's own mtime is the same fact
-    return (time.time() - when) / 3600
+    return (time.time() - seen) / 3600
 
 def dash_page(a, subs):
     arch = archived_set(a)
