@@ -1014,53 +1014,19 @@ def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
 # ---------- rendering ----------
 
 CSS = """
-/* =================================================== CANON, PLAYED STRAIGHT ==
-   THESIS: The category standard executed at Apple fidelity - a precision
-   instrument, refusing themed decoration entirely.
-   OWN-WORLD: Grouped ground (App Store grammar, owner call 2026-08-08:
-   "cards like in App Store") carrying raised white/#1c1d20 content cards,
-   sentence-case system type, one env accent as text + one filled button,
-   Liquid Glass chrome (toolbar, filter capsule, orbs). Recognizable with
-   content removed by its restraint + glass chrome + card rhythm.
-   STORY: An operator scans stages in one sweep; a customer feels a grade land
-   via the bar springing forward and red grade text appearing.
-   FIRST VIEWPORT: Glass toolbar with 26px "Submissions" large title; glass
-   filter capsule; then raised submission cards - lot number left, stage line +
-   4px capsule bar, price right.
-   FORM: Category-standard canon, owner-chosen standing exit (2026-07-31);
-   assigned grounded direction (seed a400bd5c, candidate 6/7 "The Vault") stood
-   aside by owner's call.
-   FINISH: unreviewed and undocumented is unfinished; this build ends with the
-   finish review, the verdict, and DESIGN.md
-   ========================================================================= */
+/* Canon, played straight: grouped ground, raised cards, glass chrome only. DESIGN.md is
+   canonical. */
 *{box-sizing:border-box;margin:0;padding:0}
-/* --bg lives on <html> so the CANVAS (and therefore overscroll rubber-banding)
-   is always the flat ground colour - no white flash, no gradient smearing when
-   the page bounces. body is transparent over it. */
-/* touch-action:manipulation on the ROOT: the browser intersects touch-action
-   down the ancestor chain, so one rule here retires the 300ms double-tap-zoom
-   wait for EVERY tap on the site while leaving panning and PINCH zoom fully
-   intact (that is the whole point of `manipulation` over `none`). The viewport
-   meta stays user-scalable - accessibility zoom is never ours to take.
-   The grey iOS tap flash goes with it: every control here already answers a
-   press with its own :active state, so the flash is a second, uglier answer to
-   the same event. The property inherits, so the root is the only place it goes. */
+/* --bg on <html> so the canvas (and overscroll bounce) is always the ground colour; body is
+   transparent. */
+/* touch-action on the root inherits: no 300ms double-tap wait, pan and pinch zoom intact, no
+   iOS tap flash. */
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg);
  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 @view-transition{navigation:auto}
 /* ---- ambient ground ------------------------------------------------------ */
-/* The sheet is white/graphite edge to edge, which gives the Liquid Glass chrome
-   nothing to refract - a lens over flat paint reads as a frosted rectangle.
-   This lays two very wide, very soft radials derived ONLY from --ac/--ac2 (so a
-   white-label swap re-tints them for free) in the top corners: a whisper of the
-   accent pooling exactly where the sticky toolbar sits, dissolved back to plain
-   --bg by roughly mid-viewport. It must read as air in the room, not as a
-   gradient - if you can name where it stops, it's too strong.
-   position:fixed on a PSEUDO, not background-attachment:fixed on body: mobile
-   Safari repaints an attached background on every scroll frame.
-   z-index:-1 puts it behind all in-flow content but still above the canvas. The
-   only other negative-z box is .f::before, which is a later descendant in the
-   same root stacking context, so it still paints above this. */
+/* ambient accent radials for the glass to refract. Fixed pseudo, not background-attachment
+   (mobile Safari repaints that every frame); z-index:-1 sits behind content. */
 body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
  background:var(--amb)}
 body{background:transparent;min-height:100vh;color:var(--txt);
@@ -1073,26 +1039,17 @@ body{background:transparent;min-height:100vh;color:var(--txt);
 /* screen-reader-only live region (announcements: saves, failures, counts) */
 .vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
  clip-path:inset(50%);white-space:nowrap}
-/* skip link: first tab stop on the dashboard, visible only on focus - a row's
-   filmstrip is up to 8 links, so the list is a long walk without it */
+/* skip link: first tab stop, visible only on focus - a row's filmstrip is up to 8 links. */
 .skip{position:fixed;left:-9999px;top:14px;z-index:100;padding:10px 16px;border-radius:999px;
  background:var(--glasssolid);color:var(--ac-pale);font-size:13px;font-weight:500;
  text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
 .skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
-/* Hierarchy is weight+size+leading as a SET, never size alone. Three rungs:
-   26/700 large title, 17/650 data values and section titles, 14/400 body
-   (13 stays on control labels only - pills, compact buttons - whose capsule
-   arithmetic depends on it; the READING layer is 14).
-   Tracking is optical, so it is a function of size, never a style: 26 = -.021em,
-   24 = -.020, 22 = -.017, 17 = -.012, and 14px/below sits at 0. Nothing here
-   ever tracks POSITIVE - no uppercase, no letterspaced labels.
-   700 (not 600) on the large title: at 26px the extra weight is what separates
-   the masthead from the 650 data rung, which size alone no longer does. */
+/* Three rungs: 26/700 title, 17/650 data and section titles, 14/400 body; 13 on control labels
+   only. Tracking scales with size (26 = -.021em, 24 = -.020, 22 = -.017, 17 = -.012, 14 and
+   below 0) and is never positive. */
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
-/* the masthead subtitle carries the store name under a 26/700 title - a half
-   pixel is all it needs to stop reading as a caption. Body stays 13. */
 .toolbar .sub{font-size:12.5px}
 .logo{display:block;height:30px;width:auto;mix-blend-mode:var(--logoblend,normal)}
 .logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:6px;
@@ -1103,35 +1060,22 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.5}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
-/* a page HEADER figure is a data value, so it sits on the 17/650 rung like
-   .num and .gc .cval - at 13 the headline read smaller than the card values
-   under it. The 13px stays where .synced is chrome: the toolbar freshness
-   stamp and its customer twin. */
+/* a header figure is a data value: 17/650, the .num rung. 13 stays where .synced is chrome. */
 .hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
-/* the held-sub figure: alert red, same token as the pill, so the detail page
-   states the alarm at the value rung instead of hiding it */
 .synced b.holdb{color:var(--holdtx)}
-/* the hold sentence needs a measure - as a right-aligned .synced note it would
-   otherwise set to the full column width */
 .synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
-/* the customer's sign-out is the ICON in the freshness block, matching the
-   admin masthead. As bare text in the top-left it sat in the exact slot every
-   other page uses for "← Back", so the reflex tap that means "go back" ended a
-   session whose credential is an email she has to retype. */
+/* the customer's sign-out is the icon in the freshness block, not the top-left "back" slot. */
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
  transition:color .15s,background-color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
-/* the dual rim is what makes this read as a LENS rather than a frosted card:
-   light catches the top edge (--rim) and falls off at the bottom (--rimb).
-   Both are sub-threshold on purpose - you should feel the curvature, not see
-   an outline. The drop shadow is separate and is what carries elevation. */
-/* .f.fsolo (the standalone Archived pill) rides in this group at TWO classes on
-   purpose: .f further down zeroes background and border for segment pills, and
-   0,2,0 is what lets the solo pill keep its own glass without a later re-state. */
+/* the dual rim reads as a lens: light on the top edge (--rim), falling off at the bottom
+   (--rimb). Both sub-threshold; the drop shadow carries elevation. */
+/* two classes on purpose: .f below zeroes background and border, and 0,2,0 lets the solo pill
+   keep its glass. */
 .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{
  background:var(--glass);
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
@@ -1139,17 +1083,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 10px 26px var(--shc)}
 .toolbar{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:10px;
  margin:16px 0 4px;padding:12px 14px;border-radius:16px}
-/* NO view-transition-name on glass: a named backdrop-filter panel gets
-   snapshotted and floats through the navigation as a blurred rectangle
-   whenever the far page lacks its twin (detail pages have no toolbar at all,
-   and masthead/compact bars are different bars) - on iPhone it read as a
-   blur FLASH before every page. Cross-page continuity is the root crossfade
-   alone, and 640px kills even that below. */
-/* elevation is EARNED: at rest the bar sits nearly flush on the sheet, and it
-   lifts only once content is actually passing underneath it (FX_JS flips
-   .raised off a 1px sentinel above the bar). Named separately from the
-   masthead bar so a compact bar never morphs into a tall one mid-navigation -
-   like-for-like pages get real continuity, mismatched ones cross-fade. */
+/* NO view-transition-name on glass: a named backdrop-filter panel floats through the
+   navigation as a blurred rectangle when the far page lacks its twin. */
+/* elevation is earned: FX_JS flips .raised off a 1px sentinel. Named apart from the masthead
+   bar so a compact bar never morphs into a tall one. */
 .toolbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 1px 2px var(--shc3);
  transition:box-shadow .25s ease-out}
 .toolbar.raised{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),
@@ -1161,8 +1098,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .searchwrap{position:relative;flex:1;min-width:200px}
 .searchwrap .sicon{position:absolute;left:14px;top:50%;transform:translateY(-50%);
  color:var(--tert);pointer-events:none}
-/* capsule: chrome and controls are pills in this era, not 8px rounded rects.
-   The icon moves out with the left inset so it stays clear of the curve. */
+/* capsule: chrome and controls are pills here. The icon moves out with the left inset to clear
+   the curve. */
 .searchbar{width:100%;margin:0;padding:10px 16px 10px 36px;font-size:15px;font-weight:400;
  border-radius:999px}
 .preview{position:absolute;z-index:30;top:calc(100% + 8px);left:0;right:0;background:var(--surface);
@@ -1177,11 +1114,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .pvrow small{display:block;color:var(--m1);font-size:12px;font-weight:400;margin-top:1px}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
-/* the tag is a category, not a sentence - as bare accent text it competed with
-   the row's own title. A quiet capsule demotes it to a label. The fill is mixed
-   from --ac-pale (already theme-adaptive AND white-label driven) so it never
-   hardcodes an accent-derived colour; --tagmix carries the per-theme strength.
-   line-height:1 keeps the 6px of vertical padding from growing the row. */
+/* the tag is a category, not a sentence, so a quiet capsule demotes it. Fill mixes from
+   --ac-pale so white-label swaps re-tint it; line-height:1 keeps the row height. */
 .pvtag{font-size:11px;font-weight:500;line-height:1;color:var(--ac-pale);flex-shrink:0;
  padding:3px 9px;border-radius:999px;
  background:color-mix(in srgb,var(--ac-pale) var(--tagmix),transparent)}
@@ -1192,171 +1126,97 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .filters,.sbar{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:20px 0 12px}
-/* Archived is a MODE switch, not a sort, so it sits OUTSIDE the sort segment
-   instead of taking the last seat inside it. The real reason is the phone: the
-   sort capsule can become a horizontal scroller there, and anything parked at
-   its right edge is off-screen until you drag it into view - a mode switch has
-   to be visible the whole time. It is a bare pill, not a second capsule: a
-   capsule wrapping a single pill prints a visible ring around it with nothing
-   else inside, which reads as a mistake. So the button carries the glass
-   itself (.f.fsolo, see the chrome group above).
-   The "N need owners" worklist link rides here too, at .fsolo: it navigates
-   away, so it is no fourth seat inside a capsule whose arithmetic assumes
-   exactly three pills, and its width spilled the capsule onto the Archived
-   pill on every phone. Two solo pills now, so the row WRAPS at its own 10px
-   gap - the capsule keeps its measured width instead of shrinking into a
-   scroller, and the pair drops to a second line on a phone. .rowend holds the
-   pair as ONE flex item so they wrap together; as loose children they split
-   2/1 at 414px and stranded Archived alone under a right-aligned link. Bare
-   flex box, no chrome of its own. */
+/* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule can never
+   park it off-screen, carrying its own glass (.f.fsolo). "N need owners" is a second solo
+   pill; .rowend wraps the pair as one flex item. */
 .filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
 .rowend{display:flex;align-items:center;gap:10px}
-/* the row owns the margin now; the standalone .filters rule above still serves
-   the person-page archived sections, which have no row around them */
 .filterrow .filters{margin:0}
 .sbar{margin-top:12px}
-/* user-select:none on the CONTROLS only. A pill's word is a button label, not
-   content - a long-press that pops a selection handle over "Order type" is
-   noise. It stops here: card names, lot numbers, tags, values and every input
-   stay selectable, because those are things a person copies. */
-/* line-height is STATED, not inherited, and that is load-bearing. Most pills are
-   <button>, and the UA sheet pins line-height:normal on form controls, so body's
-   1.45 never reaches them - a pill measured 15px of line box while the one <a
-   class="f"> in the same capsule ("N need owners") inherited 18.85 and quietly
-   made the capsule taller. 16px fixes both: every pill is the same box whatever
-   its tag, and the capsule's outer height becomes arithmetic instead of a font
-   metric, which is what lets the solo Archived pill match it exactly (see
-   .fsolo). 16/13 = 1.23, comfortably clear of the glyph box. */
-/* 6/8, not 7/7: centring the line box is not centring the ink - these labels are
-   mostly lowercase and carry no descenders, so -1/+1 rides their x-height mass up
-   to optical centre while the total height stays exactly what it was. */
+/* user-select:none on controls only - names, lot numbers, tags, values and inputs stay
+   selectable. */
+/* line-height stated, not inherited: the UA sheet pins normal on <button>, so pills and the
+   one <a class="f"> measured differently. 16px makes every pill the same box, so .fsolo
+   matches. */
+/* 6/8, not 7/7: no descenders in these labels, so -1/+1 rides the x-height to optical centre
+   at the same height. */
 .f{font-size:13px;font-weight:500;color:var(--m1);background:transparent;border:0;line-height:16px;
  padding:6px 14px 8px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;
  width:auto;margin:0;font-family:inherit;letter-spacing:0;position:relative;
  -webkit-user-select:none;user-select:none;
  transition:background .18s,color .18s,transform .14s ease-out}
-/* the pill LOOKS 30px tall and stays that way - the hit area is grown invisibly
-   past the capsule instead (30 + 14 = 44, exactly the HIG floor; the 7px was 6
-   until the line box above became a stated 16, and it is the cheaper of the two
-   places to take the pixel back).
-   Below 360px the capsule becomes an overflow box and CLIPS this pseudo, so
-   the sort pills' real target there is the capsule's own height - see the
-   640px and 360px blocks for the mechanics and why that residue is accepted.
-   Vertical only: inset 0 left/right so a pill never steals its neighbour.
-   z-index:-1 keeps it BEHIND every real box, so when the capsule wraps to a
-   second row the lower pill's pad can't shadow the upper pill's live edge. */
+/* the pill looks 30px tall; the hit area grows invisibly past the capsule (30 + 14 = 44, the
+   HIG floor). Vertical only; z-index:-1 keeps it behind every real box. Below 360px the
+   capsule clips it. */
 .f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
-/* Archived is a VIEW SWITCH, not a fourth sort choice, so its pressed state
-   borrows the primary-button grammar (.fillbtn: --ac-fill + #fff) rather than
-   the segment's quiet --segon wash. --ac-fill is the darkened-accent shade that
-   exists precisely to carry white text, so this clears contrast in both
-   themes. :active scale still comes from .f:active. */
+/* Archived pressed borrows .fillbtn's grammar (--ac-fill + #fff), not the segment's --segon
+   wash: it is a view switch, not a fourth sort. */
 .f.farch.on{background:var(--ac-fill);color:#fff}
-/* the solo Archived pill IS its own capsule. It reads one rung QUIETER than the
-   sort pills (12/500) because it is a mode switch sitting next to them, not a
-   fourth sort; on mobile the count drops too (.archn, see the 640px block) and
-   the aria-label carries it.
-   The 20px of vertical pad is the one number that has to be right: it puts this
-   pill at 16 + (9+11) + 1*2 = 38px, which is exactly the sort capsule's outer
-   height at BOTH breakpoints (desktop 16 + (6+8) + 3*2 + 2 = 38, mobile
-   16 + (5+7) + 4*2 + 2 = 38). The split inside each pair is the optical -1/+1;
-   only the sum matters here. It shares .f's stated 16px line box, so the two
-   silhouettes match by arithmetic, not by luck - no fudge factor, and no
-   dependence on which system font the phone happens to use.
-   Stays inline-block (.f's display), NOT inline-flex: flex would turn the label
-   and the count span into separate flex items and eat the space in front of the
-   middot, printing "Archived· 18". */
+/* the solo Archived pill is its own capsule, one rung quieter (12/500). The 20px vertical pad
+   is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both breakpoints.
+   inline-block, NOT inline-flex, or the count prints "Archived· 18". */
 .fsolo{font-size:12px;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
-/* pressed, it has to read like .fillbtn - one solid accent lozenge - and NOT
-   like a filled pill sitting inside a grey ring. The hairline goes transparent
-   rather than to 0 so the box geometry (and the height match) is untouched, and
-   the glass rims go with it; the drop shadow stays, because the pill is still
-   floating at the same elevation it was a moment ago. */
+/* pressed it must read as one solid lozenge: the hairline goes transparent, not to 0, so the
+   height match is untouched. Rims go, shadow stays. */
 .f.farch.fsolo.on{border-color:transparent;box-shadow:0 10px 26px var(--shc)}
 .f:active{transform:scale(.97)}
 /* ---- content cards: App Store grammar (owner call 2026-08-08) -------------- */
-/* The hairline ledger is RETIRED: rows read too fused ("not enough distinction
-   between panels" - the owner, with screenshot). Each submission is now a raised
-   card on the grouped ground - white on #f2f2f7 in light, #1c1d20 on #101113
-   in dark, 16px radius (the toolbar's own rounding), a soft hair2 edge and a
-   quiet cast shadow. Depth now lives in TWO places: glass chrome floats and
-   refracts, cards sit raised on the ground; everything inside a card stays
-   flat. Gap between cards replaces the hairline as the separator. */
+/* each submission is a raised card on the grouped ground: 16px radius, hair2 edge, quiet
+   shadow. Depth is glass chrome and card lift only; inside a card everything is flat. */
 .card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  padding:18px 16px;margin:0 0 14px;box-shadow:0 2px 10px var(--shc3);
  transition:background .18s,opacity .18s,filter .18s}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
-/* the data rung: 17/650. 650 is a real weight on the system face (SF supports
-   the full optical range); Segoe/Roboto have no 650 and snap to 600 or 700 -
-   both acceptable, since the rung only has to out-weigh 13px/400 body. */
+/* the data rung: 17/650. Segoe/Roboto snap 650 to 600 or 700, both fine - it only has to
+   out-weigh 13/400. */
 .num{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
-/* the status column scans on two gray levels: Shipped = ink (done, real),
-   everything in flight = muted. A third, lighter "pending" gray cannot clear
-   4.5:1 at 13px on the white sheet, so pending keeps --m1 and its clock icon
-   plus the label carry the difference (.pending stays as a semantic hook).
-   NO red status pill: a red "grades landed" pill shipped briefly and was
-   removed by owner ruling - red stays on the grade itself, holds, and alerts. */
+/* two gray levels: Shipped = ink, in flight = muted. A third, lighter gray cannot clear 4.5:1
+   at 13px, so pending keeps --m1 and its clock icon. No red status pill. */
 .pill.shipped{color:var(--txt)}
 .pill.shipped svg{color:var(--m1)}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
-/* the caption under a value drops back to the small-text rung, so it must also
-   drop the value's optical tracking - tracking is inherited, size is not. */
+/* the caption drops to the small rung, so it must drop the value's tracking too - tracking
+   inherits, size does not. */
 .ledval span{display:block;font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 /* ---- stage: one text line above a 4px capsule bar ------------------------- */
-/* 16/10, not 15/8: the View pill is 30px tall against the line's 21px text
-   and baseline alignment hangs its bottom ~6px lower, so the old 8px read as
-   pill-almost-touching-bar (the owner, 2026-08-08) */
+/* 16/10, not 15/8: the 30px View pill hangs about 6px below the line, so 8px read as
+   pill-touching-bar. */
 .stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
  font-size:14px;color:var(--m1);margin:16px 0 10px}
 .stage>span{min-width:0}
-/* no bar under an unknown status, so the stage line is the row's last element
-   and its bottom margin would double the card's own padding */
+/* no bar under an unknown status, so the stage line is last and its margin would double the
+   card pad. */
 .stage.nobar{margin-bottom:0}
-/* 650, matching .num/.ledval: the stage name is a DATA value, not emphasis in a
-   sentence. The operator sweeps the column of stage names the same way they
-   sweep the column of lot numbers, so both sit on the same weight rung. */
+/* 650, matching .num: a stage name is a data value swept as a column, not emphasis. */
 .stage b{color:var(--ac-pale);font-weight:650}
 .bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
-/* the one considered moment: on load FX_JS drops every bar to 0 and lets it
-   run out to its served width, staggered onto the row settle (see FX_JS).
-   --bar, not raw --ac: the fill is clamped server-side to 3:1 against the
-   track (raw steel blue measured 2.48:1 against the dark track). */
+/* the one considered moment: FX_JS runs each bar out from 0 on load. --bar, not --ac - the
+   fill is clamped server-side to 3:1 on the track. */
 .bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
  transition:width .55s cubic-bezier(.23,1,.32,1)}
-/* a held sub is not advancing and an archived one is done, so neither earns the
-   accent fill: grey agrees with the red hold pill instead of arguing with it */
+/* a held sub is not advancing and an archived one is done, so neither earns the accent fill. */
 .card.arch .bar i,.card.hold .bar i{background:var(--m1)}
-/* the row's one link is a visible quiet capsule at the stage line's far end
-   (App Store's row action, owner-tuned 2026-08-08). Label is --ac-hot, the
-   accent shade already clamped 4.5:1 against --surface3 in both themes.
-   baseline alignment on .stage keeps the pill's text on the stage line's
-   baseline; the pad grows the row symmetrically around it. */
+/* the card's one link: a quiet capsule at the stage line's end, label --ac-hot (clamped 4.5:1
+   on --surface3), baseline-aligned to the line. */
 .stage .view{flex-shrink:0;margin:0;padding:7px 14px;border-radius:999px;line-height:16px;
  font-size:13px;font-weight:600;color:var(--ac-hot);background:var(--surface3);position:relative}
-/* the pill reads 30px tall and stays that way - the hit area grows invisibly
-   past it (30 + 14 = 44, the HIG floor), same trick as the filter pills.
-   Vertical only, so it never steals the stage text's tap. */
+/* reads 30px tall, hit area grows invisibly past it (30 + 14 = 44). Vertical only, so it never
+   steals the stage text's tap. */
 .stage .view::before{content:'';position:absolute;inset:-7px 0}
-/* 18px, not 9: .view's padded hit box hangs 12px BELOW the stage line and
-   .archbtn's hangs 12px above its own, so at 9px they overlapped by 4px -
-   right on top of the stage bar, where a thumb naturally lands, with a
-   navigation link and a state change sharing the target. 10 + 4 + 18 = 32
-   clears the two 12s with room. Ledger rhythm absorbs it; the action row
-   reading as separate from the bar is a bonus, not a cost. */
+/* 18px, not 9: .view and .archbtn each hang 12px past their line and at 9px overlapped on the
+   stage bar. 10 + 4 + 18 = 32 clears both. */
 .foot{padding:0;border:0;margin-top:18px;display:flex;justify-content:space-between;
  align-items:center;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:14px;font-weight:400;color:var(--m1)}
-/* bare 13px text actions: pad the hit box out to ~43px and cancel the growth
-   with an equal negative margin, so the resting layout is byte-identical.
-   As flex items (.stage, .foot, .footacts) the margins cancel exactly; as
-   inline anchors the vertical padding never touched line layout to begin with. */
+/* bare 13px text actions: pad the hit box to about 43px and cancel it with an equal negative
+   margin, so the resting layout is byte-identical. */
 .view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
@@ -1365,41 +1225,29 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  -webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s,transform .14s ease-out}
 .archbtn:active{transform:scale(.97)}
-/* an empty state is content too - bare on the grouped ground it read as a gap
-   in the page, not as an answer. Same card treatment as .card and .hint. */
 .empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.7;
  background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 2px 10px var(--shc3)}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
-/* Replaced the old single 42x58 cover thumb (rule and emissions both gone).
-   Up to 8 tiles, the 8th becoming a "+N" chip when the sub has more imaged
-   cards than fit. */
-/* the strip SCROLLS at every width, not just under 640px: 8 tiles measure
-   742px, so any sheet narrower than ~782px (iPad portrait included) would
-   otherwise scroll the whole page sideways. */
+/* up to 8 tiles, the 8th a "+N" chip when the sub has more imaged cards than fit. */
+/* the strip scrolls at every width: 8 tiles measure 742px, so any sheet under ~782px would
+   scroll the page sideways. */
 .strip{display:flex;gap:10px;margin-top:14px;overflow-x:auto;
  overscroll-behavior-x:contain;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
-/* the strip is an overflow box, which also clips vertically - a tile's focus
-   ring draws INSIDE the tile so the box can't cut it */
+/* the strip clips vertically too, so a tile's focus ring draws inside the tile. */
 .strip a:focus-visible{outline-offset:-2px}
-/* [href^="/img"] is the same selector the lightbox uses to pick out scan links,
-   so the "+N" chip (an /sub/<n> link) keeps its own display:flex. */
+/* [href^="/img"] is the lightbox's own selector, so the "+N" chip keeps its display:flex. */
 .strip a[href^="/img"]{display:block;flex-shrink:0;line-height:0}
 .strip img{width:84px;height:117px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
  background:var(--surface3);cursor:zoom-in;flex-shrink:0}
-/* --surface3, not --ph: this chip lives INSIDE a white card, where the
-   ground-tuned white --ph would vanish; same for placeholder tiles in group
-   cards (the .card .gc .ph rule below). --ph stays for grids on the page
-   ground (cards/search/detail pages). */
+/* --surface3, not --ph: inside a white card the ground-tuned --ph vanishes. --ph stays for
+   grids on the page ground. */
 .morechip{width:84px;height:117px;border-radius:6px;border:1px solid var(--hair);
  background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px;
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
-/* past the phone breakpoint the strip has no bleed, so an overflowing one is
-   sliced flush mid tile with nothing saying there is more. A background shade
-   can't work here (the tiles are opaque and cover it), so the cue is a 28px
-   mask fade on whichever edge still has tiles past it. FX_JS sets .sl/.sr off
-   the scroll position, so a strip that fits is never faded. */
+/* no bleed past the phone breakpoint, so an overflowing strip is sliced mid tile; the cue is a
+   28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr). */
 @media(min-width:641px){
  .strip{--fadel:0px;--fader:0px;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
@@ -1418,30 +1266,21 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:24px}
 .grid img{width:100%;border-radius:6px;border:1px solid var(--hair);background:var(--surface3);
  aspect-ratio:1.72/2.4;object-fit:cover;display:block}
-/* NO content-visibility here: its paint containment clips every descendant
-   that reaches past the tile box - focus rings, and the .sublink hover pill's
-   negative-margin bleed. The endless off-screen sweep it was meant to stop is
-   handled in FX_JS instead: the sweep class only lands when a still-loading
-   tile approaches the viewport. */
+/* NO content-visibility: its paint containment clips focus rings and .sublink's
+   negative-margin bleed. FX_JS handles the off-screen sweep instead. */
 .gc{background:transparent;border:0;border-radius:0;padding:0;display:flex;flex-direction:column}
 .gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:6px;border:1px solid var(--hair);
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
-/* inside a raised card the white ground-tuned --ph vanishes; the in-card
-   placeholder ground is the quiet fill (see .morechip) */
 .card .gc .ph{background:var(--surface3)}
-/* the grade line is ALWAYS emitted, empty on an ungraded card: without the
-   reserved box the rest of the tile rode 30px up and graded and ungraded
-   neighbours in the same grid row staggered. 14 x 1.5 = 21, body's line box. */
+/* the grade line is always emitted, empty on an ungraded card, or neighbours in a grid row
+   stagger. 14 x 1.5 = 21. */
 .gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px;min-height:21px}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
-/* the card NAME is the subject only (split_name demotes the set boilerplate to
-   .nmset below): two lines is enough for it, and the reserved height keeps
-   every tile in the grid on the same baseline. 2 x 14px x 1.4 = 39.2 -> 40.
-   min-height, not height: a fixed box clips the second line mid-glyph under
-   a user-set minimum font size or text-only zoom (WCAG 1.4.4). */
+/* the name is the subject only (split_name demotes the set). Two lines reserved so a grid row
+   shares a baseline: 2 x 14 x 1.4 = 39.2 -> 40. min-height, not height (WCAG 1.4.4). */
 .gc .nm{font-size:14px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:40px;
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .gc .nmset{font-size:12px;color:var(--m1);margin-top:2px;white-space:nowrap;overflow:hidden;
@@ -1452,32 +1291,28 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color .15s,background-color .15s}
-/* the customer's non-link variant is a real class, not "has any inline style" -
-   keying on [style] made an unrelated inline style silently repaint the link */
+/* a real class, not "has any inline style": keying on [style] repainted unrelated inline
+   styles. */
 .sublink.sublink-static{color:var(--m1);font-weight:400;cursor:default}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
  padding:11px 0 10px;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
-/* touch devices: tap navigates instantly, this pencil is the edit affordance
-   (double-tap-to-edit is a desktop double-click idea - on a phone it races
-   navigation). Hidden while editing so the underline runs full width. */
+/* touch: tap navigates, the pencil edits (double-tap-to-edit races navigation). Hidden while
+   editing. */
 .ownedit{display:none;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
 @media(pointer:coarse){
  .ownedit{display:flex;align-items:center;justify-content:center;width:40px;
   margin-right:-6px;align-self:stretch}
  .ownedit:active{color:var(--txt)}
- /* the INPUT's focus hides it, not the row's: :focus-within also matched the
-    pencil's own focus, so tapping it removed the button between pointerdown
-    and click and the tap did nothing. */
+ /* the input's focus hides it, not the row's: :focus-within matched the pencil's own focus and
+    the tap did nothing. */
  .own:focus + .ownedit{display:none}}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
-/* pointer focus keeps the quiet accent underline alone; KEYBOARD focus gets
-   the full ring back - a 1px underline is not a visible focus indicator on
-   the app's most-used control (WCAG 2.4.11). Order matters: focus-visible is
-   stated after :focus so its outline wins when both apply. */
+/* pointer focus keeps the underline; keyboard focus gets the ring - 1px is not a visible
+   indicator (WCAG 2.4.11). focus-visible after :focus so it wins. */
 .own:focus{border-bottom-color:var(--ring);outline:none}
 .own:focus-visible{border-bottom-color:var(--ring);outline:2px solid var(--ring);outline-offset:2px}
 .own.saved{border-bottom-color:var(--ok)}
@@ -1485,12 +1320,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
  color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
  transition:color .15s,background-color .15s}
-/* the failed-save chip: same slot and grammar as the undo chip, alert-colored -
-   a save failure must say so in words, not in a 1.2s border flash */
 .undo.uerr{color:var(--err)}
 /* ---- lightbox ------------------------------------------------------------ */
-/* overscroll-behavior:contain stops a drag on the scrim from chaining to the
-   dashboard behind it; LIGHTBOX_JS pins body overflow for the rest. */
+/* overscroll-behavior:contain stops a scrim drag chaining to the dashboard; LIGHTBOX_JS pins
+   body overflow. */
 .lb{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;
  align-items:center;justify-content:center;cursor:zoom-out;overscroll-behavior:contain;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
@@ -1501,40 +1334,30 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .lb img{max-width:92vw;max-height:92vh;border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
  transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1);cursor:default}
 .lb.open img{transform:none}
-/* the reveal moment must survive being touched: the scan itself is inert, the
-   scrim and this orb close. Fixed values, not tokens - it always sits on the
-   dimmed scrim, same as the lightbox shadow. */
+/* the scan is inert, the scrim and this orb close. Fixed values, not tokens - it always sits
+   on the dimmed scrim. */
 .lbx{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  color:#fff;background:rgba(0,0,0,.35);border:0;cursor:pointer;
  transition:background .15s,transform .14s ease-out}
 @media(hover:hover){.lbx:hover{background:rgba(0,0,0,.55)}}
 .grid a{cursor:zoom-in;position:relative;display:block}
-/* The loading sweep used to animate background-position ON THE IMG: a full
-   repaint of every unloaded tile, every frame. It is now ONE overlay on the
-   scan's anchor moved with transform - compositor only, no paint. The ground
-   beneath it stays the img's own var(--surface3), which never animated.
-   [href^="/img"] is the same selector the lightbox uses to pick out scan links,
-   so .sublink (also an `a` inside .grid) is untouched. overflow is clipped so
-   the band has somewhere to start and end; the anchor box IS the img box, so
-   nothing visible is cut, and an element's own focus outline is not clipped by
-   its own overflow. */
+/* the loading sweep is one transform-moved overlay on the anchor, compositor only.
+   [href^="/img"] is the lightbox's selector, so .sublink is untouched; overflow clips the
+   band. */
 .grid a[href^="/img"]{overflow:hidden;border-radius:6px}
-/* the sweep only runs on .ldg - FX_JS sets it when a still-loading tile nears
-   the viewport, so lazy images below the fold (which never load and would
-   otherwise sweep forever) cost nothing */
+/* the sweep only runs on .ldg, which FX_JS sets when a loading tile nears the viewport, so
+   below-the-fold tiles cost nothing. */
 .grid a[href^="/img"].ldg::after{content:'';position:absolute;inset:0;border-radius:6px;
  pointer-events:none;
  background:linear-gradient(100deg,transparent 20%,var(--sh2) 50%,transparent 80%);
  animation:sweep 1.15s linear infinite}
-/* FX_JS tags the ANCHOR when its img settles, so this is a plain class match
-   rather than :has(img.ld) - :has() is unsupported in older Safari/Firefox and
-   there the sweep would never stop. */
+/* FX_JS tags the anchor when its img settles: a plain class match, not :has(img.ld), which
+   older Safari/Firefox never resolve. */
 .grid a.ld::after{display:none}
 @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 /* ---- corner controls: glass orbs ----------------------------------------- */
-/* 44x44 is the HIG touch floor; the 8px gap between the orbs is preserved by
-   pushing the gear out to 20 + 44 + 8 = 72. Icon glyphs are unchanged. */
+/* 44x44 is the HIG floor; the 8px gap is kept by pushing the gear to 20 + 44 + 8 = 72. */
 #gearbtn,#themeflip{position:fixed;bottom:20px;z-index:40;width:44px;height:44px;
  border-radius:50%;color:var(--m1);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
@@ -1542,40 +1365,27 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 #themeflip{right:20px}
 #gearbtn{right:72px}
 #gearbtn:active,#themeflip:active{transform:scale(.94)}
-/* On a touch screen the orbs float over the owner tag, its pencil and View
-   cards, so a tap that lands while the page is still moving hits an orb the
-   thumb was never aiming at. FX_JS marks the document scrolling for 150ms after
-   each scroll event; while it is set the orbs go inert and dim a touch, so the
-   tap falls through to the card. Pointer devices keep them live throughout. */
+/* the orbs float over the owner tag and View, so FX_JS marks the document scrolling for 150ms
+   after each scroll and they go inert - the tap falls through. Pointer devices keep them live. */
 @media(hover:none){
  html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none;opacity:.55}}
 /* ---- forms --------------------------------------------------------------- */
-/* every single-line control is a capsule; the extra 3px of side padding buys
-   the curve back so text never crowds the round end. Content-side radii
-   (covers, scans, preview rows, sheet cards) stay square-ish on purpose. */
+/* every single-line control is a capsule; 3px extra side padding buys the curve back.
+   Content-side radii stay square-ish. */
 input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:999px;
  color:var(--txt);font-size:15px;font-weight:400;text-align:left;padding:11px 16px;
  font-family:inherit;outline:none}
 input:focus,input:focus-visible{outline:2px solid var(--ring);outline-offset:0}
 input::placeholder{color:var(--m1)}
-/* BUTTONS ARE NOT FILLED BY DEFAULT. The filled accent capsule used to live on
-   the `button` ELEMENT selector, which meant every text action, pill and orb in
-   the app was fighting it - and losing to `button:hover`, so hovering "Archive"
-   or a filter pill flashed a blue capsule. Specificity patches only move the
-   fight around. So the filled identity is opt-in via .fillbtn, and the element
-   rule keeps nothing but neutral resets: no background, no colour, no radius,
-   no width, no margin. Typography (family/size/weight) stays here on purpose -
-   it is a reset, not an identity, and every classed button already overrides
-   what it needs to, so the cascade for them is byte-identical. */
+/* BUTTONS ARE NOT FILLED BY DEFAULT: the fill is opt-in via .fillbtn, the element rule keeps
+   neutral resets only. Typography stays - a reset, not an identity. */
 button{background:transparent;border:0;color:inherit;
  font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
-/* filled primary: form submits and modal saves. Carries the width:100% and
-   margin-top:12px the element rule used to hand out, because those are exactly
-   the sites that relied on them. */
+/* filled primary: form submits and modal saves. Carries the width:100% and margin-top:12px the
+   element rule used to hand out. */
 .fillbtn{width:100%;margin-top:12px;background:var(--ac-fill);border-radius:999px;color:#fff;
  padding:12px;transition:background .18s,transform .14s ease-out}
-/* press-scale stays element-level: it is feedback every button deserves, and it
-   sets no colour so it cannot leak a fill. */
+/* press-scale stays element-level: it sets no colour, so it cannot leak a fill. */
 button:active{transform:scale(.97)}
 button:disabled{opacity:.5;cursor:default}
 .err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:14px}
@@ -1586,11 +1396,8 @@ button:disabled{opacity:.5;cursor:default}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
 .srow input{flex:1;min-width:150px;margin-top:0}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
-/* .sdel never takes .fillbtn - it is a destructive TEXT action, not a primary.
-   The radius is restated because the element rule no longer hands one out and
-   the focus ring follows it. .squiet is the same bare-text grammar in accent:
-   one screen carries one filled capsule, so the saves on the panels the
-   operator touches once (webhook, passwords) demote to text. */
+/* a destructive text action is not a primary, so .sdel never takes .fillbtn; the radius is
+   restated because the element rule hands none out. .squiet is the same in accent. */
 .sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
  border-radius:999px}
 .sbtn.sdel{color:var(--err)}
@@ -1603,14 +1410,13 @@ button:disabled{opacity:.5;cursor:default}
 .snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
-/* attention dot: the one account PSA is asking to verify. Accent, not red - red
-   belongs to grades and the hold pill. The screen-reader half rides in a .vh
-   span inside the chip, so the dot is decorative only. */
+/* attention dot: the account PSA wants verified. Accent, not red - red is grades and the hold
+   pill. The label rides in a .vh span. */
 .schip.att::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
  border-radius:50%;background:var(--ac);vertical-align:1px}
 .spane{margin-top:16px}
-/* settings/discord sheets materialize like the lightbox: stays mounted, scrim
-   fades up with the same blur(8px), sheet lands from .97. Exit is quicker. */
+/* sheets materialize like the lightbox: scrim fades up with blur(8px), sheet lands from .97,
+   exit quicker. */
 .smodal{position:fixed;inset:0;z-index:60;background:var(--scrim);display:flex;
  align-items:center;justify-content:center;padding:18px;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
@@ -1633,33 +1439,19 @@ button:disabled{opacity:.5;cursor:default}
 .dstate{font-size:14px;font-weight:500;color:var(--txt);flex:1}
 .dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
-/* No wash on an archived card, in any view: the .5 dim faded the card's own
-   white surface and put every text style in the row at 2.0 to 3.4 on white,
-   which is real content below 1.4.3. "Past" is carried by grayscale alone -
-   the accent stage name, bar and scans all desaturate - while the ink stays on
-   a full-strength card and keeps its 4.5. The call the archived-only view
-   already made (2026-08-08), now made everywhere. */
+/* no wash on an archived card: the .5 dim put its text at 2.0 to 3.4 on white (1.4.3). "Past"
+   is grayscale alone; the ink keeps its 4.5. */
 .card.arch{filter:grayscale(.55)}
-/* An archived TILE dims its SCAN, not its data. The .5 wash that reads fine on
-   a row (which sits among live rows and is folded away by default) put card
-   names, cert numbers and values near 1.9:1 on white - and archived tiles
-   render INLINE BY DEFAULT in search results, so that is real content below
-   1.4.3, not a deliberately-quieted fold. The greyed image carries "past"; the
-   text keeps its own contrast. Same call the owner already made for
-   #list.archview, applied where it actually matters. The no-scan placeholder is
-   NOT a scan: it is a grey box whose only content is its "No image yet" label,
-   and the .5 wash put that label at 1.9:1. It is already grey, so it has no
-   colour to lose and nothing to say; it stays undimmed. */
+/* an archived tile dims its scan, not its data - tiles render inline in search results, so .5
+   put real content near 1.9:1 (1.4.3). The no-scan placeholder is a label, not a scan. */
 .gc.arch a[href^="/img"]{opacity:.5;filter:grayscale(.6);
  transition:opacity .18s,filter .18s}
 .card.tlcard{padding:16px;margin:14px 0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
  transition:color .15s,background-color .15s}
-/* the sub number is a 22px line, so it takes the same invisible hit pseudo the
-   sort pills carry: 22 + 11 each way = the 44px floor. Vertical only (inset 0
-   left/right) so it never reaches the pills across the row; the 18px card pad
-   above and the meta line below are not targets, so nothing overlaps. */
+/* a 22px line, so it takes the sort pills' invisible hit pseudo: 22 + 11 each way = 44.
+   Vertical only, so it never reaches the pills across the row. */
 .numlink{text-decoration:none;color:inherit;display:inline-block;position:relative}
 .numlink::before{content:'';position:absolute;inset:-11px 0}
 .numlink .num{transition:color .15s}
@@ -1667,48 +1459,37 @@ button:disabled{opacity:.5;cursor:default}
 .setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.6}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
-/* the gate is a card now too - on the grouped ground a bare centered stack
-   floats anchorless, and the quiet input fill (#f2f2f4) all but vanished on
-   the near-identical #f2f2f7 page. The white card gives it back its ground. */
+/* the gate is a card too: on the grouped ground a bare stack floats anchorless and the quiet
+   input fill vanished. */
 .gbox{width:min(340px,100%);text-align:center;background:var(--surface);
  border:1px solid var(--hair2);border-radius:20px;padding:28px 22px;
  box-shadow:0 2px 10px var(--shc3)}
-/* the gate is a 300px centred card, not a page - a large title sized for a
-   820px sheet overpowers it and wraps a two-word site name onto two lines.
-   One step down, same weight, tracking re-scaled to the new size. The card is
-   the same 300px on phones, so this size does NOT change at the breakpoint. */
+/* the gate is a 300px card, not a page: a title sized for an 820px sheet wraps a two-word
+   name. One step down, and unchanged on phones. */
 .gbox h1{font-size:24px;letter-spacing:-.02em}
 .gbox input{text-align:center}
 .gbox .sub{margin-top:6px}
 /* ---- hover: pointer devices only ----------------------------------------- */
 @media(hover:hover){
-/* the hover tint layers ON the card surface (background replaces, so a bare
-   alpha wash would swap the raised card for a smudge of page ground) */
+/* the hover tint layers on the card surface - background replaces, so a bare alpha wash would
+   show page ground. */
 .card:hover{background:color-mix(in srgb,var(--txt) 4%,var(--surface))}
-/* group wrappers and the standalone timeline block are .card for the raised
-   look, but they are not targets - only the sub-number link inside a group
-   is. Tinting the whole surface promised a click it doesn't have. */
+/* group wrappers and the timeline block are .card for the lift but are not targets; only the
+   sub-number link is. */
 .card.grp:hover,.card.tlcard:hover{background:var(--surface)}
-/* full color on hover - the card still takes the normal .card:hover background
-   highlight, and the grey lifts off. */
 .card.arch:hover{filter:none}
 .gc.arch:hover a[href^="/img"]{opacity:.78;filter:grayscale(.3)}
 .f:hover{color:var(--fhov)}
 .f.on:hover{color:var(--ac-pale)}
-/* stated AFTER .f.on:hover and at 4 classes so the pressed Archived pill keeps
-   its fill text colour on hover instead of flipping to accent-on-accent. */
+/* after .f.on:hover and at 4 classes so the pressed Archived pill keeps its fill text colour. */
 .f.farch.on:hover{color:#fff;background:var(--ac-fill-hot)}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
 .view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
-/* Text actions keep their invisible padded hit box (the negative-margin trick
-   above) but hover NEVER paints it: the quiet-fill slab hung 12px past the
-   text - straight over the stage bar - and inside a raised card a filled box
-   read as a stray sub-panel; the underline tried next was disliked too (both
-   owner calls, 2026-08-08). Hover is the colour deepen above, nothing else.
-   The stage-line View pill is the exception: it IS a visible capsule, so its
-   hover deepens its own fill. */
+/* text actions keep the invisible hit box but hover never paints it - the slab hung over the
+   stage bar. Hover is the colour deepen; the View pill is the exception, it is a visible
+   capsule. */
 .stage .view:hover{color:var(--ac-hot);background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
 /* the glyph actions ARE square-ish targets, so theirs is a circle */
 .hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
@@ -1727,25 +1508,21 @@ button:disabled{opacity:.5;cursor:default}
  .card:nth-child(7),.gc:nth-child(7){animation-delay:.24s}
  .card:nth-child(8),.gc:nth-child(8){animation-delay:.28s}}
 @keyframes rise{from{opacity:0;transform:translateY(8px)}}
-/* registered so the mobile filter-capsule scroll cue can FADE rather than pop;
-   where @property is unsupported the vars still resolve, the fade just skips */
+/* registered so the mobile capsule cue can fade rather than pop; unsupported, the vars still
+   resolve. */
 @property --cuel{syntax:'<color>';inherits:false;initial-value:transparent}
 @property --cuer{syntax:'<color>';inherits:false;initial-value:transparent}
 /* ---- mobile: only the CURRENT stage is ever named ------------------------- */
 @media(max-width:640px){
- /* phone navigations are instant swaps: the cross-document crossfade shows a
-    stale snapshot (often mid-scroll, glass baked in) for ~a quarter second
-    before the real page - on a phone that reads as flash+lag, not continuity */
+ /* phone navigations are instant swaps: the crossfade shows a stale snapshot for about a
+    quarter second, which reads as lag. */
  :root{view-transition-name:none}
  body{padding:16px 14px 88px}
  .tbtop{flex-wrap:wrap;gap:10px}
  .brand{gap:10px;min-width:0}
  .logo{height:26px}
- /* the large title tracks the sheet, not the type scale: on a 347px sheet a
-    26px title beside a 26px logo eats the row and pushes .tbend to a second
-    line. 22px keeps the masthead on one row and still clears the 17px rung.
-    Tracking follows the size down (-.021 -> -.017). .gbox h1 is deliberately
-    not touched - see .gbox. */
+ /* the large title tracks the sheet, not the type scale: at 26px beside the logo it pushes
+    .tbend to a second line at 347px. .gbox h1 is deliberately untouched. */
  h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
  .tbend .synced{display:flex;gap:5px;align-items:baseline;font-size:12px}
@@ -1753,35 +1530,18 @@ button:disabled{opacity:.5;cursor:default}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
  .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:12px}
- /* the 34ch measure keeps its width here but not its right edge: with the
-    block full-width and left-aligned, margin-left:auto floated the note
-    into the middle of the column */
+ /* the 34ch measure keeps its width but not its right edge: full-width and left-aligned,
+    margin-left:auto floated it to the middle. */
  .hrow>.synced .estnote{margin-left:0}
- /* the segmented control never breaks into a second row - and down to 360px it
-    is NOT an overflow box either: three pills measure ~247px and fit any sheet
-    to ~360, so nothing here can actually scroll, and staying un-clipped is what
-    lets the hit pseudo work. The capsule stays the THIN 38px control (4px
-    vertical pad, 5/7 on the pills - the explicit call against a taller row);
-    the 44px HIG floor is met the way the desktop capsule meets it, by growing
-    the pseudo invisibly: 28px pill + 8px each way = 44. Below 360px the pills
-    genuinely can exceed the sheet, so the 360px block turns the capsule back
-    into a scroller and the clip returns there only. .sbar was never an
-    overflow box and already clears 44 - it is left alone. */
+ /* the segment never breaks to a second row, and to 360px is not an overflow box either: three
+    pills measure ~247px, and staying un-clipped is what lets the hit pseudo work (28 + 8 each
+    way = 44 on the thin 38px capsule). Below 360 it scrolls and clips. */
  .filters{display:flex;flex-wrap:nowrap;max-width:100%;padding:4px 3px;align-items:center}
  .filters .f{flex:0 0 auto}
  .filterrow .filters .f::before{inset:-8px 0}
- /* scroll cue (live only below 360px, where the capsule actually scrolls):
-    the scrollbar is hidden there, so nothing would say there are more
-    pills off the edge. A 22px shade rides each edge that still has content
-    beyond it; FX_JS flips .sl/.sr off the scroll position, so both vanish at
-    their end and neither appears when the capsule already fits.
-    The pure-CSS local-attachment trick can't be used here: it needs an OPAQUE
-    cover layer to hide the shadow at the ends, which would print a solid patch
-    across translucent glass. Default (scroll) attachment pins the shade to the
-    capsule instead, so pills slide under it. --segtrack stays the bottom
-    layer, cues stack above it, all above the glass background-color - which is
-    why the reduced-transparency fallback must swap background-COLOR only.
-    --shc3 makes it theme-aware and keeps it whisper-quiet in light. */
+ /* scroll cue, live only below 360px where the capsule scrolls and the scrollbar is hidden: a
+    22px shade on each edge with content past it, FX_JS flips .sl/.sr. Default attachment, not
+    the CSS-only local trick, whose opaque cover would patch over the glass. */
  .filters{--cuel:transparent;--cuer:transparent;
   background-image:linear-gradient(90deg,var(--cuel),transparent),
    linear-gradient(270deg,var(--cuer),transparent),
@@ -1792,77 +1552,47 @@ button:disabled{opacity:.5;cursor:default}
   transition:--cuel .18s ease-out,--cuer .18s ease-out}
  .filters.sl{--cuel:var(--shc3)}
  .filters.sr{--cuer:var(--shc3)}
- /* the sort capsule HUGS its pills - no flex:1. Stretching it to fill the row
-    left a long empty glass track between the last pill and the capsule's right
-    edge, which read as a broken control rather than as space. With flex-basis
-    back on auto the slack lives BETWEEN the two controls (the row is
-    space-between), so the gap is page background, which is what a gap should be.
-    min-width:0 stays: it is what still lets the capsule shrink below its content
-    and become a scroller (via the 360px block) on a phone narrow enough to need it.
-    On a 360px sheet it does not engage - three pills at 13/500 measure ~247px,
-    and two notches keep it that way: the count leaves the Archived button
-    (aria-label keeps it) and the sort pills' side padding goes 14 -> 11.
-    scrollWidth === clientWidth at both 390 and 360, which is also what keeps
-    the scroll-cue JS silent - it is scroll-position based, and a capsule that
-    cannot scroll never sets .sl/.sr. */
+ /* the capsule hugs its pills - no flex:1, or a long empty glass track past the last pill
+    reads as broken; the slack belongs between the controls. min-width:0 is what lets it scroll
+    at 360px, where the count leaves Archived and pill padding goes 14 -> 11. */
  .filterrow .filters{min-width:0}
  .archn{display:none}
  .filterrow .filters .f{padding:5px 11px 7px}
  .grid{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:14px}
- /* phone filmstrip: tiles stay legible (64x89) and the strip bleeds to the
-    card's own padding edge (-14px here, matching .card below) so the last
-    tile runs off the card edge - the honest "there is more" cue. The scroll
-    behavior itself now lives on the base .strip rule. */
+ /* phone filmstrip: 64x89 tiles, bleeding to the card's own padding edge (-14px) so the last
+    tile runs off the edge as the "there is more" cue. */
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px}
  .strip img,.morechip{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
  .card.tlcard{margin:14px 0}
  input,.searchbar{font-size:16px}
- /* 16px only while the tag is EDITABLE: that is the only moment iOS would
-    zoom on focus. A readonly owner tag is just text, and at 16px it shouted
-    over the 14px card name it sits under. */
+ /* 16px only while the tag is editable - the only moment iOS zooms on focus; readonly it
+    shouted over the 14px name. */
  .own:not([readonly]){font-size:16px}
  .gc .nm{min-height:0}}
-/* sub-360 phones: the pills plus the Archived solo pill can genuinely exceed
-   the sheet, so the capsule becomes the scrolling strip - hidden scrollbar,
-   gesture contained, cue shades driven by FX_JS. This is the one width where
-   the overflow box clips the hit pseudo back to the capsule's padding box
-   (36px); still past WCAG 2.5.8's 24px floor, and the full 44px target
-   resumes at 360. overflow-y pinned to hidden so the -8px pseudo can never
-   open a phantom vertical scroll on the capsule. */
+/* sub-360: pills plus the solo pill can exceed the sheet, so the capsule scrolls. The one
+   width where the overflow box clips the hit pseudo to 36px (past WCAG 2.5.8's 24px floor);
+   overflow-y hidden so the -8px pseudo cannot open a phantom scroll. */
 @media(max-width:359px){
  .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
  .filters::-webkit-scrollbar{display:none}}
-/* iOS focus-zoom fires on any sub-16px input on a COARSE pointer, not on a
-   narrow viewport - iPad portrait is 768px and still zoomed. The 640px block
-   covers phones; this covers the rest of the coarse-pointer range. */
+/* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
+   this covers iPad portrait. */
 @media(pointer:coarse) and (min-width:641px){
  input,.searchbar{font-size:16px}
  .own:not([readonly]){font-size:16px}}
 /* ---- reduced motion: named, not blanket ---------------------------------- */
-/* The old `*{transition-duration:.01ms}` sledgehammer also killed the feedback
-   that TELLS you something happened - hover tints, focus rings, a sheet
-   arriving. What actually causes trouble is travel: things flying in, sliding,
-   scaling, looping. So: kill the travel, keep the feedback, and let overlays
-   still fade (opacity alone, no scale, no animated blur).
-   Lives after the mobile block so it out-orders the capsule cue transition. */
+/* kill the travel, keep the feedback: hover tints, focus rings and overlay fades still land.
+   After the mobile block so it out-orders the capsule cue. */
 @media(prefers-reduced-motion:reduce){
  html{scroll-behavior:auto}
  /* travel: the row settle, the bar running out, the loading sweep */
  .card,.gc{animation:none}
  .bar i{transition:none}
- /* the sweep overlay goes entirely - what is left is the flat var(--surface3)
-    placeholder the img already carries, which is what this block gave
-    before the sweep moved off background-position. */
  .grid a[href^="/img"]::after{display:none}
- /* press-scale on every control that has one */
  .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
- /* the toolbar still EARNS its shadow, it just arrives without the ramp */
  .toolbar{transition:none}
- /* the mobile capsule cue still appears, it just doesn't cross-fade */
  .filters{transition:none}
- /* overlays: a short opacity fade survives (it says "this is on top of that");
-    the scale landing and the blur ramp do not. Blur jumps straight to final. */
  .preview{transform:none;transition:opacity .12s ease-out,visibility 0s .12s}
  .preview.on{transform:none;transition:opacity .12s ease-out,visibility 0s}
  .lb,.smodal{backdrop-filter:none;-webkit-backdrop-filter:none;
@@ -1874,15 +1604,14 @@ button:disabled{opacity:.5;cursor:default}
  .lb img,.lb.open img,.smodal .card,.smodal.on .card{transform:none;transition:none}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 /* ---- glass fallbacks ----------------------------------------------------- */
-/* background-COLOR, never the shorthand: the shorthand would wipe the capsule's
-   segtrack layer and the mobile scroll cue along with the translucency */
+/* background-COLOR, never the shorthand, which would wipe the segtrack layer and the scroll
+   cue. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
  .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{background-color:var(--glasssolid)}
- /* backdrop-filter was what made the capsule a stacking context; without it the
-    pills' z-index:-1 hit pseudo would fall BEHIND the now-opaque background */
+ /* backdrop-filter made the capsule a stacking context; without it the pills' z-index:-1
+    pseudo falls behind the opaque background. */
  .filters,.sbar{isolation:isolate}}
-/* no color-mix, no ambient: the pseudo just goes empty and the flat --bg on
-   <html> shows through, which is exactly the pre-ambient look */
+/* no color-mix, no ambient: the pseudo goes empty and the flat --bg on <html> shows through. */
 @supports not (background:color-mix(in srgb,red 5%,transparent)){
  body::before{background:none}}
 @media(prefers-reduced-transparency:reduce){
@@ -1891,11 +1620,7 @@ button:disabled{opacity:.5;cursor:default}
  .filters,.sbar{isolation:isolate}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
   background:rgba(0,0,0,.72)}
- /* the ambient exists to be refracted by the glass; with the glass gone it is
-    just haze over a flat sheet, so it goes too */
  body::before{background:none}}
-/* max contrast means max separation between ink and ground - a tinted ground
-   works against that, so the sheet goes back to flat --bg */
 @media(prefers-contrast:more){
  body::before{background:none}}
 """

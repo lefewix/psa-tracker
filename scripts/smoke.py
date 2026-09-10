@@ -351,6 +351,10 @@ def main():
               must_have='action="/login"')
         css = check("GET /app.css", "/app.css", (200,))
         js = check("GET /app.js", "/app.js", (200,))
+        # the sheet every browser downloads is CSS, not an essay: the comments
+        # carry constraints only, the history lives in HANDOFF (T82)
+        if css and len(css) >= 40000:
+            fails.append(f"GET /app.css: {len(css)} bytes, want under 40000")
         # a scan that 404s is swapped for the no-scan placeholder, anchor and
         # all, so the grid keeps its rhythm and the dead tile cannot open the
         # lightbox. A broken image reports .complete, hence the naturalWidth
