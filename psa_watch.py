@@ -33,6 +33,7 @@ POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
 # certs never carry one, and without this the sub re-fetches every scan forever.
 GRADE_GRACE_DAYS = 7
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
+SITE_URL = os.environ.get("PSA_SITE_URL", "https://psa.example.com").rstrip("/")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 # orders.list reports progressSummary.lastCompletedStep, but psacard.com displays
@@ -656,11 +657,14 @@ def upsert(conn, subs, quiet=()):
             note(s["sub_number"],
                  f"new sub #{s['sub_number']} ({s['service']}, {s['card_count']} cards) -- {s['status']}")
         else:
+            fresh_grades = not row[1] and s["grades_ready"]
             if row[0] != s["status"] and s["status"]:
                 conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                              (s["sub_number"], s["status"], now))
-                note(s["sub_number"], f"sub #{s['sub_number']}: {row[0]} -> {s['status']}")
-            if not row[1] and s["grades_ready"]:
+                # grades flipping with the stage is one event, as hub reads it
+                note(s["sub_number"], f"sub #{s['sub_number']}: {row[0]} -> {s['status']}"
+                     + (" - grades ready" if fresh_grades else ""))
+            elif fresh_grades:
                 note(s["sub_number"], f"sub #{s['sub_number']}: grades are ready")
             # a hold usually flips with the stage unchanged (14956985 went on
             # hold at QA Check, 2026-09) - status diff alone never saw it
@@ -729,6 +733,8 @@ def cycle(conn):
     # so discord_mentions can resolve its owner on the same run
     if changes:
         msg = "**PSA update**\n" + "\n".join(changes)
+        if SITE_URL:
+            msg += f"\n{SITE_URL}"
         ids = discord_mentions(conn, touched)
         if ids:
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
