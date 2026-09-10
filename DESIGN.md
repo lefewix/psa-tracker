@@ -849,7 +849,9 @@ long walk otherwise; that walk is also why the dashboard has a skip link.
 ### Navigation
 Navigation is the sticky glass toolbar: brand/logo and the 26px large title on the left, sync
 status and controls on the right, search below. Back links are plain accent-as-text with a `←`
-character and are history-aware. Under 640px the toolbar wraps, the logo drops to 26px, and
+character and are history-aware. A page-level action shares that row, right-aligned in the sub
+page's `.foot`/`.footacts` grammar: the person page's "Export CSV" is the one.
+Under 640px the toolbar wraps, the logo drops to 26px, and
 the sync block collapses to a single inline 11px line. On any phone-sized viewport (640px wide
 or under, or 500px tall or under, so landscape counts) the masthead condenses on scroll: the
 brand row scrolls away and the search capsule alone stays pinned. Cross-page view transitions are the

@@ -10,7 +10,7 @@ the route.
 
   python3 scripts/smoke.py
 """
-import datetime, gzip, hashlib, json, os, re, shutil, signal, socket, sqlite3
+import csv, datetime, gzip, hashlib, json, os, re, shutil, signal, socket, sqlite3
 import subprocess, sys, tempfile, time, urllib.error, urllib.parse, urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -641,6 +641,28 @@ def main():
                 if want not in sbody:
                     fails.append("GET /cards?owner=Solo: the value block is missing "
                                  + want.decode())
+            # --- format=csv hands the person page's rows out as a spreadsheet:
+            # one data row per tile the HTML renders, archived tiles included,
+            # under a text/csv type and a download name (T74)
+            for who, name in (("Solo", "solo-cards.csv"),
+                              ("", "unassigned-cards.csv"),
+                              ("unassigned", "unassigned-cards.csv")):
+                q = "/cards?owner=" + urllib.parse.quote(who)
+                code, cbody, chdrs = call(url, q + "&format=csv", cookie)
+                if code != 200:
+                    fails.append(f"GET {q}&format=csv: got {code}, want 200")
+                    continue
+                if "text/csv" not in (chdrs.get("Content-Type") or ""):
+                    fails.append(f"GET {q}&format=csv: not text/csv")
+                if name not in (chdrs.get("Content-Disposition") or ""):
+                    fails.append(f"GET {q}&format=csv: no {name} to download as")
+                rows = len(list(csv.reader(cbody.decode().splitlines()))) - 1
+                tiles = check(f"GET {q} (csv parity)", q, (200,), cookie).count(b'class="gc')
+                if rows != tiles:
+                    fails.append(f"GET {q}&format=csv: {rows} rows for {tiles} tiles")
+                if not tiles:
+                    fails.append(f"GET {q}: no tiles to compare the export against")
+
             # the longest key in the service name sets the fee, so a compound
             # tier does not fall back to the plain "Value" one, and a tier
             # nobody priced keeps the + and names itself in its title (T73)

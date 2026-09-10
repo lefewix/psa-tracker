@@ -28,7 +28,7 @@ Per-account account.env (written by add_account.sh, chmod 600):
   PSA_PRICES        optional per-card fee table, "regular:109,value max:89.99,bulk:34.99,value:45.99"
                     (the longest key inside the service name wins, order is free)
 """
-import base64, gzip, hashlib, hmac, html, json, os, re, shlex, sqlite3, subprocess, threading, time, traceback
+import base64, csv, gzip, hashlib, hmac, html, io, json, os, re, shlex, sqlite3, subprocess, threading, time, traceback
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -3846,7 +3846,12 @@ def people_page(a, owner):
                f'{plus} CAD</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
-    back = '<a class="view" id="backlk" href="/">← Back</a>'
+    # back on the left, the export on the right: the sub page's own foot row,
+    # with its 18px top margin dropped so the header sits where it always did
+    back = ('<div class="foot" style="border:0;padding:0;margin:0">'
+            '<a class="view" id="backlk" href="/">← Back</a>'
+            f'<span class="footacts"><a class="view" href="/cards?owner='
+            f'{urllib.parse.quote(owner)}&amp;format=csv">Export CSV</a></span></div>')
     page_title = "Unassigned cards" if unassigned else f"{title}'s cards"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
@@ -3861,6 +3866,44 @@ def people_page(a, owner):
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""
+
+def people_csv(a, owner):
+    """The person page as a spreadsheet: one row per tile that page renders,
+    archived groups included, in the same order. Admin-only, same as the page."""
+    owners = owners_map(a)
+    arch = archived_set(a)
+    subs_by = {s["sub_number"]: s for s in load_subs(a)}
+    if owner.strip().lower() in ("", "unassigned"):  # the operator worklist
+        active = {n for n in subs_by if n not in arch}
+        cards = [c for c in load_all_cards(a)
+                 if c["sub_number"] in active and not owners.get(str(c["cert_id"]), "")]
+    else:
+        want = owner.strip().lower()
+        cards = [c for c in load_all_cards(a)
+                 if owners.get(str(c["cert_id"]), "").lower() == want]
+    vals, _, vcur = load_values(a)
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["submission", "cert", "card", "grade", "service", "status",
+                "archived", f"est_value_{vcur.lower()}"])
+    def order(c):  # the page's own order: active groups newest first, archived last
+        n = c["sub_number"]
+        return (n in arch, -int(n) if str(n).isdigit() else 0, c["line_number"] or 0)
+    for c in sorted(cards, key=order):
+        s = subs_by.get(c["sub_number"])
+        v = vals.get(c["cert_no"] or "")
+        # a card PSA has not graded has no cert number yet, and the tile says so
+        cert = "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or c["cert_id"])
+        w.writerow([c["sub_number"], cert, smart_title(c["name"] or ""),
+                    c["grade"] or "", s["service"] if s else "", s["status"] if s else "",
+                    "yes" if c["sub_number"] in arch else "no",
+                    f"{v:.0f}" if v else ""])
+    return buf.getvalue()
+
+def csv_filename(owner):
+    """A download name the browser will keep: ASCII word characters only."""
+    slug = re.sub(r"[^A-Za-z0-9]+", "-", owner).strip("-").lower()
+    return f"{slug or 'unassigned'}-cards.csv"
 
 def customer_page(a, email):
     """Customer home: THEIR cards grouped by submission, each group carrying the
@@ -4323,7 +4366,12 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, arch_rows(acct, load_subs(acct)))
             return self.send(200, dash_page(acct, load_subs(acct)))
         if path == "/cards":
-            owner = urllib.parse.parse_qs(parsed.query).get("owner", [""])[0]
+            qs = urllib.parse.parse_qs(parsed.query)
+            owner = qs.get("owner", [""])[0]
+            if qs.get("format", [""])[0] == "csv":
+                return self.send(200, people_csv(acct, owner), "text/csv; charset=utf-8",
+                                 extra=[("Content-Disposition",
+                                         f'attachment; filename="{csv_filename(owner)}"')])
             return self.send(200, people_page(acct, owner))
         if path == "/search":
             qs = urllib.parse.parse_qs(parsed.query)
