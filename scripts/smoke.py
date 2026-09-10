@@ -355,6 +355,21 @@ def main():
                 fails.append(f"GET {label}: no nosniff")
         check("GET /favicon.png", "/favicon.png", (200,))
         check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))
+        # --- an installable app: the manifest is public, typed, and points the
+        # home-screen icon at the 180px touch PNG, not the 64px favicon (T61)
+        mcode, mbody, mhdrs = call(url, "/manifest.json")
+        if mcode != 200:
+            fails.append(f"GET /manifest.json: got {mcode}, want 200")
+        elif "application/manifest+json" not in (mhdrs.get("Content-Type") or ""):
+            fails.append("GET /manifest.json: not served as application/manifest+json")
+        else:
+            man = json.loads(mbody)
+            if man.get("display") != "standalone" or man.get("start_url") != "/":
+                fails.append("GET /manifest.json: not an installable standalone app")
+            if [i["src"] for i in man.get("icons", [])] != ["/apple-touch-icon.png"]:
+                fails.append("GET /manifest.json: the install icon is not the 180px PNG")
+        check("GET / (manifest link)", "/", (200,), must_have='rel="manifest"')
+        check("GET / (theme-color)", "/", (200,), must_have='name="theme-color"')
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
         check("GET /setup (setup closed)", "/setup", (302,))
         keepalive_checks(port, fails)
@@ -422,6 +437,10 @@ def main():
         if code != 302 or not cookie:
             fails.append(f"POST /login: got {code}, no session cookie")
             cookie = None
+        # a session has to outlive an 8 month PSA turnaround (T61); rotating the
+        # site password is what still revokes it
+        if "Max-Age=15552000" not in (hdrs.get("Set-Cookie") or ""):
+            fails.append("POST /login: the session cookie is not 180 days")
         if cookie:
             body = check("GET /", "/", (200,), cookie, must_have="14900001")
 

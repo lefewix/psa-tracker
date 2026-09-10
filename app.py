@@ -17,7 +17,8 @@ Global env (systemd EnvironmentFile):
   PSA_IMG_CACHE     default /opt/psa-tracker/imgcache (shared; images are public CDN)
   SITE_TITLE        default "Submissions"   (dashboard heading + page titles)
   SITE_TAGLINE      default "PSA grading tracker" (login-gate subtitle)
-  COOKIE_DAYS       default 30
+  COOKIE_DAYS       default 180 (an 8 month PSA turnaround; rotating the site
+                    password revokes every live cookie, see pw_slug)
   PSA_COOKIE_SECURE default 1 - set 0 if hosting over plain HTTP (no TLS proxy)
 
 Per-account account.env (written by add_account.sh, chmod 600):
@@ -36,7 +37,7 @@ from zoneinfo import ZoneInfo
 SECRET = os.environ.get("PSA_SECRET", "").encode()
 BIND = os.environ.get("PSA_BIND", "0.0.0.0")
 PORT = int(os.environ.get("PSA_PORT", "8080"))
-COOKIE_DAYS = int(os.environ.get("COOKIE_DAYS", "30"))
+COOKIE_DAYS = int(os.environ.get("COOKIE_DAYS", "180"))
 COOKIE_SECURE = os.environ.get("PSA_COOKIE_SECURE", "1") not in ("0", "false", "no")
 # sha256 hex of the settings password. Typing that password on the main gate
 # (or at the gear icon's prompt) opens /settings. Unset -> settings disabled.
@@ -1877,7 +1878,21 @@ if os.path.exists(FAV_PNG):
 if os.path.exists(TOUCH_PNG):
     _ICONS += f'\n<link rel="apple-touch-icon" href="/apple-touch-icon.png?v={int(os.path.getmtime(TOUCH_PNG))}">'
 
+# Home-screen install: with no manifest Chrome falls back to the 64px favicon.
+# Five keys is everything it needs, and the icon is the 180px touch PNG.
+MANIFEST = json.dumps({"name": SITE_TITLE, "short_name": SITE_TITLE, "start_url": "/",
+                       "display": "standalone",
+                       "icons": [{"src": "/apple-touch-icon.png", "sizes": "180x180",
+                                  "type": "image/png"}] if os.path.exists(TOUCH_PNG) else []})
+
+# theme-color paints the browser and installed-app chrome, so it has to follow
+# the ground token of the theme actually rendered. With no stored choice the
+# head script below renders the SYSTEM scheme, whatever the store default is,
+# so the pair is keyed on prefers-color-scheme to match it.
 HEAD_HTML = f"""{_ICONS}
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{_DARK['bg']}">
+<meta name="theme-color" content="{_LIGHT['bg']}">
 <meta name="description" content="PSA grading submission tracker">
 <script>(function(){{var t=null;try{{t=localStorage.getItem('psa_theme');}}catch(e){{}}
 var sys=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light',cur=t||sys;
@@ -4193,6 +4208,8 @@ class H(BaseHTTPRequestHandler):
             return self.serve_asset(FAV_PNG, "image/png")
         if path == "/apple-touch-icon.png":
             return self.serve_asset(TOUCH_PNG, "image/png")
+        if path == "/manifest.json":
+            return self.send(200, MANIFEST, "application/manifest+json")
         if path == "/api/hub.json":  # LAN summary for the hub (the server), key-gated
             return self.serve_hub_summary(parsed.query)
         if path == "/img":  # hot path: skip the setup-state machinery entirely

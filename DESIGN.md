@@ -431,6 +431,8 @@ glass, and a reserved red that appears only on a landed grade or an alert.
 - **Paper White / Graphite** (`--bg`): the sheet, set on `<html>` so overscroll rubber-banding
   always reveals flat ground. Light is the flagship; dark is a neutral gray — never blue-gray,
   never pure black.
+  The browser and installed-app chrome take the same ground: two `theme-color` metas keyed
+  on `prefers-color-scheme`, matching the scheme the head script actually renders.
 - **Ink** (`--txt`): near-black on white, near-white on graphite. All primary text.
 - **Muted** (`--m1`): secondary text — metadata, captions, ETA pills, empty states, the
   inactive filter label, the archived stage-bar fill.
