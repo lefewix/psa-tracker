@@ -5,7 +5,13 @@
 # (default 1am/1pm local), when the cookie is empty, or when a scan comes back
 # cookie-dead (psa_watch exit 3) - every other run reuses the existing cookie,
 # keeping the bot-detection surface at ~2 logins/day. Card values + fx refresh
-# only on login-hour runs (they change slowly; hourly runs stay lean).
+# only on successful login-hour runs (they change slowly; hourly runs stay lean).
+#
+# Login backoff (2026-09-10): an account whose scans keep failing used to burn a
+# browser login every single hour. Past PSA_LOGIN_BACKOFF_AFTER consecutive
+# failures (default 3) only the PSA_LOGIN_HOURS slots and an armed OTP still log
+# in, and an account sitting at otp.needed without otp.armed never does - PSA is
+# waiting on an SMS code no login can supply.
 #
 # Failure alerting (2026-07-22): a run whose scan ends non-zero bumps
 # $dir/.scan_fails; at PSA_ALERT_AFTER consecutive failures (default 3) the
@@ -57,10 +63,25 @@ except Exception as e:
 PYEOF
     }
 
-    full=0
-    case " $LOGIN_HOURS " in *" $hour "*) full=1 ;; esac
+    slot=0
+    case " $LOGIN_HOURS " in *" $hour "*) slot=1 ;; esac
+    fails=$(cat "$dir/.scan_fails" 2>/dev/null || echo 0)
+    case "$fails" in ''|*[!0-9]*) fails=0 ;; esac
+    may_login=1
+    if [ "$slot" = 0 ] && [ "$fails" -ge "${PSA_LOGIN_BACKOFF_AFTER:-3}" ] && [ ! -f "$dir/otp.armed" ]; then
+      may_login=0; why="$fails failed scans in a row, next login at hour(s) $LOGIN_HOURS"
+    fi
+    if [ -f "$dir/otp.needed" ] && [ ! -f "$dir/otp.armed" ]; then
+      may_login=0; why="PSA wants an SMS code - arm one in Settings"
+    fi
+
+    full=$slot
     [ -z "$PSA_COOKIE" ] && full=1
     [ -f "$dir/otp.armed" ] && full=1   # "Send code" pressed in Settings
+    if [ "$full" = 1 ] && [ "$may_login" = 0 ]; then
+      echo "[run_scan] $id: skipping login ($why)"
+      full=0
+    fi
     if [ "$full" = 1 ]; then
       if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
         set -a; . "$envf"; set +a   # reload: pick up the fresh PSA_COOKIE
@@ -70,7 +91,7 @@ PYEOF
     fi
     python3 /opt/psa-tracker/psa_watch.py --once "$@"
     rc=$?
-    if [ "$rc" = 3 ] && [ "$full" = 0 ]; then
+    if [ "$rc" = 3 ] && [ "$full" = 0 ] && [ "$may_login" = 1 ]; then
       echo "[run_scan] $id: cookie looks dead - browser login + rescan"
       if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
         set -a; . "$envf"; set +a
@@ -101,7 +122,7 @@ PYEOF
 
     # Card market values (PSA_VALUES=1 in the env enables; remove to disable).
     # Public cert pages, so failures never block the scan.
-    if [ "$full" = 1 ] && [ "${PSA_VALUES:-0}" = "1" ]; then
+    if [ "$full" = 1 ] && [ "$rc" = 0 ] && [ "${PSA_VALUES:-0}" = "1" ]; then
       xvfb-run -a python3 /opt/psa-tracker/psa_values.py \
         || echo "[run_scan] $id: values fetch failed (non-fatal)"
     fi

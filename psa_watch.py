@@ -626,26 +626,43 @@ def upsert(conn, subs):
     return changes, touched
 
 def cycle(conn):
+    # exit codes: 0 ok, 3 cookie-dead (a JSON answer with no subs in it), 4 not
+    # a cookie problem (transport error, non-JSON body, changed payload shape).
+    # run_scan only spends a browser login on 3.
     # one retry on the orders.list fetch - a transient blip otherwise loses a
     # whole scan window (we only run twice a day now)
     ctype = body = ""
+    err = None
     for attempt in (1, 2):
         try:
             ctype, body = fetch(build_url())
+            err = None
             break
         except Exception as e:
+            err = e
             log(f"orders.list fetch attempt {attempt} failed: {e}")
             if attempt == 1:
                 time.sleep(5)
+    if err is not None:
+        log("orders.list unreachable -- transport failure, not a dead cookie")
+        return 4
+    if body.lstrip()[:1] not in ("[", "{"):
+        low = body.lower()
+        if "login" in low[:4000] and "password" in low:
+            log("orders.list answered a login page -- cookie expired/invalid")
+            return 3
+        log(f"orders.list answered {len(body)} non-JSON bytes (content-type {ctype!r}) "
+            "-- blocked or erroring upstream, not a dead cookie")
+        return 4
     subs = parse(ctype, body)
     if not subs:
         log("parsed 0 subs -- parser needs adjusting or cookie expired; run --probe")
-        return False
+        return 3
     blank = [s for s in subs if not s["status"]]
     if len(blank) * 2 > len(subs):
         log(f"{len(blank)} of {len(subs)} subs parsed with no status -- "
             "PSA payload shape changed; writing nothing")
-        return False
+        return 4
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
     prev = {r[0]: r[1] for r in conn.execute("SELECT sub_number, status FROM subs")}
@@ -660,14 +677,14 @@ def cycle(conn):
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
         notify(msg)
     refresh_cards(conn, subs, prev, full="--full" in sys.argv)
-    return True
+    return 0
 
 def main():
     if "--probe" in sys.argv:
         probe(); return
     conn = db()
     if "--once" in sys.argv:
-        sys.exit(0 if cycle(conn) else 3)
+        sys.exit(cycle(conn))
     log(f"daemon start, interval {POLL_INTERVAL}s")
     while True:
         try:
