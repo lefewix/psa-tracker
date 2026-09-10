@@ -16,6 +16,7 @@ mkdir -p "$OUT"
 ts=$(date +%Y%m%d_%H%M%S)
 
 stage=$(mktemp -d)
+chmod 755 "$stage"  # the tar's "./" entry sets / on restore
 trap 'rm -rf "$stage"' EXIT
 acct=$stage/${ROOT#/}/accounts
 mkdir -p "$(dirname "$acct")"
