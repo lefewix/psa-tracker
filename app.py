@@ -2505,7 +2505,9 @@ def strip_html(s, fronts):
     shown = fronts[:STRIP_MAX - 1] if more else fronts
     tiles = []
     for u, nm in shown:
-        src = "/img?u=" + urllib.parse.quote(img_url(u, "small"))
+        # tiles are 64-84 CSS px, so the stored thumbnail asset is the right
+        # size; /small/ is the 380x636 scan and belongs on the grid, not here
+        src = "/img?u=" + urllib.parse.quote(u)
         big = "/img?u=" + urllib.parse.quote(img_url(u, "large"))
         # every tile is a focusable link, so it needs a NAME: the card's
         # subject (same trim the grid tiles use), or a plain fallback

@@ -66,6 +66,9 @@ def build_fixture(base):
                    "", json.dumps([]), NOW, NOW))
         c.execute("INSERT INTO status_history (sub_number, status, seen_at) VALUES (?,?,?)",
                   (num, status, NOW))
+    # front_thumb is PSA's own thumbnail asset: what the scanner stores and what
+    # the filmstrip must serve unrewritten (T20)
+    thumb = "https://d1htnxwo4o0jhw.cloudfront.net/thumbnail/%s.jpg"
     cards = [("99000001", "14900001", "99000001", "Charizard 4/102 Base Set Holo", 1, "10"),
              ("99000002", "14900001", "99000002", "Pikachu VMAX 044/185", 2, "9"),
              ("spec:14900002:1", "14900002", "", "Umbreon VMAX 215/203", 1, "")]
@@ -73,7 +76,8 @@ def build_fixture(base):
         c.execute("INSERT INTO cards (cert_id, sub_number, cert_no, name, line_number, "
                   "front_thumb, back_thumb, grade, declared_value, updated_at) "
                   "VALUES (?,?,?,?,?,?,?,?,?,?)",
-                  (cid, num, cert_no, name, line, "", "", grade, 120.0, NOW))
+                  (cid, num, cert_no, name, line, thumb % cid.replace(":", "-"),
+                   "", grade, 120.0, NOW))
     c.execute("INSERT INTO card_values (cert_no, estimate, last_sale, last_sale_date, "
               "n_sales, sales_json, fetched_at, error) VALUES (?,?,?,?,?,?,?,?)",
               ("99000001", 310.0, 290.0, "2026-08-15", 3,
@@ -335,6 +339,17 @@ def main():
                     fails.append("GET /: the unmapped status does not read as unknown")
                 if body.count(b'<div class="bar">') != 2:
                     fails.append("GET /: the unmapped status still draws a stage bar")
+
+                # --- filmstrip tiles are 64-84 CSS px: they serve the stored
+                # thumbnail, never the /small/ 380x636 scan (T20)
+                strips = re.findall(rb'<div class="strip">.*?</div>', body, re.S)
+                if not strips:
+                    fails.append("GET /: no filmstrip rendered")
+                for st in strips:
+                    for src in re.findall(rb'<img [^>]*src="([^"]+)"', st):
+                        if b"/thumbnail/" not in src:
+                            fails.append("GET /: a filmstrip tile is not the "
+                                         f"thumbnail asset ({src!r})")
             check("GET /cards", "/cards", (200,), cookie)
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
             check("GET /search", "/search?q=Charizard", (200,), cookie)
