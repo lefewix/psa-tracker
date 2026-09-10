@@ -463,6 +463,13 @@ def main():
             if body and b'data-acct="second"' not in body:
                 fails.append("GET /settings (settings session): the other account "
                              "is missing, the settings password holds them all")
+            # --- the Add account panel says the branding is shared (T72)
+            if body:
+                note = body.find("shares this site’s name, logo, accent".encode())
+                addb = body.find(b'class="fillbtn">Add<')
+                if note < 0 or addb < 0 or note > addb:
+                    fails.append("GET /settings: the Add account panel does not say "
+                                 "the site name, logo and accent are shared")
 
             # --- the verification panel opens on the account PSA is asking
             # about, and never auto-refreshes under a code field (T11)

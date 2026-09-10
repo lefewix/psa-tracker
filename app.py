@@ -2353,6 +2353,7 @@ def settings_page(msg="", err="", only=""):
 <div class="card sblock">
 <button type="button" class="sclose" aria-label="Close">{ICON_X}</button>
 <h2 class="stitle" id="addtitle">Add PSA account</h2>
+<div class="meta">Every account here shares this site’s name, logo, accent and web address.</div>
 <form method="POST" action="/settings/add" class="sform">
 <input name="psa_email" type="email" placeholder="PSA email"
  aria-label="PSA email" autocomplete="off">
