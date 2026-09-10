@@ -3216,6 +3216,11 @@ SORT_JS = """<script>
   // (Newest/Oldest) - the others keep their plain label in both directions
   var BASE={sub:'Newest',svc:'Order type',eta:'Return'};
   var REV={sub:'Oldest'};
+  // re-clicking the active pill reverses the list but two of the three pills
+  // keep the same label, so the flip is invisible to a screen reader. Say it.
+  var SAID={sub:['Sorted newest first','Sorted oldest first'],
+            svc:['Sorted by order type, A to Z','Sorted by order type, Z to A'],
+            eta:['Sorted by return date, soonest first','Sorted by return date, latest first']};
   function subDesc(a,b){return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
   function cmp(a,b,m,d){
     var r=0;
@@ -3248,8 +3253,9 @@ SORT_JS = """<script>
   }
   var cur='sub',rev=0;
   btns.forEach(function(b){b.addEventListener('click',function(){
-    var m=b.dataset.sort;
-    apply(m, m===cur?!rev:0);
+    var m=b.dataset.sort,again=m===cur;
+    apply(m, again?!rev:0);
+    if(again)_say(SAID[m][rev?1:0]);
   })});
   var saved=null; try{saved=localStorage.getItem('psa_sort')}catch(e){}
   if(saved){

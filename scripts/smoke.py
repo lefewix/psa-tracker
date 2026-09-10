@@ -632,6 +632,11 @@ def main():
             if js and b"'Escape'){e.preventDefault()" not in js:
                 fails.append("GET /app.js: Escape still lets the search preview reopen")
 
+            # --- re-clicking the active sort pill reverses the list; two of the
+            # three pills keep their label, so the flip has to be spoken (T54)
+            if js and b"if(again)_say(SAID[m][rev?1:0])" not in js:
+                fails.append("GET /app.js: a sort reversal is not announced")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),

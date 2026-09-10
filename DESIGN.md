@@ -849,7 +849,8 @@ Not a retrofit — a visible part of the system, and it has house styling.
   14px on focus. It is a glass-solid capsule with an accent label and a hairline — chrome
   grammar, because it is chrome.
 - **Live region (`.vh #live`):** a visually-hidden `aria-live="polite"` region on every list
-  page. Saves, save failures, and search result counts are announced there.
+  page. Saves, save failures, search result counts, and a sort pill's reversal are announced
+  there. Two of the three pills keep their label when re-clicked, so the flip is speech only.
 - **Lightbox:** a real dialog — `role="dialog"`, `aria-modal`, focus moves in on open and back
   to the opener on close, Escape closes, and Tab is held on the single close orb. The **scan
   itself is inert**: tapping the image does nothing, because the reveal has to survive being
