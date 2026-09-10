@@ -1972,7 +1972,7 @@ def account_env_path(acct_id):
 def settings_gate(error=""):
     inv = ' aria-invalid="true"' if error else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>{refresh}
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>Settings</h1><div class="sub">Enter the settings password</div>
@@ -2016,7 +2016,7 @@ def settings_page(msg="", err=""):
                           f'data-pane="opane{i}">{email_html}</button>')
         ost = otp_state(a["id"])
         if ost["waiting"]:
-            live = True
+            # no auto-refresh here: it would wipe the code mid-typing (audit ux-2)
             ometa = "Code sent to the phone on this PSA account. Enter it within 10 minutes."
         elif ost["armed"]:
             live = True
