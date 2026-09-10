@@ -79,7 +79,7 @@ PYEOF
       fi
     fi
 
-    # consecutive-failure counter -> one warning ping, one recovery ping
+    # consecutive-failure counter -> warning ping, then daily, one recovery ping
     FAILF="$dir/.scan_fails"
     if [ "$rc" = 0 ]; then
       if [ -f "$FAILF" ]; then
