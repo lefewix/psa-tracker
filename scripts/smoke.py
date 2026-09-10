@@ -233,6 +233,21 @@ def copy_checks(fails):
                      "within the hour (T68)")
 
 
+def tracking_checks(fails):
+    """An unrecognized carrier whose tracking field only repeats it says the
+    word once, a real carrier plus number still says both (T69)."""
+    sys.path.insert(0, ROOT)
+    import app
+    for carrier, tracking, want in (("Pickup", "pickup", "Pickup"),
+                                    ("Loomis", "LM-88213", "Loomis LM-88213"),
+                                    ("UPS", "1Z999AA10123456784",
+                                     "UPS 1Z999AA10123456784")):
+        got = app.tracking_html(carrier, tracking)
+        if re.sub(r"<[^>]+>", "", got) != want:
+            fails.append(f"tracking_html({carrier!r}, {tracking!r}): said {got!r}, "
+                         f"want {want!r}")
+
+
 def setup_instance_checks(fails):
     """An instance whose single account has never connected: the setup form is
     the owner's retry, not a public takeover, and an account.env that stops
@@ -422,6 +437,7 @@ def main():
         keepalive_checks(port, fails)
         setup_instance_checks(fails)
         copy_checks(fails)
+        tracking_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)
         check("GET /api/hub.json (non-ASCII key)", "/api/hub.json?key=caf%C3%A9", (404,))
