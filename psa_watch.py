@@ -5,15 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
 
-ORDERS_URL = os.environ.get("PSA_ORDERS_URL", "")
 # Locale/region of the PSA account being scraped (US self-hosters: en-US / US)
 LOCALE = os.environ.get("PSA_LOCALE", "en-CA")
 LOCATION = os.environ.get("PSA_LOCATION", "CA")
 
 def build_url(page_length=100, location=None):
     location = location or LOCATION
-    if ORDERS_URL:
-        return ORDERS_URL
     filt = base64.b64encode(json.dumps({"orderFilters": {"start": 0,
         "pageLength": page_length, "sort": "Arrived", "sortOrder": "desc",
         "location": location}}, separators=(",", ":")).encode()).decode().rstrip("=")
@@ -252,7 +249,7 @@ def parse_detail(sub_number, body):
 # We store these as cards keyed by a synthetic cert_id "spec:<specId>" so they show
 # and can be owner-tagged before PSA assigns real cert numbers. Once the sub grades,
 # refresh_cards replaces them with real cert cards (owner tags carried over by line).
-SPEC_DEPT_ID = int(os.environ.get("PSA_SPEC_DEPT_ID", "10"))  # 10 = TCG/trading cards
+SPEC_DEPT_ID = 10  # PSA department id for TCG/trading cards
 
 def completed_url(sub_number):
     blob = base64.b64encode(json.dumps({"submissionNumber": int(sub_number)},

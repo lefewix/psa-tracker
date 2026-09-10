@@ -236,6 +236,17 @@ def copy_checks(fails):
                      "within the hour (T68)")
 
 
+def env_checks(fails):
+    """Knobs nothing sets are constants, not os.environ lookups (T83)."""
+    for mod, names in (("app.py", ("COOKIE_DAYS", "PSA_SETTINGS_MINUTES")),
+                       ("psa_watch.py", ("PSA_ORDERS_URL", "PSA_SPEC_DEPT_ID"))):
+        src = open(os.path.join(ROOT, mod), encoding="utf-8").read()
+        for name in names:
+            if f'"{name}"' in src:
+                fails.append(f"{mod}: {name} is read from the env again, "
+                             "it is a dead knob (T83)")
+
+
 def tracking_checks(fails):
     """An unrecognized carrier whose tracking field only repeats it says the
     word once, a real carrier plus number still says both (T69)."""
@@ -477,6 +488,7 @@ def main():
         keepalive_checks(port, fails)
         setup_instance_checks(fails)
         copy_checks(fails)
+        env_checks(fails)
         tracking_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)

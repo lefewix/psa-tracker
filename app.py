@@ -17,8 +17,6 @@ Global env (systemd EnvironmentFile):
   PSA_IMG_CACHE     default /opt/psa-tracker/imgcache (shared; images are public CDN)
   SITE_TITLE        default "Submissions"   (dashboard heading + page titles)
   SITE_TAGLINE      default "PSA grading tracker" (login-gate subtitle)
-  COOKIE_DAYS       default 180 (an 8 month PSA turnaround; rotating the site
-                    password revokes every live cookie, see pw_slug)
   PSA_COOKIE_SECURE default 1 - set 0 if hosting over plain HTTP (no TLS proxy)
 
 Per-account account.env (written by add_account.sh, chmod 600):
@@ -37,12 +35,14 @@ from zoneinfo import ZoneInfo
 SECRET = os.environ.get("PSA_SECRET", "").encode()
 BIND = os.environ.get("PSA_BIND", "0.0.0.0")
 PORT = int(os.environ.get("PSA_PORT", "8080"))
-COOKIE_DAYS = int(os.environ.get("COOKIE_DAYS", "180"))
+# 8 months, a whole PSA turnaround. Rotating the site password revokes every
+# live cookie anyway, see pw_slug.
+COOKIE_DAYS = 180
 COOKIE_SECURE = os.environ.get("PSA_COOKIE_SECURE", "1") not in ("0", "false", "no")
 # sha256 hex of the settings password. Typing that password on the main gate
 # (or at the gear icon's prompt) opens /settings. Unset -> settings disabled.
 SETTINGS_HASH = os.environ.get("PSA_SETTINGS_PW_HASH", "").lower()
-SETTINGS_MINUTES = int(os.environ.get("PSA_SETTINGS_MINUTES", "60"))
+SETTINGS_MINUTES = 60
 GLOBAL_ENV = os.environ.get("PSA_GLOBAL_ENV", "/etc/psa-tracker.env")
 SITE_TITLE = os.environ.get("SITE_TITLE", "Submissions")
 SITE_TAGLINE = os.environ.get("SITE_TAGLINE", "PSA grading tracker")
