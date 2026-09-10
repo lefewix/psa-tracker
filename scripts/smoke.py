@@ -623,6 +623,15 @@ def main():
             hub = "/api/hub.json?key=" + HUB_KEY
             check("GET /api/hub.json (key)", hub, (200,), must_have='"subs"')
 
+            # --- the key rides a header, and the legacy query form never
+            # reaches the log (T29)
+            check("GET /api/hub.json (header key)", "/api/hub.json", (200,),
+                  headers={"X-Hub-Key": HUB_KEY}, must_have='"subs"')
+            check("GET /api/hub.json (bad header key)", "/api/hub.json", (404,),
+                  headers={"X-Hub-Key": "nope"})
+            if HUB_KEY in open(logpath, encoding="utf-8", errors="replace").read():
+                fails.append("log: /api/hub.json logged the key")
+
             # --- a settings POST answers a 303, so the reply page is a GET and
             # reloading it cannot resubmit the form. Add used to mint a second
             # account (with a second password) on every reload (T17)

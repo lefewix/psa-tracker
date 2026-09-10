@@ -3824,7 +3824,10 @@ class H(BaseHTTPRequestHandler):
     started = False  # set by send_response: a reply has begun
 
     def log_message(self, fmt, *a):
-        print(f"{self.address_string()} {fmt % a}", flush=True)
+        msg = fmt % a
+        if "/api/hub.json?" in msg:  # older hub sends the key in the query
+            msg = re.sub(r"/api/hub\.json\?\S*", "/api/hub.json", msg)
+        print(f"{self.address_string()} {msg}", flush=True)
 
     def log_error(self, fmt, *a):
         if "timed out" in fmt:  # a kept-alive connection going idle is not an error
@@ -4031,9 +4034,12 @@ class H(BaseHTTPRequestHandler):
     def serve_hub_summary(self, query):
         # Read-only submissions summary for a personal dashboard. Gated on PSA_HUB_KEY
         # (unset = feature off, 404): the URL is public via Cloudflare, the key
-        # only lives in the two boxes' env files.
+        # only lives in the two boxes' env files. The key rides X-Hub-Key; the
+        # query form stays for one release so the server can be updated without an
+        # outage, and it is redacted from the log (see log_message).
         key = os.environ.get("PSA_HUB_KEY", "")
-        got = urllib.parse.parse_qs(query).get("key", [""])[0]
+        got = (self.headers.get("X-Hub-Key", "").strip()
+               or urllib.parse.parse_qs(query).get("key", [""])[0])
         if not key or not hmac.compare_digest(got.encode(), key.encode()):
             return self.send(404, "not found", "text/plain")
         subs = []
