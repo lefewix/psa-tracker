@@ -1609,7 +1609,12 @@ button:disabled{opacity:.5;cursor:default}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
  transition:color .15s,background-color .15s}
-.numlink{text-decoration:none;color:inherit;display:inline-block}
+/* the sub number is a 22px line, so it takes the same invisible hit pseudo the
+   sort pills carry: 22 + 11 each way = the 44px floor. Vertical only (inset 0
+   left/right) so it never reaches the pills across the row; the 18px card pad
+   above and the meta line below are not targets, so nothing overlaps. */
+.numlink{text-decoration:none;color:inherit;display:inline-block;position:relative}
+.numlink::before{content:'';position:absolute;inset:-11px 0}
 .numlink .num{transition:color .15s}
 .setupform{margin-top:18px}
 .setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.6}

@@ -852,7 +852,9 @@ Not a retrofit — a visible part of the system, and it has house styling.
   grammar, because it is chrome.
 - **Submission list (`#list`):** the dashboard's rows are a real list, `role="list"` on `#list`
   (only while rows exist) and `role="listitem"` per card, with each row's sub number as an `h2`
-  under the masthead `h1`. Row headings, not ten tab stops apiece.
+  under the masthead `h1`. Row headings, not ten tab stops apiece. That heading is also the
+  row's link (`.numlink`), so it takes the pills' hit pseudo — `::before` at `inset: -11px 0`,
+  growing the 22px line to the 44px floor vertically only, never across to the pills.
 - **Live region (`.vh #live`):** a visually-hidden `aria-live="polite"` region on every list
   page. Saves, save failures, search result counts, and a sort pill's reversal are announced
   there. Two of the three pills keep their label when re-clicked, so the flip is speech only.

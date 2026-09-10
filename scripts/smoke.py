@@ -693,6 +693,15 @@ def main():
             if js and b"matchMedia('(max-width:640px),(max-height:500px)')" not in js:
                 fails.append("GET /app.js: the masthead does not condense on a short viewport")
 
+            # --- the sub number is a 22px line, so it needs the pills' hit
+            # pseudo to reach the 44px floor, vertically only (T59)
+            if css:
+                if b".numlink{" in css and b"position:relative" not in re.search(
+                        rb"\.numlink\{[^}]*\}", css).group(0):
+                    fails.append("GET /app.css: .numlink is not a positioning box")
+                if b".numlink::before{content:'';position:absolute;inset:-11px 0}" not in css:
+                    fails.append("GET /app.css: the sub number has no 44px hit box")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),
