@@ -273,10 +273,12 @@ def img_url(u, size="large"):
 STAGES = ["Arrived", "Order Prep", "Research & ID", "Grading", "Assembly", "QA Check", "Completing", "Shipped"]
 
 def stage_index(status):
+    """Position in STAGES, or None for a step PSA reports that this map does not
+    know. None means "draw no stage": naming one would be a guess."""
     try:
         return STAGES.index(status)
     except ValueError:
-        return 0
+        return None
 
 # Timestamps are stored UTC; render them in the audience's timezone.
 try:
@@ -1245,6 +1247,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
  font-size:14px;color:var(--m1);margin:16px 0 10px}
 .stage>span{min-width:0}
+/* no bar under an unknown status, so the stage line is the row's last element
+   and its bottom margin would double the card's own padding */
+.stage.nobar{margin-bottom:0}
 /* 650, matching .num/.ledval: the stage name is a DATA value, not emphasis in a
    sentence. The operator sweeps the column of stage names the same way they
    sweep the column of lot numbers, so both sit on the same weight rung. */
@@ -2463,8 +2468,13 @@ def timeline_html(status, dates=None, aside="", key=""):
     row as a capsule pill at its right end.
     `key` is the sub number: FX_JS remembers each sub's stage per browser and
     only runs the bar's run-out for one that actually MOVED since the last
-    visit, so the motion means "your cards advanced" and not "a page loaded"."""
+    visit, so the motion means "your cards advanced" and not "a page loaded".
+    A status STAGES does not know prints "Status unknown" and no bar at all."""
     idx = stage_index(status)
+    if idx is None:
+        # PSA sent a step this build has never seen. It used to fall through to
+        # stage 1 of 8, which read as "Arrived" for a sub that could be anywhere.
+        return f'<div class="stage nobar"><span>Status unknown</span>{aside}</div>'
     pct = 100.0 * (idx + 1) / len(STAGES)
     line = f'<b>{html.escape(STAGES[idx])}</b> · stage {idx + 1} of {len(STAGES)}'
     since = (dates or {}).get(STAGES[idx], "")

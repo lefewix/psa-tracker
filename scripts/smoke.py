@@ -53,7 +53,9 @@ def build_fixture(base):
     c.executescript(schema("psa_watch.py"))
     c.executescript(schema("psa_values.py"))
     subs = [("14900001", "Completing", 2, "2026-09-10", "", 1, 0),
-            ("14900002", "Arrived", 1, "", "", 0, 1)]
+            ("14900002", "Arrived", 1, "", "", 0, 1),
+            # a step the stage map does not know (T19)
+            ("14900003", "ReceivedHold", 1, "", "", 0, 0)]
     for num, status, cnt, shipped, tracking, ready, hold in subs:
         c.execute("INSERT INTO subs (sub_number, order_number, service, status, "
                   "card_count, destination, arrived, est_start, est_end, shipped, "
@@ -326,6 +328,13 @@ def main():
                     fails.append("GET /: the need-owners link is inside the sort capsule")
                 if b'class="f fsolo" href="/cards?owner=unassigned"' not in body:
                     fails.append("GET /: the need-owners link is missing from the filter row")
+
+                # --- an unmapped PSA step reads as unknown, not as stage 1 of 8,
+                # and draws no bar: one bar per sub the stage map knows (T19)
+                if b"Status unknown" not in body:
+                    fails.append("GET /: the unmapped status does not read as unknown")
+                if body.count(b'<div class="bar">') != 2:
+                    fails.append("GET /: the unmapped status still draws a stage bar")
             check("GET /cards", "/cards", (200,), cookie)
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
             check("GET /search", "/search?q=Charizard", (200,), cookie)
@@ -341,6 +350,12 @@ def main():
             check("GET /sub/14900001", "/sub/14900001", (200,), cookie,
                   must_have="Charizard")
             check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
+            body = check("GET /sub/14900003 (unmapped status)", "/sub/14900003",
+                         (200,), cookie, must_have="Status unknown")
+            if b'<div class="bar">' in body:
+                fails.append("GET /sub/14900003: the unmapped status still draws a stage bar")
+            if b"stage 1 of" in body:
+                fails.append("GET /sub/14900003: the unmapped status reads as stage 1")
             check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
             check("GET /nope (unknown path)", "/nope", (404,), cookie)
             check("GET /logout", "/logout", (302,), cookie)

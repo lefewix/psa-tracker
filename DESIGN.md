@@ -868,6 +868,10 @@ The product's signature component: one text line — current stage in accent-as-
 650 data weight, then "· stage N of 8" in muted — above a 4px capsule whose fill transitions
 its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
 
+**An unknown status draws no bar.** A step the stage map does not carry prints "Status
+unknown" on the stage line, muted and unbolded, with no capsule under it (`.stage.nobar`
+drops the line's bottom margin, so the row keeps the same rhythm as a bar row).
+
 **The run-out is earned, not ambient.** Each bar carries `data-k` (its sub number) and
 `data-st` (its stage index); FX_JS keeps a `psa_stage` map in `localStorage` and knocks a bar
 back to 0% — releasing it on the same 40ms stagger — **only for a sub whose stage differs from
