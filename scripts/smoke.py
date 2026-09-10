@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""Boot app.py against a throwaway fixture and GET every route.
+
+Stdlib only, no network, no box. Builds a temp accounts dir (one account.env,
+a psa.db carrying psa_watch/psa_values' own schema plus a handful of synthetic
+rows; owners.db is left for the app to create), starts app.py on a free port,
+then asserts each route answers the expected status with a non-empty body, for
+no session and for a logged-in session. Exits 1 on the first failure, naming
+the route.
+
+  python3 scripts/smoke.py
+"""
+import hashlib, json, os, re, shutil, signal, socket, sqlite3, subprocess
+import sys, tempfile, time, urllib.error, urllib.parse, urllib.request
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SITE_PW = "smoke-site-pw"
+SET_PW = "smoke-settings-pw"
+SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
+NOW = "2026-01-01T00:00:00+00:00"
+
+
+def schema(mod):
+    src = open(os.path.join(ROOT, mod), encoding="utf-8").read()
+    return re.search(r'SCHEMA = """(.*?)"""', src, re.S).group(1)
+
+
+def build_fixture(base):
+    """One account, minimal but real rows: a graded sub and an in-flight one."""
+    acct = os.path.join(base, "accounts", "demo")
+    os.makedirs(acct)
+    os.makedirs(os.path.join(base, "imgcache"))
+    with open(os.path.join(acct, "account.env"), "w", encoding="utf-8") as f:
+        f.write(f"LABEL='Smoke Store'\nSITE_PASSWORD='{SITE_PW}'\n"
+                "PSA_LOGIN_EMAIL='smoke@example.com'\nPSA_LOGIN_PW='x'\n"
+                "PSA_COOKIE='fake'\n")
+    open(os.path.join(base, "global.env"), "w").close()
+    c = sqlite3.connect(os.path.join(acct, "psa.db"))
+    c.executescript(schema("psa_watch.py"))
+    c.executescript(schema("psa_values.py"))
+    subs = [("14900001", "Completing", 2, "2026-09-10", "", 1, 0),
+            ("14900002", "Arrived", 1, "", "", 0, 1)]
+    for num, status, cnt, shipped, tracking, ready, hold in subs:
+        c.execute("INSERT INTO subs (sub_number, order_number, service, status, "
+                  "card_count, destination, arrived, est_start, est_end, shipped, "
+                  "tracking, carrier, grades_ready, on_hold, thumb, cert_ids, "
+                  "first_seen, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (num, "O-" + num, "Regular", status, cnt, "Ship back", "2026-08-01",
+                   "2026-09-05", "2026-09-12", shipped, tracking, "UPS", ready, hold,
+                   "", json.dumps([]), NOW, NOW))
+        c.execute("INSERT INTO status_history (sub_number, status, seen_at) VALUES (?,?,?)",
+                  (num, status, NOW))
+    cards = [("99000001", "14900001", "99000001", "Charizard 4/102 Base Set Holo", 1, "10"),
+             ("99000002", "14900001", "99000002", "Pikachu VMAX 044/185", 2, "9"),
+             ("spec:14900002:1", "14900002", "", "Umbreon VMAX 215/203", 1, "")]
+    for cid, num, cert_no, name, line, grade in cards:
+        c.execute("INSERT INTO cards (cert_id, sub_number, cert_no, name, line_number, "
+                  "front_thumb, back_thumb, grade, declared_value, updated_at) "
+                  "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                  (cid, num, cert_no, name, line, "", "", grade, 120.0, NOW))
+    c.execute("INSERT INTO card_values (cert_no, estimate, last_sale, last_sale_date, "
+              "n_sales, sales_json, fetched_at, error) VALUES (?,?,?,?,?,?,?,?)",
+              ("99000001", 310.0, 290.0, "2026-08-15", 3,
+               json.dumps([{"price": 290.0, "date": "2026-08-15"}]), NOW, ""))
+    c.execute("INSERT INTO fx_rates (pair, rate, fetched_at) VALUES ('USDCAD',1.36,?)", (NOW,))
+    c.commit()
+    c.close()
+
+
+def free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+def boot(base, port, log):
+    env = dict(os.environ,
+               PSA_PORT=str(port), PSA_BIND="127.0.0.1", PSA_COOKIE_SECURE="0",
+               PSA_SECRET="smoke-secret-not-real", PSA_SETTINGS_PW_HASH=SET_HASH,
+               PSA_ACCOUNTS_DIR=os.path.join(base, "accounts"),
+               PSA_GLOBAL_ENV=os.path.join(base, "global.env"),
+               PSA_IMG_CACHE=os.path.join(base, "imgcache"),
+               PSA_LOGO=os.path.join(ROOT, "logo.svg"),
+               PSA_FAVICON=os.path.join(ROOT, "favicon.png"),
+               PSA_TOUCH_ICON=os.path.join(ROOT, "apple-touch-icon.png"),
+               PSA_VALUES="1", PSA_THEME="light")
+    p = subprocess.Popen([sys.executable, os.path.join(ROOT, "app.py")], env=env,
+                         cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
+    for _ in range(100):
+        if p.poll() is not None:
+            return p
+        try:
+            socket.create_connection(("127.0.0.1", port), 0.2).close()
+            return p
+        except OSError:
+            time.sleep(0.1)
+    return p
+
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *a):
+        return None
+
+
+OPENER = urllib.request.build_opener(NoRedirect)
+
+
+def call(base_url, path, cookie=None, form=None):
+    """-> (status, body bytes, headers). Raises on a dropped connection."""
+    data = urllib.parse.urlencode(form).encode() if form else None
+    r = urllib.request.Request(base_url + path, data=data)
+    if cookie:
+        r.add_header("Cookie", cookie)
+    try:
+        with OPENER.open(r, timeout=30) as resp:
+            return resp.status, resp.read(), resp.headers
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(), e.headers
+
+
+def main():
+    base = tempfile.mkdtemp(prefix="psa-smoke-")
+    port = free_port()
+    url = f"http://127.0.0.1:{port}"
+    fails = []
+    logpath = os.path.join(base, "app.log")
+    log = open(logpath, "w")
+    proc = None
+    try:
+        build_fixture(base)
+        proc = boot(base, port, log)
+        if proc.poll() is not None:
+            log.close()
+            print("FAIL  app.py did not start:\n" + open(logpath).read().strip())
+            return 1
+
+        def check(label, path, want, cookie=None, form=None, must_have=None):
+            try:
+                code, body, _ = call(url, path, cookie, form)
+            except Exception as e:  # dropped connection = a crashed handler
+                fails.append(f"{label}: no reply ({e.__class__.__name__}: {e})")
+                return b""
+            if code not in want:
+                fails.append(f"{label}: got {code}, want {'/'.join(map(str, want))}")
+            elif code == 200 and not body:
+                fails.append(f"{label}: 200 with an empty body")
+            elif must_have and must_have.encode() not in body:
+                fails.append(f"{label}: 200 but missing {must_have!r}")
+            return body
+
+        # --- no session: every page is the gate, assets are public
+        check("GET / (no session)", "/", (200,), must_have='action="/login"')
+        check("GET /sub/14900001 (no session)", "/sub/14900001", (200,))
+        check("GET / (bad token)", "/", (200,), cookie="psa_session=nope.nope.nope",
+              must_have='action="/login"')
+        check("GET /app.css", "/app.css", (200,))
+        check("GET /app.js", "/app.js", (200,))
+        check("GET /logo", "/logo", (200,))
+        check("GET /favicon.png", "/favicon.png", (200,))
+        check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))
+        check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
+        check("GET /setup (setup closed)", "/setup", (302,))
+
+        # --- the settings gate: rendered for no session, and after a wrong password
+        check("GET /settings (no settings session)", "/settings", (200,),
+              must_have="Enter the settings password")
+        check("POST /settings/auth (wrong password)", "/settings/auth", (200,),
+              form={"password": "wrong-" + SET_PW}, must_have="Incorrect password")
+
+        # --- admin session
+        code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+        cookie = (hdrs.get("Set-Cookie") or "").split(";")[0]
+        if code != 302 or not cookie:
+            fails.append(f"POST /login: got {code}, no session cookie")
+            cookie = None
+        if cookie:
+            check("GET /", "/", (200,), cookie, must_have="14900001")
+            check("GET /cards", "/cards", (200,), cookie)
+            check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
+            check("GET /search", "/search?q=Charizard", (200,), cookie)
+            check("GET /search (empty q)", "/search?q=", (200,), cookie)
+            for q in ("%", "_", "\\"):
+                body = check(f"GET /suggest?q={q!r}", "/suggest?q=" +
+                             urllib.parse.quote(q), (200,), cookie)
+                if body:
+                    try:
+                        json.loads(body)
+                    except ValueError:
+                        fails.append(f"GET /suggest?q={q!r}: not JSON")
+            check("GET /sub/14900001", "/sub/14900001", (200,), cookie,
+                  must_have="Charizard")
+            check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
+            check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
+            check("GET /nope (unknown path)", "/nope", (404,), cookie)
+            check("GET /logout", "/logout", (302,), cookie)
+    finally:
+        if proc and proc.poll() is None:
+            proc.send_signal(signal.SIGTERM)
+            try:
+                proc.wait(5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+        log.close()
+        crash = open(logpath, encoding="utf-8", errors="replace").read()
+        shutil.rmtree(base, ignore_errors=True)
+
+    if fails:
+        for f in fails:
+            print("FAIL  " + f)
+        tail = [ln for ln in crash.splitlines() if "Traceback" in ln or "Error" in ln]
+        if tail:
+            print("app.py said: " + " | ".join(tail[-3:]))
+        return 1
+    print("OK")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
