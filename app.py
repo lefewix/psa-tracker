@@ -3672,6 +3672,8 @@ def eta_badge(s, extra=""):
         if "," in d1 and d1[-6:] == d2[-6:]:  # one year for the pair, on the end
             d1 = d1.split(",")[0]
         val = f"{d1} to {d2}"
+    if val == "ETA pending":
+        val = "Pending"  # the badge already says "PSA ETA" on the label rung
     note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
     eta = f'{label}<b>{html.escape(val)}</b>'
     if s["on_hold"]:
