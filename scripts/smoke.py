@@ -642,7 +642,15 @@ def main():
                         fails.append(f"GET /suggest?q={q!r}: not JSON")
             check("GET /sub/14900001", "/sub/14900001", (200,), cookie,
                   must_have="Charizard")
-            check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
+            # the Prelim slot names itself: the tile where a cert number will
+            # go carries the reason it is empty, and a graded tile still prints
+            # its number plain (T70)
+            body = check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
+            if b'class="cn pre" title="No cert number until PSA grades it"' not in body:
+                fails.append("GET /sub/14900002: the Prelim slot is unexplained again")
+            body = call(url, "/sub/14900001", cookie)[1] or b""
+            if b'<div class="cn">99000001</div>' not in body:
+                fails.append("GET /sub/14900001: a graded tile lost its cert number")
             body = check("GET /sub/14900003 (unmapped status)", "/sub/14900003",
                          (200,), cookie, must_have="Status unknown")
             if b'<div class="bar">' in body:

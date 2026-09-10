@@ -3465,7 +3465,8 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     # the grade is the news on this tile: plain text, PSA-label red, under the scan
     grade = f'<div class="gr">PSA {html.escape(c["grade"])}</div>' if c.get("grade") else ""
     if is_prelim:
-        head = '<div class="cn pre">Prelim</div>'
+        head = ('<div class="cn pre" title="No cert number until PSA grades it">'
+                'Prelim</div>')
     else:
         head = f'<div class="cn">{html.escape(c["cert_no"] or c["cert_id"])}</div>'
     if c.get("front_thumb"):
