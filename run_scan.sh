@@ -91,12 +91,16 @@ PYEOF
     fi
     python3 /opt/psa-tracker/psa_watch.py --once "$@"
     rc=$?
-    if [ "$rc" = 3 ] && [ "$full" = 0 ] && [ "$may_login" = 1 ]; then
-      echo "[run_scan] $id: cookie looks dead - browser login + rescan"
-      if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
-        set -a; . "$envf"; set +a
-        python3 /opt/psa-tracker/psa_watch.py --once "$@"
-        rc=$?
+    if [ "$rc" = 3 ] && [ "$full" = 0 ]; then
+      if [ "$may_login" = 1 ]; then
+        echo "[run_scan] $id: cookie looks dead - browser login + rescan"
+        if xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
+          set -a; . "$envf"; set +a
+          python3 /opt/psa-tracker/psa_watch.py --once "$@"
+          rc=$?
+        fi
+      else
+        echo "[run_scan] $id: cookie looks dead, skipping login ($why)"
       fi
     fi
 
