@@ -1453,8 +1453,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    a save failure must say so in words, not in a 1.2s border flash */
 .undo.uerr{color:var(--err)}
 /* ---- lightbox ------------------------------------------------------------ */
+/* overscroll-behavior:contain stops a drag on the scrim from chaining to the
+   dashboard behind it; LIGHTBOX_JS pins body overflow for the rest. */
 .lb{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;
- align-items:center;justify-content:center;cursor:zoom-out;
+ align-items:center;justify-content:center;cursor:zoom-out;overscroll-behavior:contain;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
  transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
   -webkit-backdrop-filter .2s ease-out,visibility 0s .2s}
@@ -2852,12 +2854,14 @@ LIGHTBOX_JS = """<script>
       im.src=a.getAttribute('href');
       opener=a;
       lb.classList.add('open');
+      document.body.style.overflow='hidden';  // the page behind must not scroll
       lb.focus();
     });
   });
   function close(){
     if(!lb.classList.contains('open'))return;
     lb.classList.remove('open');
+    document.body.style.overflow='';
     clearTimeout(clr);
     clr=setTimeout(function(){ if(!lb.classList.contains('open')) im.src=''; },220);
     if(opener&&document.contains(opener))opener.focus();

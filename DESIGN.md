@@ -858,7 +858,8 @@ Not a retrofit — a visible part of the system, and it has house styling.
   to the opener on close, Escape closes, and Tab is held on the single close orb. The **scan
   itself is inert**: tapping the image does nothing, because the reveal has to survive being
   touched. The scrim and the `.lbx` close orb (44px, fixed dark circle, white glyph, top-right)
-  are what close it.
+  are what close it. While it is open the page is **locked**: `overflow:hidden` on `body`, given
+  back on close, plus `overscroll-behavior:contain` on `.lb` so a drag never chains through.
 - **Disclosures:** the person and customer pages' archived toggles are disclosures and carry
   `aria-expanded` / `aria-controls`; the dashboard's is a VIEW SWITCH (it swaps which rows the
   always-visible list shows) and carries `aria-pressed` instead. All three use the solo-pill

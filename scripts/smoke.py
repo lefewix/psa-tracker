@@ -680,6 +680,14 @@ def main():
                 if dash.count(b'<h2 class="num">') != 3:
                     fails.append("GET /: a submission row has no heading")
 
+            # --- an open lightbox locks the page: the drag must not chain to
+            # the dashboard 900px behind the scrim, and close must give it back (T57)
+            if js:
+                if js.count(b"document.body.style.overflow") != 2:
+                    fails.append("GET /app.js: the lightbox does not lock the page")
+            if css and b"cursor:zoom-out;overscroll-behavior:contain" not in css:
+                fails.append("GET /app.css: a drag on the lightbox scrim still chains")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),
