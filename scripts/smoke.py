@@ -295,11 +295,11 @@ def main():
                             {"acct": "demo", "action": "site_pw",
                              "value": value, "value2": value})[0]
 
-            if site_pw(SITE_PW + "-rotated") != 200:
+            if site_pw(SITE_PW + "-rotated") != 303:
                 fails.append("POST /settings/account site_pw: rotation refused")
             check("GET / (cookie after a password rotation)", "/", (200,), cookie,
                   must_have='action="/login"')
-            if site_pw(SITE_PW) != 200:
+            if site_pw(SITE_PW) != 303:
                 fails.append("POST /settings/account site_pw: restore refused")
             check("GET / (cookie after the password is restored)", "/", (200,),
                   cookie, must_have="14900001")
@@ -366,6 +366,26 @@ def main():
             # --- a failed read is a 500 page, never an empty account (T3)
             hub = "/api/hub.json?key=" + HUB_KEY
             check("GET /api/hub.json (key)", hub, (200,), must_have='"subs"')
+
+            # --- a settings POST answers a 303, so the reply page is a GET and
+            # reloading it cannot resubmit the form. Add used to mint a second
+            # account (with a second password) on every reload (T17)
+            adir = os.path.join(base, "accounts")
+            before = sorted(os.listdir(adir))
+            acode, _, ahdrs = call(url, "/settings/add", scookie,
+                                   {"psa_email": "t17@example.com", "psa_pw": "x"})
+            loc = ahdrs.get("Location") or ""
+            if acode != 303 or not loc.startswith("/settings?"):
+                fails.append(f"POST /settings/add: got {acode} to {loc!r}, "
+                             "want a 303 to /settings")
+            else:
+                check("GET the Add reply", loc, (200,), scookie,
+                      must_have="site password is")
+                check("GET the Add reply (reloaded)", loc, (200,), scookie)
+            after = sorted(os.listdir(adir))
+            if len(after) != len(before) + 1:
+                fails.append(f"POST /settings/add: accounts went {before} -> {after}, "
+                             "want exactly one more")
             dbf = os.path.join(base, "accounts", "demo", "psa.db")
             lock = sqlite3.connect(dbf, timeout=1)
             lock.execute("BEGIN EXCLUSIVE")  # readers now block, then time out

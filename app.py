@@ -2060,6 +2060,18 @@ def settings_gate(error=""):
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
+FLASH = {}  # one-shot settings notices: token -> (msg, err). They ride a token
+            # and not the query string because the Add reply carries a freshly
+            # generated site password, which must not land in history or a Referer.
+
+def flash(msg="", err=""):
+    """Stash a settings notice, return the /settings URL that shows it once."""
+    if len(FLASH) > 30:
+        FLASH.clear()
+    tok = base64.urlsafe_b64encode(os.urandom(9)).decode()
+    FLASH[tok] = (msg, err)
+    return "/settings?m=" + tok
+
 def settings_page(msg="", err="", only=""):
     """Four panels, styled like the rest of the site. Accounts panel: chips by
     email; clicking one opens a popup (new PSA password / unlink - the email
@@ -3739,6 +3751,11 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Vary", "Accept-Encoding")
         return data
 
+    def see(self, loc):
+        """303 after a form POST: the browser re-GETs, so a reload of the reply
+        never resubmits it (a second Add used to mint a duplicate account)."""
+        return self.send(303, "", extra=[("Location", loc)])
+
     def send(self, code, body, ctype="text/html; charset=utf-8", extra=None):
         data = body.encode()
         self.send_response(code)
@@ -3909,7 +3926,10 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, setup_page())
         if path == "/settings":
             if self.settings_ok():  # store admins walk straight in
-                return self.send(200, settings_page(only=self.settings_scope()))
+                m, e = FLASH.pop(urllib.parse.parse_qs(parsed.query).get("m", [""])[0],
+                                 ("", ""))
+                return self.send(200, settings_page(msg=m, err=e,
+                                                    only=self.settings_scope()))
             if not SETTINGS_HASH:
                 return self.send(404, "not found", "text/plain")
             return self.send(200, settings_gate())
@@ -4054,19 +4074,19 @@ class H(BaseHTTPRequestHandler):
             new_pw = (form.get("new_pw") or [""])[0]
             confirm = (form.get("confirm_pw") or [""])[0]
             if len(new_pw) < 6:
-                return self.send(200, settings_page(err="Settings password needs at least 6 characters."))
+                return self.see(flash(err="Settings password needs at least 6 characters."))
             if new_pw != confirm:
-                return self.send(200, settings_page(err="The two passwords don't match."))
+                return self.see(flash(err="The two passwords don't match."))
             if any(hmac.compare_digest(new_pw.encode(), a["password"].encode()) for a in load_accounts().values()):
-                return self.send(200, settings_page(err="That password already routes to an account at the gate."))
+                return self.see(flash(err="That password already routes to an account at the gate."))
             global SETTINGS_HASH
             SETTINGS_HASH = hashlib.sha256(new_pw.encode()).hexdigest()
             try:
                 env_set(GLOBAL_ENV, {"PSA_SETTINGS_PW_HASH": SETTINGS_HASH})
             except OSError:
-                return self.send(200, settings_page(
+                return self.see(flash(
                     err=f"Password active for now, but writing {GLOBAL_ENV} failed — it reverts on restart."))
-            return self.send(200, settings_page(msg="Settings password changed — it works immediately."))
+            return self.see(flash(msg="Settings password changed — it works immediately."))
         if path in ("/settings/account", "/settings/add"):
             if not self.settings_ok():
                 return self.send(403, "settings auth", "text/plain")
@@ -4085,33 +4105,33 @@ class H(BaseHTTPRequestHandler):
                     return self.send(400, "unknown account", "text/plain")
                 if action == "psa_pw":
                     if not value:
-                        return self.send(200, settings_page(only=scope, err="Enter the new PSA password first."))
+                        return self.see(flash(err="Enter the new PSA password first."))
                     # also clears UNLINKED: saving a fresh PSA password IS the relink
                     env_set(account_env_path(acct_id),
                             {"PSA_LOGIN_PW": value, "PSA_COOKIE": "", "UNLINKED": ""})
-                    return self.send(200, settings_page(only=scope,
+                    return self.see(flash(
                         msg="PSA password saved — the next hourly scan signs in fresh with it."))
                 if action == "site_pw":
                     if len(value) < 4:
-                        return self.send(200, settings_page(only=scope, err="Site password needs at least 4 characters."))
+                        return self.see(flash(err="Site password needs at least 4 characters."))
                     if value != get("value2"):
-                        return self.send(200, settings_page(only=scope, err="The two site passwords don't match."))
+                        return self.see(flash(err="The two site passwords don't match."))
                     if is_settings_pw(value):
-                        return self.send(200, settings_page(only=scope, err="That's the settings password — pick a different one."))
+                        return self.see(flash(err="That's the settings password — pick a different one."))
                     if any(i != acct_id and hmac.compare_digest(value.encode(), a["password"].encode())
                            for i, a in accts.items()):
-                        return self.send(200, settings_page(only=scope, err="That site password already routes to another account."))
+                        return self.see(flash(err="That site password already routes to another account."))
                     env_set(account_env_path(acct_id), {"SITE_PASSWORD": value})
-                    return self.send(200, settings_page(only=scope, msg="Site password changed — it works at the gate right away."))
+                    return self.see(flash(msg="Site password changed — it works at the gate right away."))
                 if action == "webhook":
                     if not (value.startswith("https://discord.com/api/webhooks/")
                             or value.startswith("https://discordapp.com/api/webhooks/")):
-                        return self.send(200, settings_page(only=scope, err="Webhook must be a discord.com/api/webhooks/… URL."))
+                        return self.see(flash(err="Webhook must be a discord.com/api/webhooks/… URL."))
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": value})
-                    return self.send(200, settings_page(only=scope, msg="Webhook saved — status changes for this account ping it."))
+                    return self.see(flash(msg="Webhook saved — status changes for this account ping it."))
                 if action == "webhook_clear":
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": ""})
-                    return self.send(200, settings_page(only=scope, msg="Webhook removed."))
+                    return self.see(flash(msg="Webhook removed."))
                 if action in ("otp_send", "otp_code"):
                     d = os.path.dirname(account_env_path(acct_id))
                     if action == "otp_send":
@@ -4120,16 +4140,16 @@ class H(BaseHTTPRequestHandler):
                             except FileNotFoundError: pass
                         open(os.path.join(d, "otp.armed"), "w").write(time.strftime("%Y-%m-%dT%H:%M"))
                         start_first_scan()
-                        return self.send(200, settings_page(only=scope,
+                        return self.see(flash(
                             msg="Sign-in started — PSA texts the code to this account's phone in a minute or two. "
                                 "Come back here and enter it."))
                     code = re.sub(r"\D", "", value)
                     if not 4 <= len(code) <= 8:
-                        return self.send(200, settings_page(only=scope, err="Enter the code PSA texted (digits only)."))
+                        return self.see(flash(err="Enter the code PSA texted (digits only)."))
                     fd = os.open(os.path.join(d, "otp.code"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                     with os.fdopen(fd, "w") as f:
                         f.write(code)
-                    return self.send(200, settings_page(only=scope, msg="Code sent — sign-in finishes within a minute."))
+                    return self.see(flash(msg="Code sent — sign-in finishes within a minute."))
                 if action == "unlink":
                     # NOT a rename: the site keeps serving the last known data
                     # (dashboard shows an unlinked banner); the scanner skips the
@@ -4137,7 +4157,7 @@ class H(BaseHTTPRequestHandler):
                     # PSA password on the account relinks it.
                     env_set(account_env_path(acct_id),
                             {"UNLINKED": "1", "PSA_COOKIE": "", "PSA_LOGIN_PW": ""})
-                    return self.send(200, settings_page(only=scope,
+                    return self.see(flash(
                         msg="Account unlinked — the site keeps showing its last known data; "
                             "scans stop. Save a new PSA password on it to relink."))
                 return self.send(400, "unknown action", "text/plain")
@@ -4148,7 +4168,7 @@ class H(BaseHTTPRequestHandler):
             # ONCE (changeable in the Site password panel).
             psa_email, psa_pw = get("psa_email"), get("psa_pw")
             if "@" not in psa_email or not psa_pw:
-                return self.send(200, settings_page(only=scope, err="Enter the PSA email and password."))
+                return self.see(flash(err="Enter the PSA email and password."))
             accts = load_accounts()
             local = psa_email.split("@")[0]
             label = local[:40]
@@ -4162,7 +4182,7 @@ class H(BaseHTTPRequestHandler):
                     break
             write_account_env(acct_id, label, gen_pw, psa_email, psa_pw)
             start_first_scan()
-            return self.send(200, settings_page(only=scope,
+            return self.see(flash(
                 msg=f"Account added — its site password is {gen_pw} (shown once; "
                     f"visitors type it to see this account, change it under Site password)."))
         if path != "/login":
