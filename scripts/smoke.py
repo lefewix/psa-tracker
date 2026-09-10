@@ -147,6 +147,45 @@ def call(base_url, path, cookie=None, form=None, headers=None):
         return e.code, e.read(), e.headers
 
 
+def keepalive_checks(port, fails):
+    """One socket, two pipelined GETs: HTTP/1.1 must answer both without closing
+    in between. A POST is the exception, it says Connection: close, because its
+    body is read up to a cap and the rest would look like a next request (T22)."""
+    s = socket.create_connection(("127.0.0.1", port), 10)
+    s.settimeout(10)
+    try:
+        s.sendall(b"GET /api/hub.json HTTP/1.1\r\nHost: smoke\r\n\r\n"
+                  b"GET /api/hub.json HTTP/1.1\r\nHost: smoke\r\nConnection: close\r\n\r\n")
+        buf = b""
+        while True:
+            chunk = s.recv(65536)
+            if not chunk:
+                break
+            buf += chunk
+    finally:
+        s.close()
+    if buf.count(b"HTTP/1.1 404") != 2:
+        fails.append("pipelined GETs: one connection did not carry two replies")
+
+    s = socket.create_connection(("127.0.0.1", port), 10)
+    s.settimeout(10)
+    try:
+        body = b"x=1"  # a path that 404s without reading the body: the worst case
+        s.sendall(b"POST /nope HTTP/1.1\r\nHost: smoke\r\nContent-Type: "
+                  b"application/x-www-form-urlencoded\r\nContent-Length: "
+                  + str(len(body)).encode() + b"\r\n\r\n" + body)
+        head = b""
+        while b"\r\n\r\n" not in head:
+            chunk = s.recv(4096)
+            if not chunk:
+                break
+            head += chunk
+    finally:
+        s.close()
+    if b"Connection: close" not in head.split(b"\r\n\r\n", 1)[0]:
+        fails.append("POST /nope: the reply does not close the connection")
+
+
 def setup_instance_checks(fails):
     """An instance whose single account has never connected: the setup form is
     the owner's retry, not a public takeover, and an account.env that stops
@@ -271,6 +310,7 @@ def main():
         check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
         check("GET /setup (setup closed)", "/setup", (302,))
+        keepalive_checks(port, fails)
         setup_instance_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)

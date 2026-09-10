@@ -3716,10 +3716,19 @@ def search_page(a, q, owner="", customer=False):
 
 class H(BaseHTTPRequestHandler):
     server_version = "psa-tracker"
+    # every reply sets its own Content-Length, so keep-alive is safe: one
+    # connection now carries the page and the dozens of thumbnails after it
+    protocol_version = "HTTP/1.1"
+    timeout = 30  # an idle kept-alive connection must not hold a thread forever
     started = False  # set by send_response: a reply has begun
 
     def log_message(self, fmt, *a):
         print(f"{self.address_string()} {fmt % a}", flush=True)
+
+    def log_error(self, fmt, *a):
+        if "timed out" in fmt:  # a kept-alive connection going idle is not an error
+            return
+        self.log_message(fmt, *a)
 
     def client_ip(self):
         """Throttle key. Cloudflare writes CF-Connecting-IP; in X-Forwarded-For
@@ -3812,6 +3821,8 @@ class H(BaseHTTPRequestHandler):
         # internal referrers - BACK_JS needs them to tell "came from inside the
         # site" (history back) apart from a direct/external entry (href fallback)
         self.send_header("Referrer-Policy", "same-origin")
+        if self.close_connection:  # say so, rather than let the peer find the FIN
+            self.send_header("Connection", "close")
         for k, v in (extra or []):
             self.send_header(k, v)
         self.end_headers()
@@ -3939,6 +3950,10 @@ class H(BaseHTTPRequestHandler):
         self.guard(self.route_get)
 
     def do_POST(self):
+        # Bodies below are read up to a cap, so anything past it stays in the
+        # stream, and leftover body bytes are not a next request. POSTs are one
+        # user action at a time; only the GETs need the connection kept.
+        self.close_connection = True
         self.guard(self.route_post)
 
     def route_get(self):
@@ -4277,6 +4292,10 @@ class H(BaseHTTPRequestHandler):
         self.send(302, "", extra=[("Location", "/"), ("Set-Cookie", cookie)])
 
 
+class Server(ThreadingHTTPServer):
+    request_queue_size = 128  # socketserver's default of 5 drops a burst of connections
+
+
 def main():
     if not SECRET:
         raise SystemExit("PSA_SECRET must be set")
@@ -4291,7 +4310,7 @@ def main():
         print(f"WARNING: {dupes} duplicate site password(s) across accounts - "
               "login routes to the first match; make them unique!", flush=True)
     print(f"serving on {BIND}:{PORT} - {len(accts)} account(s): {', '.join(accts)}", flush=True)
-    ThreadingHTTPServer((BIND, PORT), H).serve_forever()
+    Server((BIND, PORT), H).serve_forever()
 
 if __name__ == "__main__":
     main()
