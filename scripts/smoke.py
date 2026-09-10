@@ -622,8 +622,15 @@ def main():
             if call(url, "/owner", cookie,
                     {"cert_id": "99000002", "owner": "Solo"})[0] != 204:
                 fails.append("POST /owner: tagging one card was refused")
-            check("GET /cards?owner=Solo", "/cards?owner=Solo", (200,), cookie,
-                  must_have="1 card with")
+            sbody = check("GET /cards?owner=Solo", "/cards?owner=Solo", (200,), cookie,
+                          must_have="1 card with")
+            # one money format in the person page value block: every figure
+            # carries the currency, the fee total prints no cents (T71)
+            for want in (b"Est. grading cost<b>$109 CAD</b>", b"<b>$120 CAD</b>",
+                         b"<b>$204 CAD</b>"):
+                if want not in sbody:
+                    fails.append("GET /cards?owner=Solo: the value block is missing "
+                                 + want.decode())
             check("GET /sub/14900002 (one card)", "/sub/14900002", (200,), cookie,
                   must_have="1 card \u00b7")
             for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo"):

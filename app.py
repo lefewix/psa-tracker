@@ -3828,14 +3828,14 @@ def people_page(a, owner):
                 uncovered += 1
             else:
                 covered += dv
-        ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""}</b>'
+        ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""} CAD</b>'
                if covered or uncovered else "")
         vtot = sum(vals.get(c["cert_no"] or "", 0) for c in act_cards)
-        vline = (f'<span class="lbl2">Est. value · graded</span><b class="num">${vtot:,.0f} {vcur}</b>'
+        vline = (f'<span class="lbl2">Est. value · graded</span><b>${vtot:,.0f} {vcur}</b>'
                  if vtot else "")
-        vnote = f'<br>values = PSA estimates · as of {html.escape(vas_of)}' if vline else ""
-        est = (f'<div class="synced">Est. grading cost<b>${total:,.2f}'
-               f'{"+" if unpriced else ""}</b>{ins}{vline}'
+        vnote = f'<br>values = PSA estimate or last sale · as of {html.escape(vas_of)}' if vline else ""
+        est = (f'<div class="synced">Est. grading cost<b>${total:,.0f}'
+               f'{"+" if unpriced else ""} CAD</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     back = '<a class="view" id="backlk" href="/">← Back</a>'
