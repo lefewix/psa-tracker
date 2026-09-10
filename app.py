@@ -3223,6 +3223,17 @@ APP_JS = "\n".join(_script_body(s) for s in (
     FX_JS, SORT_JS, SEARCH_JS, OWNER_JS, ARCH_JS, ARCHFOLD_JS,
     BACK_JS, DISCORD_JS, LIGHTBOX_JS, THEME_JS))
 _ASSET_V = hashlib.sha256((CSS + APP_JS).encode()).hexdigest()[:12]
+
+
+def _bundle(text):
+    """(raw bytes, gzipped bytes). Both bundles are immutable for the life of
+    the process, so they are compressed here once instead of per request."""
+    raw = text.encode()
+    return raw, gzip.compress(raw, 6)
+
+
+CSS_BYTES = _bundle(CSS)
+APP_JS_BYTES = _bundle(APP_JS)
 APP_CSS_TAG = f'<link rel="stylesheet" href="/app.css?v={_ASSET_V}">'
 APP_JS_TAG = f'<script src="/app.js?v={_ASSET_V}"></script>'
 
@@ -3834,7 +3845,15 @@ class H(BaseHTTPRequestHandler):
         data = self._gz(data)
         self.send_header("Content-Length", str(len(data)))
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Cache-Control", "no-store")
+        # no-store forfeits the back forward cache, so only the responses that
+        # carry a password field keep it: the gate (served at any path while
+        # signed out), /login, /settings and the setup form. A signed-in page is
+        # private, no-cache: never a shared cache, always revalidated, but back
+        # navigation restores it without a request.
+        rpath = urllib.parse.urlparse(self.path).path
+        secret = (rpath in ("/login", "/setup") or rpath.startswith("/settings")
+                  or not self.authed())
+        self.send_header("Cache-Control", "no-store" if secret else "private, no-cache")
         self.send_header("X-Frame-Options", "DENY")
         # everything is same-origin (the /img proxy included); 'unsafe-inline'
         # stays because the chrome CSS and JS are inline Python strings, and
@@ -3891,13 +3910,18 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", "0")
         self.end_headers()
 
-    def serve_str(self, body, ctype):
+    def serve_str(self, pair, ctype):
         """The hashed chrome bundle (/app.css, /app.js): cached forever, a new
-        hash in ?v is the cache buster. No secrets live in either string."""
-        data = body.encode()
+        hash in ?v is the cache buster. No secrets live in either string.
+        Takes a _bundle pair, so no request compresses anything."""
+        raw, gz = pair
+        data = raw
         self.send_response(200)
         self.send_header("Content-Type", ctype)
-        data = self._gz(data)
+        if len(gz) < len(raw) and "gzip" in self.headers.get("Accept-Encoding", ""):
+            self.send_header("Content-Encoding", "gzip")
+            data = gz
+        self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "public, max-age=31536000, immutable")
         self.send_header("X-Content-Type-Options", "nosniff")
@@ -3992,9 +4016,9 @@ class H(BaseHTTPRequestHandler):
         if path == "/logo":
             return self.serve_logo()
         if path == "/app.css":
-            return self.serve_str(CSS, "text/css; charset=utf-8")
+            return self.serve_str(CSS_BYTES, "text/css; charset=utf-8")
         if path == "/app.js":
-            return self.serve_str(APP_JS, "text/javascript; charset=utf-8")
+            return self.serve_str(APP_JS_BYTES, "text/javascript; charset=utf-8")
         if path in ("/favicon.png", "/favicon.ico"):  # Safari asks for .ico blind
             return self.serve_asset(FAV_PNG, "image/png")
         if path == "/apple-touch-icon.png":

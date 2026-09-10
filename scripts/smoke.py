@@ -310,6 +310,15 @@ def main():
         _, _, phdrs = call(url, "/")
         if "frame-ancestors 'none'" not in (phdrs.get("Content-Security-Policy") or ""):
             fails.append("GET /: no Content-Security-Policy")
+        # --- the gate holds a password field: it stays no-store wherever it is
+        # served, while the bundles are compressed once at import, so repeated
+        # fetches are byte-identical (T26)
+        if "no-store" not in (phdrs.get("Cache-Control") or ""):
+            fails.append("GET / (no session): the gate is not no-store")
+        shots = {call(url, "/app.css", headers={"Accept-Encoding": "gzip"})[1]
+                 for _ in range(10)}
+        if len(shots) != 1:
+            fails.append("GET /app.css: ten fetches did not return identical bytes")
         for label, hdrs in (("/logo", ghdrs),
                             ("/app.css", call(url, "/app.css")[2]),
                             ("/favicon.png", call(url, "/favicon.png")[2])):
@@ -431,6 +440,16 @@ def main():
             body = check("GET / (scans current)", "/", (200,), cookie)
             if b"Not connecting to PSA" in body:
                 fails.append("GET /: a fresh scan still reads as a broken PSA link")
+
+            # --- a signed-in page is private, no-cache, not no-store: back
+            # navigation from a sub restores it from the back forward cache (T26)
+            for label, path in (("/", "/"), ("/sub/14900001", "/sub/14900001")):
+                got = call(url, path, cookie)[2].get("Cache-Control") or ""
+                if got != "private, no-cache":
+                    fails.append(f"GET {label} (session): Cache-Control {got!r} "
+                                 "forfeits the back forward cache")
+            if "no-store" not in (call(url, "/settings", cookie)[2].get("Cache-Control") or ""):
+                fails.append("GET /settings (session): not no-store")
 
             icode, _, ihdrs = call(url, imgq, cookie)
             if icode != 200:
