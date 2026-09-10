@@ -168,6 +168,13 @@ def main():
               must_have="Enter the settings password")
         check("POST /settings/auth (wrong password)", "/settings/auth", (200,),
               form={"password": "wrong-" + SET_PW}, must_have="Incorrect password")
+        code, _, hdrs = call(url, "/settings/auth", form={"password": SET_PW})
+        scookie = (hdrs.get("Set-Cookie") or "").split(";")[0]
+        if code != 302 or not scookie:
+            fails.append(f"POST /settings/auth: got {code}, no settings cookie")
+        else:
+            check("GET /settings (settings session)", "/settings", (200,), scookie,
+                  must_have="PSA accounts")
 
         # --- admin session
         code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
