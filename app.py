@@ -1588,10 +1588,14 @@ button:disabled{opacity:.5;cursor:default}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
 /* .sdel never takes .fillbtn - it is a destructive TEXT action, not a primary.
    The radius is restated because the element rule no longer hands one out and
-   the focus ring follows it. */
-.sbtn.sdel{background:transparent;color:var(--err);padding:11px 0;margin-top:10px;
+   the focus ring follows it. .squiet is the same bare-text grammar in accent:
+   one screen carries one filled capsule, so the saves on the panels the
+   operator touches once (webhook, passwords) demote to text. */
+.sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
  border-radius:999px}
-.srow .sbtn.sdel{margin-top:0}
+.sbtn.sdel{color:var(--err)}
+.sbtn.squiet{color:var(--ac-pale)}
+.srow .sbtn.sdel,.srow .sbtn.squiet{margin-top:0}
 .stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt)}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
@@ -1697,7 +1701,7 @@ button:disabled{opacity:.5;cursor:default}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
-.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
+.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
 /* Text actions keep their invisible padded hit box (the negative-margin trick
    above) but hover NEVER paints it: the quiet-fill slab hung 12px past the
    text - straight over the stage bar - and inside a raised card a filled box
@@ -2310,7 +2314,7 @@ def settings_page(msg="", err="", only=""):
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="webhook">
 <input name="value" type="password" placeholder="discord.com/api/webhooks/… URL"
  aria-label="Discord webhook URL" autocomplete="off">
-<button type="submit" class="fillbtn sbtn">Save</button></form>
+<button type="submit" class="sbtn squiet">Save</button></form>
 {remove_btn}
 </div>""")
         spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
@@ -2320,7 +2324,7 @@ def settings_page(msg="", err="", only=""):
  aria-label="New site password" autocomplete="new-password">
 <input name="value2" type="password" placeholder="Repeat"
  aria-label="Repeat new site password" autocomplete="new-password">
-<button type="submit" class="fillbtn sbtn">Save</button></form>
+<button type="submit" class="sbtn squiet">Save</button></form>
 </div>""")
     add_btn = '<button type="button" class="f" id="saddbtn">Add account</button>'
     pwpanel = "" if only else """<div class="card sblock">
@@ -2331,7 +2335,7 @@ def settings_page(msg="", err="", only=""):
  aria-label="New settings password" autocomplete="new-password">
 <input name="confirm_pw" type="password" placeholder="Repeat"
  aria-label="Repeat new settings password" autocomplete="new-password">
-<button type="submit" class="fillbtn sbtn">Save</button></form>
+<button type="submit" class="sbtn squiet">Save</button></form>
 </div>"""
     note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err else
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))

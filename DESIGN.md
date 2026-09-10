@@ -747,6 +747,8 @@ content — a panel, a sheet, an image, a row — it is not.
   deepens the fill by 6% ink.
 - **Destructive:** transparent ground, alert-red label, capsule radius so the focus ring
   follows the shape. It never becomes a filled red button.
+- **Quiet save (`.sbtn.squiet`):** the destructive grammar in accent instead of red, for the
+  settings saves demoted so one screen keeps one filled capsule (the verification code submit).
 
 ### Chips
 - **Style:** a floating glass capsule (999px) holds borderless segments; the track is a faint

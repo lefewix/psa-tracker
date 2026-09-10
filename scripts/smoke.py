@@ -506,6 +506,18 @@ def main():
                     fails.append("GET /settings: the Add account panel does not say "
                                  "the site name, logo and accent are shared")
 
+            # --- one filled accent capsule on the panel screen: the verification
+            # code submit, the one an operator sends again and again. Every other
+            # save is the bare text grammar (T81). Per-account panes repeat in the
+            # markup but only the chosen one is on screen; modals are own screens.
+            if body:
+                panels = body.split(b'<div class="smodal"')[0]
+                stray = (panels.count(b'class="fillbtn')
+                         - panels.count(b'name="action" value="otp_'))
+                if stray or b'fillbtn sbtn">Save<' in panels:
+                    fails.append("GET /settings: the panel screen carries a filled "
+                                 "capsule that is not the verification code submit")
+
             # --- the verification panel opens on the account PSA is asking
             # about, and never auto-refreshes under a code field (T11)
             odir = os.path.join(base, "accounts", "second")
