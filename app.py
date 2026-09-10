@@ -3953,9 +3953,11 @@ class H(BaseHTTPRequestHandler):
                     code = re.sub(r"\D", "", value)
                     if not 4 <= len(code) <= 8:
                         return self.send(200, settings_page(err="Enter the code PSA texted (digits only)."))
-                    fd = os.open(os.path.join(d, "otp.code"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                    tmp = os.path.join(d, "otp.code.tmp")
+                    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                     with os.fdopen(fd, "w") as f:
                         f.write(code)
+                    os.replace(tmp, os.path.join(d, "otp.code"))
                     return self.send(200, settings_page(msg="Code sent — sign-in finishes within a minute."))
                 if action == "unlink":
                     # NOT a rename: the site keeps serving the last known data

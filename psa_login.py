@@ -96,9 +96,17 @@ def mfa_flow(page, ctx):
     for name in ("code", "waiting"):
         try: os.remove(marker(name))
         except FileNotFoundError: pass
-    page.get_by_role("button", name="Continue").first.click()
+    try:
+        page.get_by_role("button", name="Continue").first.click()
+    except Exception as e:
+        log(f"MFA: no Continue button on the code screen ({e}) - staying armed, no code sent")
+        return False
     page.wait_for_timeout(4000)
     page.screenshot(path=os.path.join(DEBUG_DIR, f"mfa_code_{ACCT}.png"))
+    # the send is spent from here on, so drop the arm: a later failure this run
+    # must not text the phone again on the next hourly login
+    try: os.remove(marker("armed"))
+    except FileNotFoundError: pass
     open(marker("waiting"), "w").write(time.strftime("%Y-%m-%dT%H:%M"))
     log("code requested - waiting up to 10 min for otp.code from Settings")
     notify(f"📲 psa-tracker [{ACCT}]: code sent to the account's phone - enter it in Settings within 10 min.")
@@ -107,8 +115,8 @@ def mfa_flow(page, ctx):
     while time.time() < deadline:
         if os.path.exists(marker("code")):
             code = open(marker("code")).read().strip()
-            os.remove(marker("code"))
-            if code:
+            if code:  # empty means Settings is mid-write, not a spent code
+                os.remove(marker("code"))
                 break
         page.wait_for_timeout(3000)
     try: os.remove(marker("waiting"))
@@ -147,13 +155,27 @@ def do_login():
     os.makedirs(DEBUG_DIR, exist_ok=True)
     os.makedirs(PROFILE_DIR, exist_ok=True)
     with sync_playwright() as p:
-        ctx = p.chromium.launch_persistent_context(
-            PROFILE_DIR,
-            headless=False,  # real headful browser under xvfb - beats Cloudflare bot mgmt
-            args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
-                  "--disable-blink-features=AutomationControlled"],
-            user_agent=UA, locale="en-CA", viewport={"width": 1366, "height": 900},
-        )
+        def launch():
+            return p.chromium.launch_persistent_context(
+                PROFILE_DIR,
+                headless=False,  # real headful browser under xvfb - beats Cloudflare bot mgmt
+                args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
+                      "--disable-blink-features=AutomationControlled"],
+                user_agent=UA, locale="en-CA", viewport={"width": 1366, "height": 900},
+            )
+        try:
+            ctx = launch()
+        except Exception as e:
+            aside = f"{PROFILE_DIR}.broken.{int(time.time())}"
+            log(f"profile will not open ({e}) - moving it to {aside} and retrying once")
+            try: os.rename(PROFILE_DIR, aside)
+            except OSError: pass
+            os.makedirs(PROFILE_DIR, exist_ok=True)
+            try:
+                ctx = launch()
+            except Exception as e2:
+                log(f"ERROR: Chromium will not start even on a fresh profile: {e2}")
+                return 1
         # mask the webdriver flag some bot checks look at
         ctx.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         page = ctx.pages[0] if ctx.pages else ctx.new_page()
@@ -208,14 +230,13 @@ def do_login():
                 page.wait_for_timeout(3000)
                 try:
                     mfa = page.get_by_text("make sure it's you").first.is_visible()
-                except Exception:
+                except Exception as e:
+                    log(f"MFA check failed ({e}) - assuming no code screen")
                     mfa = False
                 if mfa:
                     if not mfa_flow(page, ctx):
                         return 4
                     got = True
-                    try: os.remove(marker("needed"))
-                    except FileNotFoundError: pass
 
                 # --- wait for authenticated session (accessToken cookie appears) ---
                 deadline = time.time() + 75
@@ -246,8 +267,9 @@ def do_login():
                 header = "; ".join(f"{c['name']}={c['value']}" for c in cookies)
             write_cookie(header)
             log(f"SUCCESS: refreshed cookie ({len(cookies)} cookies) -> {ENV_FILE}")
-            try: os.remove(marker("armed"))
-            except FileNotFoundError: pass
+            for name in ("armed", "needed"):
+                try: os.remove(marker(name))
+                except FileNotFoundError: pass
             return 0
         except Exception as e:
             try:
@@ -257,8 +279,6 @@ def do_login():
             log(f"ERROR: {e}")
             return 1
         finally:
-            try: os.remove(marker("armed"))
-            except FileNotFoundError: pass
             ctx.close()
 
 
