@@ -2896,16 +2896,22 @@ document.querySelectorAll('.own').forEach(function(i){
        flash alone was invisible to a screen reader and easy to miss at speed */
     chip('undo uerr','Couldn\\u2019t save \\u00b7 Retry',function(){ save(val,old); });
   }
+  function relabel(v){
+    // the name lives in the label now, so a rename has to move it there too
+    i.title = v?('Owner: '+v+'. Click or press Enter to open their cards, '
+                 +'click again or type to rename.'):'';
+    i.setAttribute('aria-label', v?i.title:'Add owner name');
+  }
   function save(val,old){
     post(val, function(ok){
       if(!ok){ fail(val,old); return; }
-      prev=val;
+      prev=val; relabel(val);
       i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},1600);
       _say('Owner saved');
       chip('undo','Saved \\u00b7 Undo',function(){
         post(old, function(ok2){
           if(!ok2){ fail(old,val); return; }
-          i.value=old; prev=old;
+          i.value=old; prev=old; relabel(old);
           i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);
           _say('Owner restored');
         });
