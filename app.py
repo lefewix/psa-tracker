@@ -1395,6 +1395,19 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .morechip{width:84px;height:117px;border-radius:6px;border:1px solid var(--hair);
  background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px;
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
+/* past the phone breakpoint the strip has no bleed, so an overflowing one is
+   sliced flush mid tile with nothing saying there is more. A background shade
+   can't work here (the tiles are opaque and cover it), so the cue is a 28px
+   mask fade on whichever edge still has tiles past it. FX_JS sets .sl/.sr off
+   the scroll position, so a strip that fits is never faded. */
+@media(min-width:641px){
+ .strip{--fadel:0px;--fader:0px;
+  -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
+   #000 calc(100% - var(--fader)),transparent);
+  mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
+   #000 calc(100% - var(--fader)),transparent)}
+ .strip.sl{--fadel:28px}
+ .strip.sr{--fader:28px}}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
  color:var(--m1);background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 2px 10px var(--shc3)}
@@ -3215,15 +3228,15 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
     });
   }else{start();}
 })();
-/* mobile filter capsule: its scrollbar is hidden, so nothing would say there
-   are more pills past the edge. Flag which side still has content (.sl/.sr)
-   and let the CSS shade that edge; a capsule that fits gets neither class,
-   and each class drops the moment you reach that end. */
+/* mobile filter capsule and every filmstrip: their scrollbars are hidden, so
+   nothing would say there is more past the edge. Flag which side still has
+   content (.sl/.sr) and let the CSS shade or fade that edge; a scroller that
+   fits gets neither class, and each class drops the moment you reach that end. */
 /* rAF-batches a layout-reading handler so scroll/resize never run a forced
    read->write cycle more than once a frame */
 function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFrame(function(){p=0;fn();});};}
 (function(){
-  document.querySelectorAll('.filters').forEach(function(f){
+  document.querySelectorAll('.filters,.strip').forEach(function(f){
     function cue(){
       var max=f.scrollWidth-f.clientWidth;
       f.classList.toggle('sl',max>1&&f.scrollLeft>1);
