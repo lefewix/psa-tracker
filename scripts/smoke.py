@@ -212,9 +212,10 @@ def copy_checks(fails):
     """One typographic vocabulary in the shipped copy: no em dash anywhere, and
     the curly ’ is the only apostrophe encoding (T66)."""
     src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
-    if "—" in src:
-        fails.append("app.py: an em dash is back in the copy")
-    for ent in ("&#39;", "&#x27;", "&apos;", "&rsquo;", "&#8217;"):
+    for dash in ("—", "\\u2014"):
+        if dash in src:
+            fails.append("app.py: an em dash is back in the copy")
+    for ent in ("&#39;", "&#x27;", "&apos;", "&rsquo;", "&#8217;", "\\u2019"):
         if ent in src:
             fails.append(f"app.py: {ent} is a second apostrophe encoding")
 

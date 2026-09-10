@@ -661,9 +661,9 @@ DISCORD_JS = """<script>
   var link=document.getElementById('dlink');
   if(link)link.addEventListener('click',function(){
     var v=(document.getElementById('did').value||'').trim();
-    if(!/^\\d{17,20}$/.test(v)){derr('That doesn\\u2019t look like a Discord user ID \\u2014 it\\u2019s a 17\\u201320 digit number.');return;}
+    if(!/^\\d{17,20}$/.test(v)){derr('That doesn’t look like a Discord user ID. It’s a 17\\u201320 digit number.');return;}
     post(link.dataset.owner,v,function(ok){if(ok)location.reload();
-      else derr('Couldn\\u2019t save the ID \\u2014 try again.');});
+      else derr('Couldn’t save the ID, try again.');});
   });
   var un=document.getElementById('dunlink');
   if(un)un.addEventListener('click',function(){
@@ -2959,7 +2959,7 @@ document.querySelectorAll('.own').forEach(function(i){
     _say("Couldn’t save the owner tag");
     /* a failed save must say so in words and offer the retry - the red border
        flash alone was invisible to a screen reader and easy to miss at speed */
-    chip('undo uerr','Couldn\\u2019t save \\u00b7 Retry',function(){ save(val,old); });
+    chip('undo uerr','Couldn’t save \\u00b7 Retry',function(){ save(val,old); });
   }
   function relabel(v){
     // the name lives in the label now, so a rename has to move it there too
