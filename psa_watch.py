@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS subs (
   thumb        TEXT,
   cert_ids     TEXT,
   first_seen   TEXT,
-  updated_at   TEXT
+  updated_at   TEXT,
+  missing_since TEXT
 );
 CREATE TABLE IF NOT EXISTS status_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,11 +104,13 @@ def db():
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
-    try:  # migration for DBs created before declared_value existed
-        conn.execute("ALTER TABLE cards ADD COLUMN declared_value REAL")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass
+    for stmt in ("ALTER TABLE cards ADD COLUMN declared_value REAL",
+                 "ALTER TABLE subs ADD COLUMN missing_since TEXT"):
+        try:  # migrations for DBs created before these columns existed
+            conn.execute(stmt)
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
     return conn
 
 def fetch(url):
@@ -138,8 +141,13 @@ def probe():
     if "login" in body.lower()[:4000] and "password" in body.lower():
         log("WARNING: response looks like a login page -- cookie likely expired/invalid")
 
+# set by parse when PSA's payload is truncated; drained into the change list by
+# cycle. A truncated page also hides subs, so cycle skips the missing check then.
+SHORT_PAGE = []
+
 def parse(ctype, body):
     """Parse PSA tRPC batch response; orders.list is the last result."""
+    SHORT_PAGE.clear()
     try:
         data = json.loads(body)
     except ValueError:
@@ -156,7 +164,9 @@ def parse(ctype, body):
                 return []
             total = j.get("totalCount")
             if total and len(orders) < total:
-                log(f"WARNING: got {len(orders)} of {total} orders -- raise page_length")
+                SHORT_PAGE.append(f"PSA listed {total} orders but sent {len(orders)}"
+                                  " - raise page_length")
+                log(f"WARNING: {SHORT_PAGE[-1]}")
             break
     if orders is None:
         return []
@@ -673,7 +683,8 @@ def upsert(conn, subs, quiet=()):
                      f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
-                carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?
+                carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?,
+                missing_since=NULL
                 WHERE sub_number=?""", vals + (now, s["sub_number"]))
     conn.commit()
     return changes, touched
@@ -719,7 +730,24 @@ def cycle(conn):
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
     prev = {r[0]: r[1] for r in conn.execute("SELECT sub_number, status FROM subs")}
-    changes, touched = upsert(conn, subs, archived_subs())
+    quiet = archived_subs()
+    changes, touched = upsert(conn, subs, quiet)
+    if SHORT_PAGE:
+        changes += SHORT_PAGE
+    else:
+        # a sub PSA stopped listing freezes in place - say so once, then stamp it
+        # so later scans stay quiet (a sub that comes back clears the stamp)
+        seen = {s["sub_number"] for s in subs}
+        gone = [r[0] for r in conn.execute(
+            "SELECT sub_number FROM subs WHERE missing_since IS NULL").fetchall()
+            if r[0] not in seen and r[0] not in quiet]
+        stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        for sub in gone:
+            conn.execute("UPDATE subs SET missing_since=? WHERE sub_number=?", (stamp, sub))
+            changes.append(f"sub #{sub}: no longer listed by PSA")
+            touched.append(sub)
+        if gone:
+            conn.commit()
     log(f"parsed {len(subs)} subs, {len(changes)} changes")
     for c in changes:
         log(f"  {c}")
