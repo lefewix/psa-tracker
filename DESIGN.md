@@ -964,6 +964,8 @@ standing in for icons, no raster icons.
   inside the row cannot be reachable if the row leaves the view the moment it flips.
 - **Do** give a destructive-ish action the same undo grammar the owner tag uses, and announce
   it. Reversibility belongs to the action that is hard to reverse, not the easy one.
+- **Do** hand focus to the Undo chip when disabling the pressed button would drop it to body,
+  and back to a real control when the chip goes away.
 - **Do** put a state-changing control in the `.foot` line of the rows that need it — archiving
   is a dashboard action, not a detail-page pilgrimage.
 - **Do** validate any env-supplied color against `#[0-9a-fA-F]{6}` before it reaches CSS.

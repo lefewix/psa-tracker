@@ -2753,6 +2753,9 @@ ARCH_JS = """<script>
     b.textContent=on?'Unarchive':'Archive';
     count(on?1:-1);
   }
+  /* our own b.disabled=true drops keyboard focus to body, so hand it back:
+     only when it fell there, and only if the element held it to begin with */
+  function back(el,was){if(was&&document.activeElement===document.body)el.focus();}
   function post(sub,on,done){
     fetch('/archive',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'sub='+encodeURIComponent(sub)+'&on='+(on?'1':'0')})
@@ -2766,6 +2769,7 @@ ARCH_JS = """<script>
     if(b){
       var label=b.textContent, on=b.dataset.on==='1', sub=b.dataset.sub;
       var row=b.closest?b.closest('.card[data-sub]'):null;
+      var foc=document.activeElement===b;
       b.disabled=true;                 // button:disabled dims it - in-flight state
       post(sub,on,function(ok){
         b.disabled=false;
@@ -2773,6 +2777,7 @@ ARCH_JS = """<script>
           b.textContent="Couldn't "+label.toLowerCase()+" \\u00b7 retry";
           say("Couldn't "+label.toLowerCase()+" submission "+sub);
           setTimeout(function(){b.textContent=label;},6000);
+          back(b,foc);
           return;
         }
         /* the detail page's whole header reflects archived state, and the very
@@ -2786,16 +2791,24 @@ ARCH_JS = """<script>
         var u=document.createElement('button');
         u.type='button'; u.className='undo'; u.textContent='Undo';
         f.insertBefore(u,b);
-        var t=setTimeout(function(){u.remove();place(row);},6000);
+        /* when the window closes the row leaves the view, taking the button
+           with it, so the Archived pill it went behind takes the focus */
+        var t=setTimeout(function(){var uf=document.activeElement===u;
+          u.remove(); place(row);
+          back(row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
+        },6000);
         u.addEventListener('click',function(){
+          var uf=document.activeElement===u;
           clearTimeout(t); u.remove(); b.disabled=true;
           post(sub,!on,function(ok2){
             b.disabled=false;
+            back(b,uf);
             if(!ok2){say("Couldn't undo that");place(row);return;}
             flip(row,b,!on); place(row);
             say('Submission '+sub+(on?' restored':' archived again'));
           });
         });
+        back(u,foc);   // the offer is keyboard reachable, not stranded
       });
     }
   });

@@ -621,6 +621,12 @@ def main():
             if archive("14900002", "0") != 204:
                 fails.append("POST /archive (unarchive): refused")
 
+            # --- ARCH_JS disables the button it was fired from, which drops
+            # keyboard focus to body and strands the 6 second Undo chip (T52)
+            js = check("GET /app.js (T52)", "/app.js", (200,), cookie)
+            if js and b"back(u,foc)" not in js:
+                fails.append("GET /: archiving does not move focus to the Undo chip")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),
