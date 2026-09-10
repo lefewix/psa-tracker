@@ -45,4 +45,4 @@ print(f"created {p}")
 EOF
 
 echo "Done. The account is live for web login immediately; its first PSA scan"
-echo "runs at the next 1am/1pm cycle, or now with: systemctl start psa-scan.service"
+echo "runs within the hour, or now with: systemctl start psa-scan.service"

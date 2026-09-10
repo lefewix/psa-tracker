@@ -2521,7 +2521,7 @@ def first_sync_note(a):
         return ""
     if scan_active():
         return "First sync with PSA is running. Reload in a minute or two."
-    return ('Waiting for the first PSA sync (runs at 1am/1pm, or start it now with '
+    return ('Waiting for the first PSA sync (runs within the hour, or start it now with '
             '<span class="mono">systemctl start psa-scan</span>). Wrong PSA login? '
             '<a href="/setup">Re-enter it</a>.')
 
@@ -2543,7 +2543,8 @@ def setup_page(error="", label="", psa_email=""):
  aria-label="PSA account password" autocomplete="new-password"{desc}>
 <button type="submit" class="fillbtn">Connect PSA</button></form>
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
-only on this server (chmod 600) and used by the scanner to sign in on your behalf twice a day.</div>
+only on this server (chmod 600) and used by the scanner to sign in on your behalf. The first
+sync runs within the hour.</div>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
