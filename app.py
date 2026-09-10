@@ -1413,7 +1413,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* inside a raised card the white ground-tuned --ph vanishes; the in-card
    placeholder ground is the quiet fill (see .morechip) */
 .card .gc .ph{background:var(--surface3)}
-.gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px}
+/* the grade line is ALWAYS emitted, empty on an ungraded card: without the
+   reserved box the rest of the tile rode 30px up and graded and ungraded
+   neighbours in the same grid row staggered. 14 x 1.5 = 21, body's line box. */
+.gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px;min-height:21px}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
@@ -3473,7 +3476,8 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     nmset = f'<div class="nmset">{html.escape(setline)}</div>' if setline else ""
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
     # the grade is the news on this tile: plain text, PSA-label red, under the scan
-    grade = f'<div class="gr">PSA {html.escape(c["grade"])}</div>' if c.get("grade") else ""
+    gtx = f'PSA {html.escape(c["grade"])}' if c.get("grade") else ""
+    grade = f'<div class="gr">{gtx}</div>'
     if is_prelim:
         head = ('<div class="cn pre" title="No cert number until PSA grades it">'
                 'Prelim</div>')

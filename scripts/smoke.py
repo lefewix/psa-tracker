@@ -381,6 +381,10 @@ def main():
                 fails.append("GET /app.css: a held card still paints an accent stage bar")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
+            # an ungraded tile reserves the grade line box, so graded and
+            # ungraded neighbours in one grid row keep the same baseline (T77)
+            if b"min-height:21px" not in css.split(b".gc .gr{")[-1].split(b"}")[0]:
+                fails.append("GET /app.css: the grade line no longer reserves its box")
             # a page-header figure is a data value: 17/650, the same rung as the
             # card values under it. The toolbar freshness stamp stays 13 (T76)
             if b".hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650" not in css:
@@ -727,6 +731,8 @@ def main():
                 fails.append("GET /sub/14900003: the unmapped status still draws a stage bar")
             if b"stage 1 of" in body:
                 fails.append("GET /sub/14900003: the unmapped status reads as stage 1")
+            if b'<div class="gr"></div>' not in body:
+                fails.append("GET /sub/14900003: an ungraded tile skips the grade line (T77)")
             # --- one vocabulary for the return date, and a hold keeps it (T65).
             # "Back <date>" everywhere, the year whenever it is not this one,
             # "Was due <date>" in the muted pill once PSA is late, and a held

@@ -577,6 +577,8 @@ its scroll-edge elevation; the filter capsule floats below it. Scan grids are
 `repeat(auto-fill, minmax(152px, 1fr))` with an 18px gutter, tightening to
 `minmax(136px, 1fr)` and a 14px gutter under 640px. Scan tiles hold a fixed `1.72 / 2.4`
 aspect ratio — a card's proportions — so the grid never reflows as images load.
+The grade line is always present on a tile, empty at its 21px line box on an ungraded card,
+so graded and ungraded neighbours in one row share a baseline.
 
 Spacing rhythm runs on a coarse 2 / 4 / 7 / 10 / 14 / 18 / 24 ladder: 2px between a title
 and its subtitle, 7–10px inside chips, 12–14px between row elements, 18–24px between sections.
