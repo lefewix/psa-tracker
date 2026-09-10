@@ -542,7 +542,14 @@ def main():
                 fails.append("GET /img: a Set-Cookie keeps it out of the edge cache")
             if ihdrs.get("X-Content-Type-Options") != "nosniff":
                 fails.append("GET /img: no nosniff on the served image (T25)")
-            check("GET /cards", "/cards", (200,), cookie)
+            # no owner in the query is the unassigned worklist, not an
+            # empty heading over a stray title (T63)
+            body = check("GET /cards", "/cards", (200,), cookie,
+                         must_have="<title>Unassigned cards</title>")
+            if b"<h1>Unassigned</h1>" not in body:
+                fails.append("GET /cards: no owner is missing the worklist heading")
+            if b"<h1></h1>" in body or b"<title>&#x27;s cards</title>" in body:
+                fails.append("GET /cards: no owner still renders an empty heading")
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
             check("GET /search", "/search?q=Charizard", (200,), cookie)
             check("GET /search (empty q)", "/search?q=", (200,), cookie)

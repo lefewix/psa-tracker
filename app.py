@@ -3708,7 +3708,9 @@ def people_page(a, owner):
     Admin-only: customer sessions are routed to customer_page, never here."""
     owners = owners_map(a)
     arch = archived_set(a)
-    unassigned = owner.strip().lower() == "unassigned"
+    # no owner in the query is the same request as owner=unassigned: the
+    # operator worklist. Without this an empty owner printed an empty h1.
+    unassigned = owner.strip().lower() in ("", "unassigned")
     subs_by = {s["sub_number"]: s for s in load_subs(a)}
     if unassigned:  # operator worklist: untagged cards in active subs
         active_nums = {n for n in subs_by if n not in arch}
@@ -3808,7 +3810,7 @@ def people_page(a, owner):
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
     back = '<a class="view" id="backlk" href="/">← Back</a>'
-    page_title = f"{title}'s cards"
+    page_title = "Unassigned cards" if unassigned else f"{title}'s cards"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
