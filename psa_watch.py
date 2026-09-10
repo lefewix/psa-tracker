@@ -565,9 +565,7 @@ def notify(text):
         req = urllib.request.Request(WEBHOOK, data=json.dumps({"content": text}).encode(),
                                      headers={"Content-Type": "application/json",
                                               "User-Agent": UA})
-        with urllib.request.urlopen(req, timeout=15) as r:
-            if not 200 <= r.status < 300:
-                log(f"webhook returned {r.status}: {r.read(400).decode('utf-8', 'replace').strip()}")
+        urllib.request.urlopen(req, timeout=15).read()
     except urllib.error.HTTPError as e:
         # Cloudflare 403s a missing User-Agent; Discord 404s a deleted webhook
         log(f"webhook returned {e.code}: {e.read(400).decode('utf-8', 'replace').strip()}")
