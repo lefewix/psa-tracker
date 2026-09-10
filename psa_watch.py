@@ -723,13 +723,16 @@ def cycle(conn):
         # first scan for this account (or a restored db): the rows are history,
         # not news - seed them silently
         log(f"first scan -- {len(changes)} rows seeded, nothing posted")
-    elif changes:
+        changes = []
+    refresh_cards(conn, subs, prev, full="--full" in sys.argv)
+    # post after refresh_cards: a first-seen sub only has its cards rows by now,
+    # so discord_mentions can resolve its owner on the same run
+    if changes:
         msg = "**PSA update**\n" + "\n".join(changes)
         ids = discord_mentions(conn, touched)
         if ids:
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
         notify(msg)
-    refresh_cards(conn, subs, prev, full="--full" in sys.argv)
     return 0
 
 def main():
