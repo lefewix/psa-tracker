@@ -890,7 +890,9 @@ a successful save flashes `--ok` green and a failure alert-red. Behavior is load
 **Enter saves and never navigates** — but that governs the *editing* state only. On a filled
 readonly tag, Enter visits that person's page, mirroring the click; the tag's own label says
 so ("Press Enter to open their cards, type to rename"). A click on a tag on that person's own
-page is a no-op.
+page is a no-op. Under `pointer:coarse` a pencil sits beside the field as the edit affordance,
+since a tap navigates instantly; it hides on `.own:focus` so the underline runs full width
+while editing, never on the row's `:focus-within`, which swallowed its own tap.
 
 ### Scan Tile (signature)
 Image at a fixed 1.72/2.4 card ratio with a 6px radius and a hairline — no shadow, no

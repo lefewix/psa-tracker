@@ -172,8 +172,17 @@ def main():
         check("GET /sub/14900001 (no session)", "/sub/14900001", (200,))
         check("GET / (bad token)", "/", (200,), cookie="psa_session=nope.nope.nope",
               must_have='action="/login"')
-        check("GET /app.css", "/app.css", (200,))
+        css = check("GET /app.css", "/app.css", (200,))
         check("GET /app.js", "/app.js", (200,))
+
+        # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
+        # also matched the pencil's own focus, so a tap removed the button
+        # before its click and a filled tag could not be edited on a phone (T16)
+        if css:
+            if b":focus-within .ownedit" in css:
+                fails.append("GET /app.css: the pencil still hides on the row's focus")
+            if b".own:focus + .ownedit{display:none}" not in css:
+                fails.append("GET /app.css: the pencil no longer hides while the tag is edited")
         check("GET /logo", "/logo", (200,))
         check("GET /favicon.png", "/favicon.png", (200,))
         check("GET /apple-touch-icon.png", "/apple-touch-icon.png", (200,))

@@ -1373,7 +1373,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  .ownedit{display:flex;align-items:center;justify-content:center;width:40px;
   margin-right:-6px;align-self:stretch}
  .ownedit:active{color:var(--txt)}
- .ownrow:focus-within .ownedit{display:none}}
+ /* the INPUT's focus hides it, not the row's: :focus-within also matched the
+    pencil's own focus, so tapping it removed the button between pointerdown
+    and click and the tap did nothing. */
+ .own:focus + .ownedit{display:none}}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
 /* pointer focus keeps the quiet accent underline alone; KEYBOARD focus gets
