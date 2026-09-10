@@ -742,6 +742,20 @@ def load_all_cards(a):
             raise
         return []
 
+def card_owner_keys(a):
+    """(sub_number, cert_id) for every card. The dashboard's untagged count is
+    the only thing that needs a row per card, and it needs these two columns
+    alone - load_all_cards stays for the pages that render whole cards."""
+    try:
+        conn = _ro_conn(a)
+        rows = conn.execute("SELECT sub_number, cert_id FROM cards").fetchall()
+        conn.close()
+        return [(r["sub_number"], r["cert_id"]) for r in rows]
+    except sqlite3.OperationalError as e:
+        if not _first_run(a, e):
+            raise
+        return []
+
 def sub_fronts(a):
     """sub_number -> [(front_thumb, name), ...] in line_number order, imaged
     cards only. ONE query for the whole dashboard (the filmstrips), grouped
@@ -795,6 +809,31 @@ def load_values(a):
         if r["fetched_at"] and r["fetched_at"] > latest:
             latest = r["fetched_at"]
     return vals, (short_date(latest) if latest else ""), cur
+
+def sub_value_totals(a):
+    """(sub_number -> total display value, currency label). The dashboard shows
+    one total per submission and no per card value, so the totals come off ONE
+    grouped join instead of loading every card and every value row."""
+    if not VALUES_ON:
+        return {}, "CAD"
+    try:
+        conn = _ro_conn(a)
+        try:
+            rows = conn.execute(
+                "SELECT c.sub_number AS sub_number, "
+                "SUM(COALESCE(v.estimate, v.last_sale)) AS total "
+                "FROM cards c JOIN card_values v ON v.cert_no = c.cert_no "
+                "GROUP BY c.sub_number").fetchall()
+            try:
+                fx = conn.execute("SELECT rate FROM fx_rates WHERE pair='USDCAD'").fetchone()
+            except sqlite3.Error:
+                fx = None
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return {}, "CAD"
+    rate, cur = (fx["rate"], "CAD") if fx and fx["rate"] else (1.0, "USD")
+    return {r["sub_number"]: r["total"] * rate for r in rows if r["total"]}, cur
 
 def owners_map(a):
     c = own_conn(a)
@@ -3327,21 +3366,14 @@ def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
     gone = [s for s in subs if s["sub_number"] in arch]
-    # ONE cards scan and ONE owners read for the whole page: value totals and
-    # the untagged count both come off the same rows (this page used to run
-    # load_all_cards twice and owners_map twice)
-    cards_all = load_all_cards(a) if subs else []
+    # the page needs two numbers off the cards table, not the rows themselves:
+    # the value totals are summed in sqlite, and the untagged count reads two
+    # columns per card (owners live in the other db, so that one stays in Python)
     owners = owners_map(a)
-    vals, _vas, vcur = load_values(a)
-    tot = {}
-    for c in cards_all:
-        if vals:
-            v = vals.get(c["cert_no"] or "")
-            if v:
-                tot[c["sub_number"]] = tot.get(c["sub_number"], 0) + v
+    tot, vcur = sub_value_totals(a) if subs else ({}, "CAD")
     active_nums = {s["sub_number"] for s in active}
-    untag = sum(1 for c in cards_all
-                if c["sub_number"] in active_nums and not owners.get(str(c["cert_id"]), ""))
+    untag = sum(1 for sub_number, cert_id in (card_owner_keys(a) if subs else [])
+                if sub_number in active_nums and not owners.get(str(cert_id), ""))
     if subs:
         fronts = sub_fronts(a)   # ONE query for every row's filmstrip
         body = ("".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,

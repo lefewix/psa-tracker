@@ -80,10 +80,15 @@ def build_fixture(base):
                   "VALUES (?,?,?,?,?,?,?,?,?,?)",
                   (cid, num, cert_no, name, line, thumb % cid.replace(":", "-"),
                    "", grade, 120.0, NOW))
-    c.execute("INSERT INTO card_values (cert_no, estimate, last_sale, last_sale_date, "
-              "n_sales, sales_json, fetched_at, error) VALUES (?,?,?,?,?,?,?,?)",
-              ("99000001", 310.0, 290.0, "2026-08-15", 3,
-               json.dumps([{"price": 290.0, "date": "2026-08-15"}]), NOW, ""))
+    # three value rows for the dashboard total (T27): an estimate, a sale-only
+    # row (the fallback), and one whose cert never landed in this account
+    values = [("99000001", 310.0, 290.0), ("99000002", None, 150.0),
+              ("99009999", 999.0, 999.0)]
+    for cert_no, est, sale in values:
+        c.execute("INSERT INTO card_values (cert_no, estimate, last_sale, last_sale_date, "
+                  "n_sales, sales_json, fetched_at, error) VALUES (?,?,?,?,?,?,?,?)",
+                  (cert_no, est, sale, "2026-08-15", 3,
+                   json.dumps([{"price": sale, "date": "2026-08-15"}]), NOW, ""))
     c.execute("INSERT INTO fx_rates (pair, rate, fetched_at) VALUES ('USDCAD',1.36,?)", (NOW,))
     c.commit()
     c.close()
@@ -413,6 +418,12 @@ def main():
                     fails.append("GET /: the need-owners link is inside the sort capsule")
                 if b'class="f fsolo" href="/cards?owner=unassigned"' not in body:
                     fails.append("GET /: the need-owners link is missing from the filter row")
+
+                # --- the per sub total is summed in sqlite over the cards this
+                # account holds: estimate wins, last_sale is the fallback, and a
+                # value row with no card of ours adds nothing (T27)
+                if b'ledval">$626<span>CAD' not in body:
+                    fails.append("GET /: the submission total is not (310+150)*1.36")
 
                 # --- an unmapped PSA step reads as unknown, not as stage 1 of 8,
                 # and draws no bar: one bar per sub the stage map knows (T19)
