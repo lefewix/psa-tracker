@@ -204,6 +204,38 @@ def main():
                 fails.append("GET /settings (settings session): the other account "
                              "is missing, the settings password holds them all")
 
+            # --- the verification panel opens on the account PSA is asking
+            # about, and never auto-refreshes under a code field (T11)
+            odir = os.path.join(base, "accounts", "second")
+
+            def otp(*marks):
+                for k in ("needed", "armed", "waiting"):
+                    p = os.path.join(odir, "otp." + k)
+                    if k in marks:
+                        open(p, "w").write("yes")
+                    elif os.path.exists(p):
+                        os.remove(p)
+                return check(f"GET /settings (otp {'+'.join(marks) or 'clear'})",
+                             "/settings", (200,), scookie) or b""
+
+            b_armed = otp("armed")
+            if b_armed.find(b'data-acct="second"') > b_armed.find(b'data-acct="demo"'):
+                fails.append("GET /settings (otp armed): the flagged account did not sort first")
+            if b'class="f schip on att" data-group="o" data-pane="opane0"' not in b_armed:
+                fails.append("GET /settings (otp armed): the flagged chip is not marked or not selected")
+            if b'value="otp_code"' in b_armed:
+                fails.append("GET /settings (otp armed): a code field renders before PSA sent one")
+            if b'http-equiv="refresh"' not in b_armed:
+                fails.append("GET /settings (otp armed): no auto-refresh while waiting for the SMS")
+            b_wait = otp("armed", "waiting")
+            if b'value="otp_code"' not in b_wait:
+                fails.append("GET /settings (otp waiting): no code field")
+            if b'http-equiv="refresh"' in b_wait:
+                fails.append("GET /settings (otp waiting): auto-refresh would wipe the code being typed")
+            b_clear = otp()
+            if b'att" data-group="o"' in b_clear or b'http-equiv="refresh"' in b_clear:
+                fails.append("GET /settings (otp clear): a marker or a refresh survived")
+
         # --- admin session
         code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
         cookie = (hdrs.get("Set-Cookie") or "").split(";")[0]

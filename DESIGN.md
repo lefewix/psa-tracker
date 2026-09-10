@@ -747,6 +747,9 @@ content — a panel, a sheet, an image, a row — it is not.
 - **Search tag (`.pvtag`):** a quiet capsule chip, 11px/500, `3px 9px`, filled with
   `color-mix(in srgb, var(--ac-pale) var(--tagmix), transparent)` — 12% light, 18% dark,
   because a dark ground swallows a low-alpha wash. It is a category label, not a link.
+- **Attention dot (`.schip.att`):** a 6px accent circle after the label on the settings
+  account chip PSA is asking to verify; that chip also sorts to the head of its capsule. The
+  dot is decorative, the words ride in a `.vh` span, and it stays accent, never red.
 - **Press:** `scale(.97)`.
 
 ### Status Pills

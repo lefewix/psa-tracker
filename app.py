@@ -1482,6 +1482,11 @@ button:disabled{opacity:.5;cursor:default}
 .snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
+/* attention dot: the one account PSA is asking to verify. Accent, not red - red
+   belongs to grades and the hold pill. The screen-reader half rides in a .vh
+   span inside the chip, so the dot is decorative only. */
+.schip.att::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
+ border-radius:50%;background:var(--ac);vertical-align:1px}
 .spane{margin-top:16px}
 /* settings/discord sheets materialize like the lightbox: stays mounted, scrim
    fades up with the same blur(8px), sheet lands from .97. Exit is quicker. */
@@ -2055,8 +2060,14 @@ def settings_page(msg="", err="", only=""):
         accts = {k: v for k, v in accts.items() if k == only}
     multi = len(accts) > 1
     achips, wchips, wpanes, schips, spanes, ochips, opanes = [], [], [], [], [], [], []
-    live = False  # any account mid-verification -> page auto-refreshes
-    for i, a in enumerate(accts.values()):
+    live = False  # an account is arming -> page auto-refreshes
+    codefield = False  # a code input is on the page -> it must never auto-refresh
+    # an account PSA is asking about sorts first, so arming the second account
+    # opens the page on it and not on the healthy one (audit ux-3). sorted() is
+    # stable, so everything else keeps load_accounts' order.
+    ordered = sorted(((a, otp_state(a["id"])) for a in accts.values()),
+                     key=lambda p: not any(p[1].values()))
+    for i, (a, ost) in enumerate(ordered):
         env = read_env_file(account_env_path(a["id"]))
         email = env.get("PSA_LOGIN_EMAIL", "") or a["id"]
         if a.get("unlinked"):
@@ -2075,20 +2086,24 @@ def settings_page(msg="", err="", only=""):
             schips.append(f'<button type="button" class="f schip{on}" data-group="s" '
                           f'data-pane="spane{i}">{email_html}</button>')
         if multi:
-            ochips.append(f'<button type="button" class="f schip{on}" data-group="o" '
-                          f'data-pane="opane{i}">{email_html}</button>')
-        ost = otp_state(a["id"])
+            att = " att" if any(ost.values()) else ""
+            mark = '<span class="vh">needs attention, </span>' if att else ""
+            ochips.append(f'<button type="button" class="f schip{on}{att}" data-group="o" '
+                          f'data-pane="opane{i}">{mark}{email_html}</button>')
         if ost["waiting"]:
-            # no auto-refresh here: it would wipe the code mid-typing (audit ux-2)
+            # the only state with a code input, so the refresh below stays off:
+            # a reload wipes the digits mid-typing (audit ux-2)
+            codefield = True
             ometa = "Code sent to the phone on this PSA account. Enter it within 10 minutes."
         elif ost["armed"]:
             live = True
-            ometa = "Signing in now — the code is on its way to the account's phone. This page refreshes itself."
+            ometa = ("Signing in now. The code is on its way to the account's phone; "
+                     "the field for it appears here as soon as PSA sends it.")
         elif ost["needed"]:
             ometa = f"PSA is asking to verify this sign-in (since {html.escape(ost['needed'])}). Scans are paused until a code goes through."
         else:
             ometa = "Only needed when PSA asks to verify a new sign-in."
-        if ost["waiting"] or ost["armed"]:
+        if ost["waiting"]:
             obody = f"""<form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="otp_code">
 <input name="value" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Verification code"
@@ -2139,7 +2154,7 @@ def settings_page(msg="", err="", only=""):
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
     obar = f'<div class="sbar">{"".join(ochips)}</div>' if multi else ""
-    refresh = '<meta http-equiv="refresh" content="20">' if live else ""
+    refresh = '<meta http-equiv="refresh" content="20">' if (live and not codefield) else ""
     sbar2 = f'<div class="sbar">{"".join(schips)}</div>' if multi else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>{refresh}
