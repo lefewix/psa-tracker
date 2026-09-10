@@ -857,7 +857,8 @@ Not a retrofit — a visible part of the system, and it has house styling.
 - **Disclosures:** the person and customer pages' archived toggles are disclosures and carry
   `aria-expanded` / `aria-controls`; the dashboard's is a VIEW SWITCH (it swaps which rows the
   always-visible list shows) and carries `aria-pressed` instead. All three use the solo-pill
-  grammar.
+  grammar. The dashboard's archived rows are not in the first paint: the pill fetches them
+  from `/?arch=1` the first time it is switched on, and puts itself back to off if that fails.
 - **Focus:** the global indicator is a 2px `--ring` outline at 2px offset (inputs at zero). The
   owner tag keeps its quiet accent underline for pointer focus and gets the full ring back on
   `:focus-visible`, because a 1px underline is not a focus indicator on the app's most-used

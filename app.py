@@ -2747,8 +2747,12 @@ ARCH_JS = """<script>
       body:'sub='+encodeURIComponent(sub)+'&on='+(on?'1':'0')})
      .then(function(r){done(r.ok);}).catch(function(){done(false);});
   }
-  document.querySelectorAll('.archbtn').forEach(function(b){
-    b.addEventListener('click',function(){
+  /* delegated, not bound per button: the dashboard's archived rows arrive
+     after first paint (the Archived pill fetches them), so half these buttons
+     do not exist when this runs */
+  document.addEventListener('click',function(e){
+    var b=e.target.closest?e.target.closest('.archbtn'):null;
+    if(b){
       var label=b.textContent, on=b.dataset.on==='1', sub=b.dataset.sub;
       var row=b.closest?b.closest('.card[data-sub]'):null;
       b.disabled=true;                 // button:disabled dims it - in-flight state
@@ -2782,7 +2786,7 @@ ARCH_JS = """<script>
           });
         });
       });
-    });
+    }
   });
 })();
 </script>"""
@@ -3223,6 +3227,9 @@ SORT_JS = """<script>
     var m=saved.split(':')[0], d=saved.indexOf(':r')>-1;
     if(BASE[m]&&(m!=='sub'||d))apply(m,d);
   }
+  // the dashboard appends its archived rows after first paint, so it re-runs
+  // the sort that is already showing over them
+  list.psaSort=function(){apply(cur,rev);};
 })();
 </script>"""
 
@@ -3375,11 +3382,12 @@ def dash_page(a, subs):
     untag = sum(1 for sub_number, cert_id in (card_owner_keys(a) if subs else [])
                 if sub_number in active_nums and not owners.get(str(cert_id), ""))
     if subs:
+        # ACTIVE ROWS ONLY. The archived ones used to ride along hidden with
+        # display:none and were most of the page's bytes; the Archived pill
+        # fetches them from /?arch=1 the first time it is switched on.
         fronts = sub_fronts(a)   # ONE query for every row's filmstrip
-        body = ("".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
-                                  fronts=fronts.get(s["sub_number"])) for s in active)
-                + "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur,
-                                    fronts=fronts.get(s["sub_number"])) for s in gone))
+        body = "".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
+                                 fronts=fronts.get(s["sub_number"])) for s in active)
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
@@ -3465,12 +3473,40 @@ if(af)af.addEventListener('click',function(){{
   af.setAttribute('aria-pressed',on?'true':'false');
   var lst=document.getElementById('list');
   if(lst)lst.classList.toggle('archview',on);
-  document.querySelectorAll('#list .card').forEach(function(c){{
+  function show(){{document.querySelectorAll('#list .card').forEach(function(c){{
     var a=c.dataset.arch==='1';
     c.style.display=(on?a:!a)?'':'none';
-  }});
+  }});}}
+  // the archived rows are not in the first paint: fetch them once, here, and
+  // put the pill back to off if that fetch fails (an empty list says nothing)
+  if(on&&lst&&!af.dataset.got){{
+    fetch('/?arch=1').then(function(r){{if(!r.ok)throw 0;return r.text();}})
+     .then(function(h){{
+       af.dataset.got='1';
+       var d=document.createElement('div'); d.innerHTML=h;
+       // a row archived in this session is already here, flipped in place
+       [].slice.call(d.children).forEach(function(c){{
+         if(!lst.querySelector('.card[data-sub="'+c.dataset.sub+'"]'))lst.appendChild(c);
+       }});
+       if(lst.psaSort)lst.psaSort();
+       show();
+     }}).catch(function(){{af.click();}});
+  }}
+  show();
 }});
 </script>{gear_html()}{APP_JS_TAG}</body></html>"""
+
+def arch_rows(a, subs):
+    """The dashboard's archived rows as bare HTML, served from /?arch=1 and
+    appended to #list by the Archived pill on its first switch."""
+    arch = archived_set(a)
+    gone = [s for s in subs if s["sub_number"] in arch]
+    if not gone:
+        return ""
+    tot, vcur = sub_value_totals(a)
+    fronts = sub_fronts(a)
+    return "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur,
+                             fronts=fronts.get(s["sub_number"])) for s in gone)
 
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
@@ -4104,6 +4140,8 @@ class H(BaseHTTPRequestHandler):
                                  "application/json; charset=utf-8")
             return self.send(302, "", extra=[("Location", "/")])
         if path == "/":
+            if urllib.parse.parse_qs(parsed.query).get("arch"):
+                return self.send(200, arch_rows(acct, load_subs(acct)))
             return self.send(200, dash_page(acct, load_subs(acct)))
         if path == "/cards":
             owner = urllib.parse.parse_qs(parsed.query).get("owner", [""])[0]

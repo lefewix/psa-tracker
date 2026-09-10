@@ -577,6 +577,30 @@ def main():
             check("GET /sub/14900001 (after the page's own POST)", "/sub/14900001",
                   (200,), cookie, must_have="Mallory")
 
+            # --- the dashboard's first paint carries the ACTIVE rows only:
+            # archived ones are fetched by the Archived pill from /?arch=1 (T28)
+            def archive(num, on):
+                return call(url, "/archive", cookie, {"sub": num, "on": on},
+                            {"Origin": url})[0]
+
+            if archive("14900002", "1") != 204:
+                fails.append("POST /archive: refused, nothing to test the fold with")
+            body = check("GET / (one sub archived)", "/", (200,), cookie)
+            if b'data-arch="1"' in body:
+                fails.append("GET /: an archived row is still in the first paint")
+            if b"14900002" in body:
+                fails.append("GET /: the archived sub is still rendered on the dashboard")
+            if b'id="archtoggle"' not in body:
+                fails.append("GET /: no Archived pill to fetch the archived rows with")
+            frag = check("GET /?arch=1", "/?arch=1", (200,), cookie,
+                         must_have='data-arch="1"')
+            if b"14900002" not in frag:
+                fails.append("GET /?arch=1: the archived row is missing")
+            if b"14900001" in frag:
+                fails.append("GET /?arch=1: an active row rode along")
+            if archive("14900002", "0") != 204:
+                fails.append("POST /archive (unarchive): refused")
+
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
             check("POST /login (wrong, spoofed header)", "/login", (200,),
