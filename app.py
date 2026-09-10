@@ -3473,9 +3473,12 @@ if(af)af.addEventListener('click',function(){{
   af.setAttribute('aria-pressed',on?'true':'false');
   var lst=document.getElementById('list');
   if(lst)lst.classList.toggle('archview',on);
-  function show(){{document.querySelectorAll('#list .card').forEach(function(c){{
+  // reads the pill, never the `on` above: show() also runs when the fetch
+  // lands, and by then the pill may have been switched back off
+  function show(){{var v=af.classList.contains('on');
+   document.querySelectorAll('#list .card').forEach(function(c){{
     var a=c.dataset.arch==='1';
-    c.style.display=(on?a:!a)?'':'none';
+    c.style.display=(v?a:!a)?'':'none';
   }});}}
   // the archived rows are not in the first paint: fetch them once, here, and
   // put the pill back to off if that fetch fails (an empty list says nothing)
