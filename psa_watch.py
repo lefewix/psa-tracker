@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """psa-watch: poll PSA orders page, upsert sub statuses into SQLite."""
-import base64, json, os, re, sqlite3, sys, time, urllib.parse, urllib.request
+import base64, json, os, re, sqlite3, sys, time, urllib.error, urllib.parse, urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
@@ -563,8 +563,14 @@ def notify(text):
         return
     try:
         req = urllib.request.Request(WEBHOOK, data=json.dumps({"content": text}).encode(),
-                                     headers={"Content-Type": "application/json"})
-        urllib.request.urlopen(req, timeout=15).read()
+                                     headers={"Content-Type": "application/json",
+                                              "User-Agent": UA})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            if not 200 <= r.status < 300:
+                log(f"webhook returned {r.status}: {r.read(400).decode('utf-8', 'replace').strip()}")
+    except urllib.error.HTTPError as e:
+        # Cloudflare 403s a missing User-Agent; Discord 404s a deleted webhook
+        log(f"webhook returned {e.code}: {e.read(400).decode('utf-8', 'replace').strip()}")
     except Exception as e:
         log(f"webhook failed: {e}")
 

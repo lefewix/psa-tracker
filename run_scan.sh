@@ -44,7 +44,9 @@ import json, sys, urllib.request
 try:
     req = urllib.request.Request(sys.argv[1],
         data=json.dumps({"content": sys.argv[2]}).encode(),
-        headers={"Content-Type": "application/json"})
+        headers={"Content-Type": "application/json",
+                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                               "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"})
     urllib.request.urlopen(req, timeout=15).read()
 except Exception:
     pass
