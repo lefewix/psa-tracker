@@ -614,9 +614,25 @@ def notify(text):
         except Exception as e:
             log(f"webhook failed: {e}")
 
-def upsert(conn, subs):
+def archived_subs():
+    """Sub numbers archived on the site (app.py owns owners.db). An archived sub is
+    hidden from the dashboard and from hub's hub.json, so Discord stays quiet too."""
+    try:
+        oc = sqlite3.connect(OWN_DB)
+        subs = {r[0] for r in oc.execute("SELECT sub_number FROM archived")}
+        oc.close()
+        return subs
+    except sqlite3.Error:
+        return set()
+
+def upsert(conn, subs, quiet=()):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     changes, touched = [], []
+    def note(sub, text):
+        if sub in quiet:
+            return
+        changes.append(text)
+        touched.append(sub)
     for s in subs:
         if not s["status"]:
             # a renamed PSA field parses as a blank stage; writing it would wipe
@@ -637,22 +653,20 @@ def upsert(conn, subs):
                 (s["sub_number"],) + vals + (now, now))
             conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                          (s["sub_number"], s["status"], now))
-            changes.append(f"new sub #{s['sub_number']} ({s['service']}, {s['card_count']} cards) -- {s['status']}")
-            touched.append(s["sub_number"])
+            note(s["sub_number"],
+                 f"new sub #{s['sub_number']} ({s['service']}, {s['card_count']} cards) -- {s['status']}")
         else:
             if row[0] != s["status"] and s["status"]:
                 conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                              (s["sub_number"], s["status"], now))
-                changes.append(f"sub #{s['sub_number']}: {row[0]} -> {s['status']}")
-                touched.append(s["sub_number"])
+                note(s["sub_number"], f"sub #{s['sub_number']}: {row[0]} -> {s['status']}")
             if not row[1] and s["grades_ready"]:
-                changes.append(f"sub #{s['sub_number']}: grades are ready")
-                touched.append(s["sub_number"])
+                note(s["sub_number"], f"sub #{s['sub_number']}: grades are ready")
             # a hold usually flips with the stage unchanged (14956985 went on
             # hold at QA Check, 2026-09) - status diff alone never saw it
             if bool(row[2]) != s["on_hold"]:
-                changes.append(f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
-                touched.append(s["sub_number"])
+                note(s["sub_number"],
+                     f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
                 carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?
@@ -701,7 +715,7 @@ def cycle(conn):
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)
     prev = {r[0]: r[1] for r in conn.execute("SELECT sub_number, status FROM subs")}
-    changes, touched = upsert(conn, subs)
+    changes, touched = upsert(conn, subs, archived_subs())
     log(f"parsed {len(subs)} subs, {len(changes)} changes")
     for c in changes:
         log(f"  {c}")
