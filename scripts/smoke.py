@@ -168,6 +168,14 @@ def main():
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
         check("GET /setup (setup closed)", "/setup", (302,))
 
+        # --- non-ASCII credentials compare, they don't crash the handler (T5)
+        check("GET /api/hub.json (non-ASCII key)", "/api/hub.json?key=caf%C3%A9", (404,))
+        check("GET / (non-ASCII token)", "/", (200,),
+              cookie="psa_session=demo.9999999999.caf\u00e9",
+              must_have='action="/login"')
+        check("POST /login (non-ASCII password)", "/login", (200,),
+              form={"password": "caf\u00e9"}, must_have="Incorrect password")
+
         # --- the settings gate: rendered for no session, and after a wrong password
         check("GET /settings (no settings session)", "/settings", (200,),
               must_have="Enter the settings password")

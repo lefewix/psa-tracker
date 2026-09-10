@@ -481,9 +481,9 @@ def valid_token(tok):
             return None
         good = hmac.new(SECRET, f"{acct_id}.{exp_s}.customer.{email}".encode(),
                         hashlib.sha256).hexdigest()
-        return (acct_id, email) if hmac.compare_digest(good, sig) else None
+        return (acct_id, email) if hmac.compare_digest(good.encode(), sig.encode()) else None
     good = hmac.new(SECRET, f"{acct_id}.{exp_s}".encode(), hashlib.sha256).hexdigest()
-    return (acct_id, "") if hmac.compare_digest(good, sig) else None
+    return (acct_id, "") if hmac.compare_digest(good.encode(), sig.encode()) else None
 
 # Per-IP login throttle (in-memory; resets on restart). The 0.4s sleep blunts
 # casual brute force; this stops a determined loop.
@@ -1997,7 +1997,7 @@ def settings_authed(cookie_header):
             except ValueError:
                 return False
             want = hmac.new(SECRET, f"settings.{exp}".encode(), hashlib.sha256).hexdigest()
-            return exp > time.time() and hmac.compare_digest(sig, want)
+            return exp > time.time() and hmac.compare_digest(sig.encode(), want.encode())
     return False
 
 def is_settings_pw(given):
@@ -3766,7 +3766,7 @@ class H(BaseHTTPRequestHandler):
         # only lives in the two boxes' env files.
         key = os.environ.get("PSA_HUB_KEY", "")
         got = urllib.parse.parse_qs(query).get("key", [""])[0]
-        if not key or not hmac.compare_digest(got, key):
+        if not key or not hmac.compare_digest(got.encode(), key.encode()):
             return self.send(404, "not found", "text/plain")
         subs = []
         try:
@@ -3979,7 +3979,7 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, settings_page(err="Settings password needs at least 6 characters."))
             if new_pw != confirm:
                 return self.send(200, settings_page(err="The two passwords don't match."))
-            if any(hmac.compare_digest(new_pw, a["password"]) for a in load_accounts().values()):
+            if any(hmac.compare_digest(new_pw.encode(), a["password"].encode()) for a in load_accounts().values()):
                 return self.send(200, settings_page(err="That password already routes to an account at the gate."))
             global SETTINGS_HASH
             SETTINGS_HASH = hashlib.sha256(new_pw.encode()).hexdigest()
@@ -4015,7 +4015,7 @@ class H(BaseHTTPRequestHandler):
                         return self.send(200, settings_page(err="The two site passwords don't match."))
                     if is_settings_pw(value):
                         return self.send(200, settings_page(err="That's the settings password — pick a different one."))
-                    if any(i != acct_id and hmac.compare_digest(value, a["password"])
+                    if any(i != acct_id and hmac.compare_digest(value.encode(), a["password"].encode())
                            for i, a in accts.items()):
                         return self.send(200, settings_page(err="That site password already routes to another account."))
                     env_set(account_env_path(acct_id), {"SITE_PASSWORD": value})
@@ -4073,7 +4073,7 @@ class H(BaseHTTPRequestHandler):
             while True:
                 gen_pw = base64.b32encode(os.urandom(5)).decode().lower().rstrip("=")
                 if (not is_settings_pw(gen_pw)
-                        and not any(hmac.compare_digest(gen_pw, a["password"]) for a in accts.values())):
+                        and not any(hmac.compare_digest(gen_pw.encode(), a["password"].encode()) for a in accts.values())):
                     break
             write_account_env(acct_id, label, gen_pw, psa_email, psa_pw)
             start_first_scan()
@@ -4097,7 +4097,7 @@ class H(BaseHTTPRequestHandler):
         # matches is the account this session gets. Passwords are unique per account.
         matched = None
         for a in load_accounts().values():
-            if hmac.compare_digest(given, a["password"]):
+            if hmac.compare_digest(given.encode(), a["password"].encode()):
                 matched = a
                 break
         email = ""
