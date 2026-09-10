@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """psa-watch: poll PSA orders page, upsert sub statuses into SQLite."""
 import base64, json, os, re, sqlite3, sys, time, urllib.error, urllib.parse, urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
 
@@ -29,6 +29,9 @@ DB_PATH = os.environ.get("PSA_DB", "/opt/psa-tracker/psa.db")
 # card to its real cert_id once a sub gets graded. Keyed the same as the app.
 OWN_DB = os.environ.get("PSA_OWN_DB", os.path.join(os.path.dirname(DB_PATH) or ".", "owners.db"))
 POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "21600"))
+# Days after a sub ships before we stop waiting on a card's missing grade. Some
+# certs never carry one, and without this the sub re-fetches every scan forever.
+GRADE_GRACE_DAYS = 7
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
@@ -481,6 +484,9 @@ def refresh_cards(conn, subs, prev=None, full=False):
     prev = prev or {}
     total = 0
     skipped = 0
+    # seen_at is always a UTC isoformat, so a string compare is the date math
+    grade_cutoff = (datetime.now(timezone.utc)
+                    - timedelta(days=GRADE_GRACE_DAYS)).isoformat(timespec="seconds")
     for s in subs:
         sub = s["sub_number"]
         has_certs = bool(json.loads(s["cert_ids"] or "[]"))
@@ -494,6 +500,13 @@ def refresh_cards(conn, subs, prev=None, full=False):
                 (sub,)).fetchone()
             # only skip once cards are fully imaged, valued, AND graded (if grades ready)
             need_grades = s["grades_ready"] and (row[3] or 0)
+            if need_grades:
+                # a card still ungraded a week after the sub shipped never will be:
+                # let the skip fire instead of re-fetching a frozen sub forever
+                shipped_at = conn.execute("""SELECT max(seen_at) FROM status_history
+                    WHERE sub_number=? AND status='Shipped'""", (sub,)).fetchone()[0]
+                if shipped_at and shipped_at < grade_cutoff:
+                    need_grades = 0
             if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0) and not need_grades:
                 skipped += 1
                 continue
