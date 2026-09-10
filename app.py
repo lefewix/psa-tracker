@@ -841,6 +841,21 @@ def owners_map(a):
     c.close()
     return m
 
+def card_exists(a, cert_id):
+    """True if this account has a card with that cert. Owner tags are keyed by
+    cert_id in a separate db, so nothing else stops a tag for a cert that was
+    never scanned (the tag JS once posted the literal 'undefined')."""
+    try:
+        conn = _ro_conn(a)
+        row = conn.execute("SELECT 1 FROM cards WHERE cert_id=? LIMIT 1",
+                           (cert_id,)).fetchone()
+        conn.close()
+        return row is not None
+    except sqlite3.OperationalError as e:
+        if not _first_run(a, e):
+            raise
+        return False
+
 def set_owner(a, cert_id, owner):
     c = own_conn(a)
     c.execute("INSERT OR REPLACE INTO owners(cert_id, owner, updated_at) VALUES (?,?,?)",
@@ -4188,8 +4203,9 @@ class H(BaseHTTPRequestHandler):
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
             cid = (form.get("cert_id") or [""])[0]
             owner = (form.get("owner") or [""])[0]
-            if cid:
-                set_owner(acct, cid, owner)
+            if not cid or not card_exists(acct, cid):
+                return self.send(400, "unknown cert", "text/plain")
+            set_owner(acct, cid, owner)
             return self.send(204, "", "text/plain")
         if path == "/archive":
             got = self.authed()

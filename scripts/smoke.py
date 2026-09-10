@@ -577,6 +577,18 @@ def main():
             check("GET /sub/14900001 (after the page's own POST)", "/sub/14900001",
                   (200,), cookie, must_have="Mallory")
 
+            # --- a tag for a cert that has no card is refused, so owners.db
+            # never grows an orphan row (T32)
+            if call(url, "/owner", cookie, {"cert_id": "undefined", "owner": "Ghost"},
+                    {"Origin": url})[0] != 400:
+                fails.append("POST /owner (cert_id=undefined): got a reply, want 400")
+            oc = sqlite3.connect(os.path.join(base, "accounts", "demo", "owners.db"))
+            orphans = oc.execute("SELECT count(*) FROM owners WHERE cert_id=?",
+                                 ("undefined",)).fetchone()[0]
+            oc.close()
+            if orphans:
+                fails.append("POST /owner (cert_id=undefined): the tag was written anyway")
+
             # --- the dashboard's first paint carries the ACTIVE rows only:
             # archived ones are fetched by the Archived pill from /?arch=1 (T28)
             def archive(num, on):
