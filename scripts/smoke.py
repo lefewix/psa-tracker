@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Boot app.py against a throwaway fixture and GET every route.
 
-Stdlib only, no network, no box. Builds a temp accounts dir (one account.env,
-a psa.db carrying psa_watch/psa_values' own schema plus a handful of synthetic
+Stdlib only, no network, no box. Builds a temp accounts dir (two account.env
+files, a psa.db carrying psa_watch/psa_values' own schema plus a handful of synthetic
 rows; owners.db is left for the app to create), starts app.py on a free port,
 then asserts each route answers the expected status with a non-empty body, for
 no session and for a logged-in session. Exits 1 on the first failure, naming
@@ -28,10 +28,22 @@ def schema(mod):
 
 
 def build_fixture(base):
-    """One account, minimal but real rows: a graded sub and an in-flight one."""
+    """Two accounts: demo carries the rows (a graded sub and an in-flight one),
+    second is empty and exists so the settings scoping can be checked."""
     acct = os.path.join(base, "accounts", "demo")
     os.makedirs(acct)
     os.makedirs(os.path.join(base, "imgcache"))
+    other = os.path.join(base, "accounts", "second")
+    os.makedirs(other)
+    with open(os.path.join(other, "account.env"), "w", encoding="utf-8") as f:
+        f.write(f"LABEL='Second Store'\nSITE_PASSWORD='{SITE_PW}-2'\n"
+                "PSA_LOGIN_EMAIL='second@example.com'\nPSA_LOGIN_PW='x'\n"
+                "PSA_COOKIE='fake'\n")
+    c2 = sqlite3.connect(os.path.join(other, "psa.db"))
+    c2.executescript(schema("psa_watch.py"))
+    c2.executescript(schema("psa_values.py"))
+    c2.commit()
+    c2.close()
     with open(os.path.join(acct, "account.env"), "w", encoding="utf-8") as f:
         f.write(f"LABEL='Smoke Store'\nSITE_PASSWORD='{SITE_PW}'\n"
                 "PSA_LOGIN_EMAIL='smoke@example.com'\nPSA_LOGIN_PW='x'\n"
@@ -186,8 +198,11 @@ def main():
         if code != 302 or not scookie:
             fails.append(f"POST /settings/auth: got {code}, no settings cookie")
         else:
-            check("GET /settings (settings session)", "/settings", (200,), scookie,
-                  must_have="PSA accounts")
+            body = check("GET /settings (settings session)", "/settings", (200,),
+                         scookie, must_have="PSA accounts")
+            if body and b'data-acct="second"' not in body:
+                fails.append("GET /settings (settings session): the other account "
+                             "is missing, the settings password holds them all")
 
         # --- admin session
         code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
@@ -236,6 +251,26 @@ def main():
                 fails.append("POST /settings/account site_pw: restore refused")
             check("GET / (cookie after the password is restored)", "/", (200,),
                   cookie, must_have="14900001")
+
+            # --- a gear-mode admin session stays on its own account (T7)
+            env2 = os.path.join(base, "accounts", "second", "account.env")
+            was = open(env2, "rb").read()
+            gcode = call(url, "/settings/account", cookie,
+                         {"acct": "second", "action": "site_pw",
+                          "value": "other-pw", "value2": "other-pw"})[0]
+            if gcode != 403:
+                fails.append(f"POST /settings/account (other account): got {gcode}, want 403")
+            if open(env2, "rb").read() != was:
+                fails.append("POST /settings/account: another account's env was rewritten")
+            if call(url, "/settings/add", cookie,
+                    {"psa_email": "third@example.com", "psa_pw": "x"})[0] != 403:
+                fails.append("POST /settings/add (gear session): an account was added")
+            body = check("GET /settings (gear session)", "/settings", (200,), cookie,
+                         must_have="PSA accounts")
+            if body and b'data-acct="second"' in body:
+                fails.append("GET /settings (gear session): another account's chip renders")
+            if body and b'data-acct="demo"' not in body:
+                fails.append("GET /settings (gear session): the session's own chip is missing")
 
             # --- login throttle: a spoofed header neither locks anyone else out
             # nor buys a fresh budget (T4). Keep before the db damage below.
