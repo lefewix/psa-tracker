@@ -177,4 +177,4 @@ Auth is cookie-only (Bearer silently returns nothing) and Cloudflare gates on
 TLS fingerprint, hence `curl_cffi ... impersonate="chrome"`. The OAuth client
 is confidential (secret is server-side), so tokens can't be minted from the
 refresh token - that's why cookie refresh drives a real browser through the
-sign-in page instead. See `HANDOFF.md` for the full API field maps.
+sign-in page instead. See `psa_watch.py` for the full API field maps.
