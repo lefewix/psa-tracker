@@ -310,7 +310,7 @@ def main():
         _, _, phdrs = call(url, "/")
         if "frame-ancestors 'none'" not in (phdrs.get("Content-Security-Policy") or ""):
             fails.append("GET /: no Content-Security-Policy")
-        for label, hdrs in (("/logo", ghdrs), ("/img", ihdrs),
+        for label, hdrs in (("/logo", ghdrs),
                             ("/app.css", call(url, "/app.css")[2]),
                             ("/favicon.png", call(url, "/favicon.png")[2])):
             if hdrs.get("X-Content-Type-Options") != "nosniff":
@@ -439,6 +439,8 @@ def main():
                 fails.append("GET /img: no public max-age for the edge to respect")
             if ihdrs.get("Set-Cookie"):
                 fails.append("GET /img: a Set-Cookie keeps it out of the edge cache")
+            if ihdrs.get("X-Content-Type-Options") != "nosniff":
+                fails.append("GET /img: no nosniff on the served image (T25)")
             check("GET /cards", "/cards", (200,), cookie)
             check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
             check("GET /search", "/search?q=Charizard", (200,), cookie)
