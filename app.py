@@ -370,7 +370,7 @@ def read_env_file(path):
     return vals
 
 def parse_prices(spec):
-    """'regular:109,max:89.99' -> [('regular',109.0),...]; order = match priority."""
+    """'regular:109,value max:89.99' -> [('regular',109.0),...]; order is free."""
     out = []
     for part in (spec or "").split(","):
         if ":" not in part:
