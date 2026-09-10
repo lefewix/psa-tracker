@@ -1103,6 +1103,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.5}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
+/* a page HEADER figure is a data value, so it sits on the 17/650 rung like
+   .num and .gc .cval - at 13 the headline read smaller than the card values
+   under it. The 13px stays where .synced is chrome: the toolbar freshness
+   stamp and its customer twin. */
+.hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
 /* the held-sub figure: alert red, same token as the pill, so the detail page
    states the alarm at the value rung instead of hiding it */
@@ -3703,7 +3708,7 @@ def detail_page(a, sub):
     vextra = ""
     if vtotal:
         vmiss = sum(1 for c in cards if c.get("grade") and (c["cert_no"] or "") not in vals)
-        vextra = (f'<span class="lbl2">Est. value</span><b class="num">${vtotal:,.0f}{"+" if vmiss else ""} {vcur}</b>'
+        vextra = (f'<span class="lbl2">Est. value</span><b>${vtotal:,.0f}{"+" if vmiss else ""} {vcur}</b>'
                   f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     if cards:
         # archived treatment on the sub's OWN page greys the scans only (.archdim);

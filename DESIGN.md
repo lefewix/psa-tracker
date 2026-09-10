@@ -506,8 +506,10 @@ on Segoe and Roboto.
   masthead stays on one row; the 300px password gate sets its own 24px/−0.02em and does
   **not** change at the breakpoint.
 - **Figure** (650, 17px, 1.3, −0.012em): the data rung — lot number, ledger value, card value,
-  settings panel titles, and the current stage name. The operator sweeps these columns; they
-  all sit on one weight.
+  settings panel titles, the current stage name, and the page-header figures (the detail ETA,
+  the person page's estimated cost). The operator sweeps these columns; they all sit on one
+  weight. A `.synced` block that is chrome rather than data, the toolbar freshness stamp,
+  keeps 13.
 - **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
 - **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
   pills, links, owner tags, card names, empty states. (Lifted from 13/1.45 on 2026-08-08 —

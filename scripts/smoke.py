@@ -381,6 +381,12 @@ def main():
                 fails.append("GET /app.css: a held card still paints an accent stage bar")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
+            # a page-header figure is a data value: 17/650, the same rung as the
+            # card values under it. The toolbar freshness stamp stays 13 (T76)
+            if b".hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650" not in css:
+                fails.append("GET /app.css: the header figure is off the 17/650 data rung")
+            if b".synced b{display:block;font-size:13px" not in css:
+                fails.append("GET /app.css: the toolbar freshness stamp left 13px")
             # a tap that lands mid scroll must fall through the corner orbs to
             # the owner pencil or View card underneath, on touch only (T60)
             if b"html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none" \
