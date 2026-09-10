@@ -1365,7 +1365,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  -webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s,transform .14s ease-out}
 .archbtn:active{transform:scale(.97)}
-.empty{color:var(--m1);font-size:14px;padding:48px 0;text-align:center;line-height:1.7}
+/* an empty state is content too - bare on the grouped ground it read as a gap
+   in the page, not as an answer. Same card treatment as .card and .hint. */
+.empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.7;
+ background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
+ box-shadow:0 2px 10px var(--shc3)}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* Replaced the old single 42x58 cover thumb (rule and emissions both gone).
    Up to 8 tiles, the 8th becoming a "+N" chip when the sub has more imaged

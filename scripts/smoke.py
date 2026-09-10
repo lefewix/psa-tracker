@@ -385,6 +385,11 @@ def main():
             # ungraded neighbours in one grid row keep the same baseline (T77)
             if b"min-height:21px" not in css.split(b".gc .gr{")[-1].split(b"}")[0]:
                 fails.append("GET /app.css: the grade line no longer reserves its box")
+            # an empty state sits on a card like every other block, not bare
+            # on the grouped ground (T78)
+            emp = css.split(b".empty{")[-1].split(b"}")[0]
+            if b"background:var(--surface)" not in emp or b"border-radius:16px" not in emp:
+                fails.append("GET /app.css: the empty state sits bare on the ground again")
             # a page-header figure is a data value: 17/650, the same rung as the
             # card values under it. The toolbar freshness stamp stays 13 (T76)
             if b".hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650" not in css:

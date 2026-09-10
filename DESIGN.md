@@ -568,9 +568,10 @@ mid scroll falls through to the card underneath.
 Content sits in **raised cards flush with the column**: each submission is a card at
 `padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px
 radius, `--hair2` edge and a `0 2px 10px` cast shadow. The gap between cards is the
-separator — no hairlines between or around the list, no closing rule. Inside a card, the
-mobile filmstrip still bleeds to the card's own padding edge (`-14px`) so the last tile
-runs off the card edge as the "there is more" cue.
+separator — no hairlines between or around the list, no closing rule. An empty state takes
+the same card (`48px 20px` padding, `14px` top margin), never bare text on the ground.
+Inside a card, the mobile filmstrip still bleeds to the card's own padding edge
+(`-14px`) so the last tile runs off the card edge as the "there is more" cue.
 
 The toolbar is sticky at `top: 10px` (`z-index: 20`), preceded by a 1px sentinel that drives
 its scroll-edge elevation; the filter capsule floats below it. Scan grids are
