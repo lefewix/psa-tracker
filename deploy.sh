@@ -57,7 +57,13 @@ ssh "$HOST" "mv $STAGE/* $DEST/"
 if [ "$restart" = 1 ]; then
   ssh "$HOST" 'systemctl restart psa-web && sleep 1 && systemctl is-active psa-web'
   for p in / /settings; do
-    code=$(ssh "$HOST" "curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:$WEB_PORT$p" || echo 000)
+    url="http://127.0.0.1:$WEB_PORT$p"
+    # Demo boxes may lack curl; fall back to python3's urllib for the status code.
+    remote_cmd="command -v curl >/dev/null && curl -s -o /dev/null -w '%{http_code}' $url || python3 -c 'import sys,urllib.request,urllib.error
+try: print(urllib.request.urlopen(sys.argv[1],timeout=10).status)
+except urllib.error.HTTPError as e: print(e.code)
+except Exception: print(0)' $url"
+    code=$(ssh "$HOST" "$remote_cmd" || echo 000)
     case "$code" in
       2*|3*|4*) echo "live $p -> $code" ;;
       *) echo "POST-DEPLOY FAIL: $p -> $code (check journalctl -u psa-web)"; exit 1 ;;
