@@ -765,7 +765,8 @@ content — a panel, a sheet, an image, a row — it is not.
   sits inside the sort capsule.
 - **Filter row (`.filterrow`):** sort capsule at one end, the solo pills paired in `.rowend` at
   the other. The row wraps at the same 10px gap, so on a phone the pair drops to a second line
-  and the capsule keeps its full width instead of shrinking into a scroller.
+  and the capsule keeps its full width instead of shrinking into a scroller. The person page
+  runs the same row over its submission groups, sharing the dashboard's `psa_sort` choice.
 - **Sort pills:** Newest, Order type, Return. Three, always the same three — a "Grades ready"
   fourth pill shipped briefly and was removed with the rest of the grades promotion
   (2026-08-02 owner ruling).

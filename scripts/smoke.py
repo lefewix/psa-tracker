@@ -881,6 +881,49 @@ def main():
                 fails.append("GET /cards?owner=Etaperson: the held sub loses its return date")
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": ""})
 
+            # --- the person page carries the dashboard's three sort pills, so
+            # a person with two active subs can reorder their submission groups
+            # by soonest return. SORT_JS needs #list plus data-sub/svc/eta on
+            # every group card; the Archived pill shares the row in .rowend
+            # and no longer owns a .filterrow of its own (T102)
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": "Twosub"})
+            call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": "Twosub"})
+            tbody = check("GET /cards?owner=Twosub", "/cards?owner=Twosub",
+                          (200,), cookie) or b""
+            row = re.search(rb'<div class="filterrow">.*?(?=<div id="list")', tbody, re.S)
+            row = row.group(0) if row else b""
+            for want in (b'<div class="filters" role="group" aria-label="Sort submissions">',
+                         b'data-sort="sub" aria-pressed="true">Newest<',
+                         b'data-sort="svc" aria-pressed="false">Order type<',
+                         b'data-sort="eta" aria-pressed="false">Return<'):
+                if want not in row:
+                    fails.append("GET /cards?owner=Twosub: the sort capsule is missing "
+                                 + want.decode())
+            if b'<div id="list" style="margin-top:0">' not in tbody:
+                fails.append("GET /cards?owner=Twosub: no #list for the sort to reorder")
+            grp = re.findall(rb'<div class="card grp[^>]*>', tbody)
+            if len(grp) != 2:
+                fails.append(f"GET /cards?owner=Twosub: {len(grp)} groups, want 2")
+            for want in (b'data-sub="14900002"', b'data-sub="14900001"',
+                         b'data-svc="Regular"',
+                         b'data-eta="%s"' % ETA_SOON.isoformat().encode(),
+                         b'data-eta="%s"' % ETA_NEXT_YEAR.isoformat().encode()):
+                if not any(want in g for g in grp):
+                    fails.append("GET /cards?owner=Twosub: no group carries "
+                                 + want.decode())
+            arch("14900001", "1")
+            abody = call(url, "/cards?owner=Twosub", cookie)[1] or b""
+            arow = re.search(rb'<div class="filterrow">.*?(?=<div id="list")', abody, re.S)
+            arow = arow.group(0) if arow else b""
+            if b'<div class="rowend"><button' not in arow or b'id="archtoggle"' not in arow:
+                fails.append("GET /cards?owner=Twosub: Archived is not in the "
+                             "sort row's .rowend")
+            if abody.count(b'class="filterrow"') != 1:
+                fails.append("GET /cards?owner=Twosub: Archived kept a second filter row")
+            arch("14900001", "0")
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
+            call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": ""})
+
             check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
             check("GET /nope (unknown path)", "/nope", (404,), cookie)
             check("GET /logout", "/logout", (302,), cookie)

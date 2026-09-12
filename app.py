@@ -3519,7 +3519,13 @@ def people_page(a, owner):
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
-        return (f'<div class="card grp{" arch" if n in arch else ""}">'
+        # data-sub/svc/eta feed the sort pills, same attributes card_html writes
+        # on a dashboard row: SORT_JS reorders #list's .card children and does
+        # not care that these children are submission groups
+        eta = html.escape(s["est_end"] or s["est_start"] or "") if s else ""
+        sortattr = (f' data-sub="{html.escape(str(n))}" data-svc="{svc}" data-eta="{eta}"'
+                    + (' data-arch="1"' if n in arch else ''))
+        return (f'<div class="card grp{" arch" if n in arch else ""}"{sortattr}>'
                 f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
                 # h2, not div: this IS the group's heading. Zero visual delta -
                 # the global reset zeroes h2 margins and .num supplies every
@@ -3534,27 +3540,36 @@ def people_page(a, owner):
         order = sorted(gs, key=lambda n: -int(n) if str(n).isdigit() else 0)
         return "".join(group_html(n, gs[n]) for n in order)
     if act_cards:
-        # grouped cards carry no top margin of their own - give them the same
-        # breathing room below the search bar the customer home has (28px)
-        # the filterrow's own 12px bottom margin takes over when the pill is there
-        grid = f'<div style="margin-top:{0 if arc_cards else 28}px">' + grouped(act_cards) + "</div>"
+        # #list is what SORT_JS reorders; the filterrow above it always carries
+        # the 20px 0 12px that used to be this wrapper's own top margin
+        grid = '<div id="list" style="margin-top:0">' + grouped(act_cards) + "</div>"
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
         grid = f'<div class="empty">All of {html.escape(owner)}’s cards are in archived submissions.</div>'
     else:
         grid = f'<div class="empty">No cards tagged to “{html.escape(owner)}” yet.</div>'
-    archpill = archsec = ""
+    archsec = ""
     if arc_cards:
         archsec = f'<div id="archgrid" style="display:none">{grouped(arc_cards)}</div>'
-        # solo pill, same grammar as the dashboard's: a capsule wrapping a
-        # single pill prints a ring with nothing else inside (see .fsolo).
-        # It sits in a .filterrow under the search bar like the dashboard's,
-        # not at the page foot where a long grid hid it; the fold itself
-        # stays below the active groups (ARCHFOLD_JS scrolls to it).
-        archpill = (f'<div class="filterrow"><button type="button" class="f farch fsolo" '
-                    f'id="archtoggle" aria-expanded="false" aria-controls="archgrid">'
-                    f'Archived · {len(arc_cards)}</button></div>')
+    # the dashboard's three sort pills, verbatim: SORT_JS reorders the
+    # submission groups in #list and the choice is the same psa_sort the
+    # dashboard stores. Only when there are active groups to reorder.
+    pills = ('<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>'
+             '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>'
+             '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>'
+             ) if act_cards else ""
+    filters = (f'<div class="filters" role="group" aria-label="Sort submissions">'
+               f'{pills}</div>') if pills else ""
+    # solo pill, same grammar as the dashboard's: a capsule wrapping a single
+    # pill prints a ring with nothing else inside (see .fsolo). It rides the
+    # sort row's .rowend, not a .filterrow of its own; the fold itself stays
+    # below the active groups (ARCHFOLD_JS scrolls to it).
+    rowend = (f'<div class="rowend"><button type="button" class="f farch fsolo" '
+              f'id="archtoggle" aria-expanded="false" aria-controls="archgrid">'
+              f'Archived · {len(arc_cards)}</button></div>') if arc_cards else ""
+    filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'
+                 if (filters or rowend) else "")
     if unassigned:
         est = ""  # the worklist is about tagging, not money
     else:
@@ -3600,7 +3615,7 @@ def people_page(a, owner):
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
-{archpill}
+{filterrow}
 {grid}
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
