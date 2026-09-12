@@ -694,10 +694,17 @@ def main():
             body = check("GET / (scans two days stale)", "/", (200,), cookie)
             if b"Not connecting to PSA" not in body:
                 fails.append("GET /: two days without a scan and the dashboard says nothing")
+            # the toolbar says the same thing in one dot and one word (T104)
+            if b'<div class="sync stale">' not in body or b">Stale<" not in body:
+                fails.append("GET /: a stale scan does not read as a stale sync dot")
             last_ok(0)
             body = check("GET / (scans current)", "/", (200,), cookie)
             if b"Not connecting to PSA" in body:
                 fails.append("GET /: a fresh scan still reads as a broken PSA link")
+            if b'<div class="sync live">' not in body or b">Live<" not in body:
+                fails.append("GET /: a fresh scan does not read as a live sync dot")
+            if b"Last synced" in body:
+                fails.append("GET /: the toolbar still prints a last synced stamp")
 
             # --- a signed-in page is private, no-cache, not no-store: back
             # navigation from a sub restores it from the back forward cache (T26)

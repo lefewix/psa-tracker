@@ -510,8 +510,9 @@ on Segoe and Roboto.
 - **Figure** (650, 17px, 1.3, −0.012em): the data rung — lot number, ledger value, card value,
   settings panel titles, the current stage name, and the page-header figures (the detail ETA,
   the person page's estimated cost). The operator sweeps these columns; they all sit on one
-  weight. A `.synced` block that is chrome rather than data, the toolbar freshness stamp,
-  keeps 13.
+  weight. The toolbar states sync in chrome instead of a figure: `.sync`, one 6px dot
+  (`--ok` live, `--m1` quiet, `--holdtx` stale) and one word at 12.5/500, the full phrase
+  in a `.vh` span.
 - **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
 - **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
   pills, links, owner tags, card names, empty states. The stage name sits here too, at body

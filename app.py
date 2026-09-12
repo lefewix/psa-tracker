@@ -1065,6 +1065,13 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* the customer's sign-out is the icon in the freshness block, not the top-left "back" slot. */
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
+/* sync state: one dot and one word, never a stamp. The dot is 6px of non-text, so
+   --ok's 3:1 check covers it; the full phrase rides in the .vh span. */
+.sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
+ font-weight:500;color:var(--m1);line-height:1.5;white-space:nowrap}
+.sync i{width:6px;height:6px;border-radius:50%;background:var(--m1);flex-shrink:0}
+.sync.live i{background:var(--ok)}
+.sync.stale i{background:var(--holdtx)}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
  transition:color .15s,background-color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
@@ -1520,8 +1527,6 @@ button:disabled{opacity:.5;cursor:default}
     .tbend to a second line at 347px. .gbox h1 is deliberately untouched. */
  h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
- .tbend .synced{display:flex;gap:5px;align-items:baseline;font-size:12px}
- .tbend .synced b{display:inline;font-size:12px;white-space:nowrap}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
  .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:12px}
@@ -3273,6 +3278,24 @@ def scan_error(a):
     except OSError:
         return ""
 
+def sync_dot(stale):
+    """One dot and one word for the toolbar, from scan_stale_hours: the last scan
+    that worked, not the newest submission change. Stale is the T24 banner's own
+    6 hours, so the dot and the banner can never disagree."""
+    if stale is None:
+        return '<div class="sync"><i aria-hidden="true"></i>No sync yet</div>'
+    if stale < .75:                       # scans run every 9 to 22 minutes (T101)
+        cls, word = " live", "Live"
+    elif stale < 6:
+        mins = int(stale * 60)
+        cls, word = "", f"{mins} min ago" if mins < 90 else f"{int(stale)} h ago"
+    else:
+        cls, word = " stale", "Stale"
+    when = fmt_local(datetime.fromtimestamp(time.time() - stale * 3600,
+                                            timezone.utc).isoformat())
+    return (f'<div class="sync{cls}"><i aria-hidden="true"></i>{word}'
+            f'<span class="vh">Last sync {html.escape(when)}</span></div>')
+
 def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
@@ -3297,8 +3320,7 @@ def dash_page(a, subs):
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
                 + (f'<br><span style="font-size:12px">{note}</span>' if note else "")
                 + '</div>')
-    updated = max((s["updated_at"] or "" for s in subs), default="")
-    stamp = fmt_local(updated) if updated else "n/a"
+    stale = scan_stale_hours(a)
     # the masthead lives IN the sticky glass toolbar: title, store, freshness,
     # sign-out and search travel together as the page's one piece of chrome
     # <header> because this one really is the page masthead; the .tbq bars on the
@@ -3307,7 +3329,7 @@ def dash_page(a, subs):
     toolbar = (f'<header class="toolbar"><div class="tbtop">'
                f'<div class="brand">{logo_tag()}<div><h1>{html.escape(SITE_TITLE)}</h1>'
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
-               f'<div class="tbend"><div class="synced">Last synced<b>{html.escape(stamp)}</b></div>'
+               f'<div class="tbend">{sync_dot(stale)}'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
                f'</div></div>{search_box()}</header>')
     hint = (f'<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
@@ -3318,9 +3340,8 @@ def dash_page(a, subs):
                 'known status from PSA. Syncs are off; save a new PSA password in settings '
                 'to relink.</div>') + hint
     else:
-        # scans run hourly: several missed in a row means the PSA link is down,
-        # and the statuses below are older than they look
-        stale = scan_stale_hours(a)
+        # several scans missed in a row means the PSA link is down, and the
+        # statuses below are older than they look
         if stale is not None and stale >= 6:
             # "why" is the scripts' own line, not free text, but it carries an
             # exception string, so it is escaped like anything else (T105)
