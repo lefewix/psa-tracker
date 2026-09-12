@@ -410,9 +410,10 @@ def load_accounts():
         base = os.path.join(ACCOUNTS_DIR, d)
         env = read_env_file(os.path.join(base, "account.env"))
         pw = env.get("SITE_PASSWORD", "")
-        # a feeder account (PSA_MERGE_INTO, global or in its own env) scans into
-        # another account's databases: it has PSA credentials and a Settings
-        # chip, but no door of its own at the gate
+        # PSA_MERGE_INTO (global or per account) names the account whose psa.db
+        # and owners.db are the site's universal database; every other PSA
+        # account feeds it. A feeder has PSA credentials and a Settings chip,
+        # and the one site password covers it at the gate
         into = env.get("PSA_MERGE_INTO", os.environ.get("PSA_MERGE_INTO", "")).strip()
         feeder = bool(into) and into != d and os.path.isdir(os.path.join(ACCOUNTS_DIR, into))
         if not pw and not feeder:
@@ -2012,9 +2013,8 @@ def settings_page(msg="", err="", only=""):
 {remove_btn}
 </div>""")
         if a.get("feeder"):
-            into = html.escape(os.path.basename(os.path.dirname(a["db"])))
             spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
-<div class="meta">Scans into the {into} dashboard. No site password of its own.</div>
+<div class="meta">Scans into the shared dashboard. The site password covers it.</div>
 </div>""")
             continue
         spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
@@ -4270,7 +4270,7 @@ class H(BaseHTTPRequestHandler):
                         msg="PSA password saved. The next hourly sync signs in fresh with it."))
                 if action == "site_pw":
                     if accts[acct_id].get("feeder"):
-                        return self.see(flash(err="This account scans into another dashboard and has no site password."))
+                        return self.see(flash(err="This account scans into the shared dashboard; the site password covers it."))
                     if len(value) < 4:
                         return self.see(flash(err="Site password needs at least 4 characters."))
                     if value != get("value2"):
