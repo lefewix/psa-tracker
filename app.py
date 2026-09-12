@@ -3537,10 +3537,10 @@ def people_page(a, owner):
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
         # data-sub/svc/eta feed the sort pills, same attributes card_html writes
         # on a dashboard row: SORT_JS reorders #list's .card children and does
-        # not care that these children are submission groups
+        # not care that these children are submission groups. No data-arch: the
+        # archived groups live in #archgrid, which SORT_JS never touches.
         eta = html.escape(s["est_end"] or s["est_start"] or "") if s else ""
-        sortattr = (f' data-sub="{html.escape(str(n))}" data-svc="{svc}" data-eta="{eta}"'
-                    + (' data-arch="1"' if n in arch else ''))
+        sortattr = f' data-sub="{html.escape(str(n))}" data-svc="{svc}" data-eta="{eta}"'
         return (f'<div class="card grp{" arch" if n in arch else ""}"{sortattr}>'
                 f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
                 # h2, not div: this IS the group's heading. Zero visual delta -
