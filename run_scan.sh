@@ -1,11 +1,12 @@
 #!/bin/bash
 # For each tracked account: scan its submissions, refreshing the PSA cookie via
-# a real browser login only when needed. Scheduled HOURLY by psa-scan.timer
-# (since 2026-07-22). The full browser login runs at the PSA_LOGIN_HOURS slots
-# (default 1am/1pm local), when the cookie is empty, or when a scan comes back
+# a real browser login only when needed. Scheduled by psa-scan.timer on a random
+# 9-22 min interval (2026-09-12; hourly from 2026-07-22). The full browser login
+# runs once per PSA_LOGIN_HOURS hour (default 1am/1pm local, tracked in
+# $dir/.last_login), when the cookie is empty, or when a scan comes back
 # cookie-dead (psa_watch exit 3) - every other run reuses the existing cookie,
 # keeping the bot-detection surface at ~2 logins/day. Card values + fx refresh
-# only on successful login-hour runs (they change slowly; hourly runs stay lean).
+# only on successful login-hour runs (they change slowly; other runs stay lean).
 #
 # Login backoff (2026-09-10): an account whose scans keep failing used to burn a
 # browser login every single hour. Past PSA_LOGIN_BACKOFF_AFTER consecutive
@@ -33,6 +34,7 @@ GLOBAL=/etc/psa-tracker.env
 ACCTS=/opt/psa-tracker/accounts
 LOGIN_HOURS=${PSA_LOGIN_HOURS:-"01 13"}
 hour=$(TZ=${PSA_TZ:-America/Toronto} date +%H)
+hourstamp=$(TZ=${PSA_TZ:-America/Toronto} date +%Y-%m-%dT%H)
 shopt -s nullglob
 found=0
 for envf in "$ACCTS"/*/account.env; do
@@ -77,6 +79,8 @@ PYEOF
 
     slot=0
     case " $LOGIN_HOURS " in *" $hour "*) slot=1 ;; esac
+    # several runs land inside one login hour; the first success satisfies it
+    [ "$(cat "$dir/.last_login" 2>/dev/null)" = "$hourstamp" ] && slot=0
     fails=$(cat "$dir/.scan_fails" 2>/dev/null || echo 0)
     case "$fails" in ''|*[!0-9]*) fails=0 ;; esac
     may_login=1
@@ -101,6 +105,7 @@ PYEOF
     if [ "$full" = 1 ]; then
       if timeout "$login_budget" xvfb-run -a python3 /opt/psa-tracker/psa_login.py; then
         set -a; . "$envf"; set +a   # reload: pick up the fresh PSA_COOKIE
+        [ "$slot" = 1 ] && echo "$hourstamp" > "$dir/.last_login"
       else
         echo "[run_scan] $id: login failed - scanning with existing cookie"
       fi
