@@ -32,7 +32,6 @@ OWN_DB = os.environ.get("PSA_OWN_DB", os.path.join(os.path.dirname(DB_PATH) or "
 GRADE_GRACE_DAYS = 7
 WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
 ACCT = os.environ.get("PSA_ACCT_ID", "account")  # tags this run's log lines
-SITE_URL = os.environ.get("PSA_SITE_URL", "https://psa.example.com").rstrip("/")
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
 
 # orders.list reports progressSummary.lastCompletedStep, but psacard.com displays
@@ -723,9 +722,8 @@ def cycle(conn):
     # post after refresh_cards: a first-seen sub only has its cards rows by now,
     # so discord_mentions can resolve its owner on the same run
     if changes:
+        # no site link: the attached dashboard cards say it all (the owner, 2026-09-12)
         msg = "**PSA update**\n" + "\n".join(changes)
-        if SITE_URL:
-            msg += f"\n{SITE_URL}"
         ids = discord_mentions(conn, touched)
         if ids:
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
