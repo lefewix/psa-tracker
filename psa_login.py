@@ -152,16 +152,24 @@ def do_login():
             log("opening PSA (redirects to sign-in)…")
             page.goto(START_URL, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(2500)  # let SPA + any CF check settle
-            got = has_tokens(ctx)  # persistent profile may still hold a live session
+            # A saved profile may still hold a live session. Cookie NAMES are not
+            # proof: on 2026-09-11 flx carried accessToken/refreshToken that PSA
+            # no longer honoured and every "valid" harvest scanned 0 subs for a
+            # day. The sign-in form on screen is the truth.
+            email_sel = ("input[type='email'], input[name='email'], input[name='username'], "
+                         "input[autocomplete='username']")
+            at_signin = "signin" in page.url or page.query_selector(email_sel) is not None
+            got = has_tokens(ctx) and not at_signin
             if got:
                 log("session still valid in the saved profile - no sign-in needed")
+            elif at_signin and has_tokens(ctx):
+                log("saved profile has stale tokens - PSA shows the sign-in form; clearing them")
+                ctx.clear_cookies()
         except Exception as e:
             log(f"ERROR: {e}"); ctx.close(); return 1
         try:
             if not got:
                 # --- email ---
-                email_sel = ("input[type='email'], input[name='email'], input[name='username'], "
-                             "input[autocomplete='username']")
                 page.wait_for_selector(email_sel, timeout=45000)
                 page.fill(email_sel, EMAIL)
                 log("email entered")
