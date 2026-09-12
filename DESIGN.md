@@ -648,7 +648,7 @@ shadow rather than glass. They materialize together — the scrim fades, its bac
 - **Segment Lift** (`box-shadow: 0 1px 2px var(--shc3)`): the active pill inside a capsule.
   The smallest shadow in the system.
 - **Popover** (`box-shadow: 0 14px 40px var(--shc2)`): the search preview.
-- **Modal** (`box-shadow: 0 24px 60px var(--shc2)`): the settings sheets.
+- **Modal** (`box-shadow: 0 24px 60px var(--shc2)`): the settings and Discord sheets.
 - **Lightbox** (`box-shadow: 0 24px 70px rgba(0,0,0,.45)`): the enlarged scan; the only
   fixed-value shadow, because it always sits on a dimmed backdrop.
 

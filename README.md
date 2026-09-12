@@ -86,7 +86,8 @@ systemctl start psa-scan.service   # first scan now instead of waiting for the t
 # (PSA_LOGIN_HOURS) or when the stored cookie dies - other runs reuse it.
 # Optional: PSA_SETTINGS_PW_HASH (sha256 of a settings password) in the global
 # env enables /settings - web UI for updating PSA credentials (write-only),
-# per-account Discord webhooks and adding accounts.
+# per-account Discord webhooks and adding accounts. Anyone's person page can
+# link a Discord user ID to get @-mentioned on updates to their subs.
 ```
 
 Put a TLS reverse proxy (Caddy, nginx, Cloudflare tunnel…) in front of
