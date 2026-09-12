@@ -800,6 +800,28 @@ def main():
             for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo"):
                 if re.search(rb"(?<!\d)1 cards", call(url, label, cookie)[1] or b""):
                     fails.append(f'GET {label}: a single card still reads "1 cards"')
+            # --- the person page searches names as well as cards, and carries a
+            # Home link Back cannot replace once you have hopped person to person
+            # (T103). The Cards half stays pinned to that person either way.
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": "Duo"})
+            hop = json.loads(check("GET /suggest (person page, a name)",
+                                   "/suggest?q=duo&owner=Solo", (200,), cookie)
+                             or b'{"names":[]}')
+            if "Duo" not in hop.get("names", []):
+                fails.append("GET /suggest?owner=Solo: a name query finds nobody (T103)")
+            browse = json.loads(check("GET /suggest (person page, browse)",
+                                      "/suggest?q=&owner=Solo", (200,), cookie)
+                                or b'{"names":[],"cards":[]}')
+            if "Duo" not in browse.get("names", []):
+                fails.append("GET /suggest?owner=Solo: browse mode lists no people (T103)")
+            if not browse.get("cards") or any(c.get("owner") != "Solo"
+                                              for c in browse["cards"]):
+                fails.append("GET /suggest?owner=Solo: the Cards half left that "
+                             "person's cards (T103)")
+            if b'<a class="view" href="/">Home</a>' not in \
+                    (call(url, "/cards?owner=Solo", cookie)[1] or b""):
+                fails.append("GET /cards?owner=Solo: no Home link beside Back (T103)")
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
             check("GET /search", "/search?q=Charizard", (200,), cookie)
             check("GET /search (empty q)", "/search?q=", (200,), cookie)

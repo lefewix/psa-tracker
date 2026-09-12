@@ -959,14 +959,15 @@ def search_cards_sql(a, ql, limit):
             raise
         return []
 
-def suggest(a, q, owner=None, limit_names=8, limit_cards=40):
+def suggest(a, q, owner=None, limit_names=8, limit_cards=40, people=True):
     """Live search backing the unified search box. People (priority) + cards.
-    With owner set (person page), results are ONLY that person's cards - no
-    People section; switching person means going back to all submissions."""
+    With owner set (person page), card results are ONLY that person's cards, but
+    the People section still lists everyone, so a name hops person to person.
+    people=False drops that section, which is what a customer session gets."""
     ql = (q or "").strip().lower()
     owners = owners_map(a)
     want = (owner or "").strip().lower()
-    if want:
+    if not people:
         name_hits = []
     else:
         names = sorted({v for v in owners.values() if v})
@@ -2436,7 +2437,7 @@ def search_box(value="", owner="", ph=None):
     """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
     With owner set, card results are scoped to that person (SEARCH_JS reads data-owner)."""
     if ph is None:
-        ph = f"Search {owner}'s cards…" if owner else "Search names or cards…"
+        ph = "Search names or cards…"
     icon = ('<svg class="sicon" width="14" height="14" viewBox="0 0 24 24" fill="none" '
             'stroke="currentColor" stroke-width="2.4" stroke-linecap="round">'
             '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg>')
@@ -3619,7 +3620,8 @@ def people_page(a, owner):
     # back on the left, the export on the right: the sub page's own foot row,
     # with its 18px top margin dropped so the header sits where it always did
     back = ('<div class="foot" style="margin:0">'
-            '<a class="view" id="backlk" href="/">← Back</a>'
+            '<span class="footacts"><a class="view" id="backlk" href="/">← Back</a>'
+            '<a class="view" href="/">Home</a></span>'
             f'<span class="footacts"><a class="view" href="/cards?owner='
             f'{urllib.parse.quote(owner)}&amp;format=csv">Export CSV</a></span></div>')
     page_title = "Unassigned cards" if unassigned else f"{title}'s cards"
@@ -4146,7 +4148,8 @@ class H(BaseHTTPRequestHandler):
                 if not suggest_allowed(self.client_ip()):
                     return self.send(429, '{"names":[],"cards":[]}', "application/json; charset=utf-8")
                 qs = urllib.parse.parse_qs(parsed.query)
-                return self.send(200, json.dumps(suggest(acct, qs.get("q", [""])[0], owner=cust)),
+                return self.send(200, json.dumps(suggest(acct, qs.get("q", [""])[0],
+                                                        owner=cust, people=False)),
                                  "application/json; charset=utf-8")
             return self.send(302, "", extra=[("Location", "/")])
         if path == "/":
