@@ -410,16 +410,23 @@ def load_accounts():
         base = os.path.join(ACCOUNTS_DIR, d)
         env = read_env_file(os.path.join(base, "account.env"))
         pw = env.get("SITE_PASSWORD", "")
-        if not pw:
+        # a feeder account (PSA_MERGE_INTO, global or in its own env) scans into
+        # another account's databases: it has PSA credentials and a Settings
+        # chip, but no door of its own at the gate
+        into = env.get("PSA_MERGE_INTO", os.environ.get("PSA_MERGE_INTO", "")).strip()
+        feeder = bool(into) and into != d and os.path.isdir(os.path.join(ACCOUNTS_DIR, into))
+        if not pw and not feeder:
             continue
+        dbdir = os.path.join(ACCOUNTS_DIR, into) if feeder else base
         accts[d] = {
+            "feeder": feeder,
             "id": d,
             # the id, not id.upper(): an ALL-CAPS store name in the masthead
             # subtitle would be the one tracked-caps string in the product
             "label": env.get("LABEL", d),
-            "password": pw,
-            "db": os.path.join(base, "psa.db"),
-            "own_db": os.path.join(base, "owners.db"),
+            "password": "" if feeder else pw,
+            "db": os.path.join(dbdir, "psa.db"),
+            "own_db": os.path.join(dbdir, "owners.db"),
             "prices": parse_prices(env.get("PSA_PRICES", "")),
             # unlinked = disconnected from PSA but still served: the site keeps
             # showing the last known data with a banner; run_scan skips it
@@ -2004,6 +2011,12 @@ def settings_page(msg="", err="", only=""):
 <button type="submit" class="sbtn squiet">Save</button></form>
 {remove_btn}
 </div>""")
+        if a.get("feeder"):
+            into = html.escape(os.path.basename(os.path.dirname(a["db"])))
+            spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
+<div class="meta">Scans into the {into} dashboard. No site password of its own.</div>
+</div>""")
+            continue
         spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
 <form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="site_pw">
@@ -2218,9 +2231,12 @@ def write_account_env(acct_id, label, site_pw, psa_email, psa_pw):
     base = os.path.join(ACCOUNTS_DIR, acct_id)
     os.makedirs(base, exist_ok=True)
     q = shlex.quote  # real shell quoting - apostrophes in passwords survive intact
-    body = "\n".join([f"LABEL={q(label)}", f"SITE_PASSWORD={q(site_pw)}",
-                      f"PSA_LOGIN_EMAIL={q(psa_email)}", f"PSA_LOGIN_PW={q(psa_pw)}",
-                      "PSA_COOKIE=''"]) + "\n"
+    lines = [f"LABEL={q(label)}", f"SITE_PASSWORD={q(site_pw)}",
+             f"PSA_LOGIN_EMAIL={q(psa_email)}", f"PSA_LOGIN_PW={q(psa_pw)}", "PSA_COOKIE=''"]
+    into = os.environ.get("PSA_MERGE_INTO", "").strip()
+    if into and into != acct_id:  # this site pools every PSA account into one dashboard
+        lines.append(f"PSA_MERGE_INTO={q(into)}")
+    body = "\n".join(lines) + "\n"
     fd = os.open(os.path.join(base, "account.env"), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w") as f:
         f.write(body)
@@ -3978,6 +3994,8 @@ class H(BaseHTTPRequestHandler):
         subs = []
         try:
             for a in load_accounts().values():
+                if a.get("feeder"):  # its subs live in the target's db, listed there
+                    continue
                 arc = archived_set(a)
                 for s in load_subs(a):
                     subs.append({k: s[k] for k in ("sub_number", "status", "card_count",
@@ -4251,6 +4269,8 @@ class H(BaseHTTPRequestHandler):
                     return self.see(flash(
                         msg="PSA password saved. The next hourly sync signs in fresh with it."))
                 if action == "site_pw":
+                    if accts[acct_id].get("feeder"):
+                        return self.see(flash(err="This account scans into another dashboard and has no site password."))
                     if len(value) < 4:
                         return self.see(flash(err="Site password needs at least 4 characters."))
                     if value != get("value2"):
@@ -4345,6 +4365,8 @@ class H(BaseHTTPRequestHandler):
         # matches is the account this session gets. Passwords are unique per account.
         matched = None
         for a in load_accounts().values():
+            if a.get("feeder"):
+                continue
             if hmac.compare_digest(given.encode(), a["password"].encode()):
                 matched = a
                 break

@@ -47,7 +47,14 @@ for envf in "$ACCTS"/*/account.env; do
       echo "[run_scan] $id: unlinked - skipping"
       exit 0
     fi
-    export PSA_ENV_FILE="$envf" PSA_ACCT_ID="$id" PSA_DB="$dir/psa.db" PSA_OWN_DB="$dir/owners.db"
+    # PSA_MERGE_INTO=<account id> (global or per account): this account's subs,
+    # cards, owners and values land in THAT account's databases, so one site
+    # password shows every PSA account. The target itself resolves to its own dir.
+    ddir="$dir"
+    if [ -n "${PSA_MERGE_INTO:-}" ] && [ "$PSA_MERGE_INTO" != "$id" ] && [ -d "$ACCTS/$PSA_MERGE_INTO" ]; then
+      ddir="$ACCTS/$PSA_MERGE_INTO"
+    fi
+    export PSA_ENV_FILE="$envf" PSA_ACCT_ID="$id" PSA_DB="$ddir/psa.db" PSA_OWN_DB="$ddir/owners.db"
 
     alert() {  # $1 = message; uses the layered DISCORD_WEBHOOK, never fatal
       if [ -z "${DISCORD_WEBHOOK:-}" ]; then

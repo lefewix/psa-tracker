@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS subs (
   cert_ids     TEXT,
   first_seen   TEXT,
   updated_at   TEXT,
-  missing_since TEXT
+  missing_since TEXT,
+  acct         TEXT
 );
 CREATE TABLE IF NOT EXISTS status_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +104,8 @@ def db():
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
     for stmt in ("ALTER TABLE cards ADD COLUMN declared_value REAL",
-                 "ALTER TABLE subs ADD COLUMN missing_since TEXT"):
+                 "ALTER TABLE subs ADD COLUMN missing_since TEXT",
+                 "ALTER TABLE subs ADD COLUMN acct TEXT"):
         try:  # migrations for DBs created before these columns existed
             conn.execute(stmt)
             conn.commit()
@@ -618,9 +620,9 @@ def upsert(conn, subs, quiet=()):
         if row is None:
             conn.execute("""INSERT INTO subs (sub_number, order_number, service, status,
                 card_count, destination, arrived, est_start, est_end, shipped, tracking,
-                carrier, grades_ready, on_hold, thumb, cert_ids, first_seen, updated_at)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (s["sub_number"],) + vals + (now, now))
+                carrier, grades_ready, on_hold, thumb, cert_ids, first_seen, updated_at, acct)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (s["sub_number"],) + vals + (now, now, ACCT))
             conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                          (s["sub_number"], s["status"], now))
             note(s["sub_number"],
@@ -643,8 +645,8 @@ def upsert(conn, subs, quiet=()):
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
                 carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?,
-                missing_since=NULL
-                WHERE sub_number=?""", vals + (now, s["sub_number"]))
+                missing_since=NULL, acct=?
+                WHERE sub_number=?""", vals + (now, ACCT, s["sub_number"]))
     conn.commit()
     return changes, touched
 
@@ -697,8 +699,10 @@ def cycle(conn):
         # a sub PSA stopped listing freezes in place - say so once, then stamp it
         # so later scans stay quiet (a sub that comes back clears the stamp)
         seen = {s["sub_number"] for s in subs}
+        # several PSA accounts can feed one db (PSA_MERGE_INTO): only this
+        # account's own subs can be "gone" from this account's list
         gone = [r[0] for r in conn.execute(
-            "SELECT sub_number FROM subs WHERE missing_since IS NULL").fetchall()
+            "SELECT sub_number FROM subs WHERE missing_since IS NULL AND acct=?", (ACCT,)).fetchall()
             if r[0] not in seen and r[0] not in quiet]
         stamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
         for sub in gone:
