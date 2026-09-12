@@ -423,6 +423,10 @@ def main():
                 fails.append("GET /app.js: a broken scan is treated as loaded again")
             if b"replaceChild(d,t)" not in js or b"'No image yet'" not in js:
                 fails.append("GET /app.js: a failed scan no longer shows the placeholder")
+            # Discord at-mention linking is deleted: the bundle every page
+            # downloads carries none of its script (T85)
+            if b"/discord" in js:
+                fails.append("GET /app.js: the Discord linking script still ships")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button
@@ -723,7 +727,14 @@ def main():
                          must_have="<title>Unassigned cards</title>")
             if b"<h1>Unassigned</h1>" not in body:
                 fails.append("GET /cards: no owner is missing the worklist heading")
-            check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
+            body = check("GET /cards?owner=", "/cards?owner=Nobody", (200,), cookie)
+            # --- the Discord linking widget and its endpoint are gone (T85)
+            if b"Link Discord" in body or b'id="dmodal"' in body:
+                fails.append("GET /cards?owner=Nobody: the Discord linking widget "
+                             "is still on the person page")
+            if call(url, "/discord", cookie, {"owner": "Nobody", "id": "1" * 18},
+                    {"Origin": url})[0] != 404:
+                fails.append("POST /discord: the at-mention endpoint still answers")
 
             # --- counts pluralize. One card reads "1 card" on the dashboard
             # row, the sub header, the person header and the group heading, and
@@ -981,7 +992,11 @@ def main():
             oc = sqlite3.connect(os.path.join(base, "accounts", "demo", "owners.db"))
             orphans = oc.execute("SELECT count(*) FROM owners WHERE cert_id=?",
                                  ("undefined",)).fetchone()[0]
+            links = oc.execute("SELECT count(*) FROM sqlite_master WHERE type='table' "
+                               "AND name='discord_links'").fetchone()[0]
             oc.close()
+            if links:
+                fails.append("owners.db: the discord_links table is created again (T85)")
             if orphans:
                 fails.append("POST /owner (cert_id=undefined): the tag was written anyway")
 

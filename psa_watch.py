@@ -561,30 +561,28 @@ def refresh_cards(conn, subs, prev=None, full=False):
     log(f"cards refreshed: {total}" + (f" ({skipped} stable shipped subs skipped)" if skipped else "")
         + (f", {short} sub(s) off PSA's card count" if short else ""))
 
-def discord_mentions(conn, sub_numbers):
-    """Distinct Discord IDs to @-mention: owners whose cards sit in the changed
-    subs and who linked an ID on their person page (owners.db discord_links)."""
+def touched_owners(conn, sub_numbers):
+    """Owner tags on the cards in the changed subs, named in the post so the
+    people in the channel can see whose cards moved (owners.db owners)."""
     subs = [s for s in dict.fromkeys(sub_numbers)]
     if not subs:
         return []
     try:
         oc = sqlite3.connect(OWN_DB)
-        links = {o.lower(): d for o, d in oc.execute(
-            "SELECT owner, discord_id FROM discord_links WHERE discord_id != ''")}
         owners = {str(c): o for c, o in oc.execute(
-            "SELECT cert_id, owner FROM owners WHERE owner != ''")} if links else {}
+            "SELECT cert_id, owner FROM owners WHERE owner != ''")}
         oc.close()
     except sqlite3.Error:
         return []
-    if not links:
+    if not owners:
         return []
-    ids = []
+    names = []
     q = ",".join("?" * len(subs))
     for (cid,) in conn.execute(f"SELECT cert_id FROM cards WHERE sub_number IN ({q})", subs):
-        did = links.get(owners.get(str(cid), "").lower())
-        if did and did not in ids:
-            ids.append(did)
-    return ids
+        o = owners.get(str(cid))
+        if o and o not in names:
+            names.append(o)
+    return names
 
 def archived_subs():
     """Sub numbers archived on the site (app.py owns owners.db). An archived sub is
@@ -721,14 +719,14 @@ def cycle(conn):
         changes = []
     refresh_cards(conn, subs, prev, full="--full" in sys.argv)
     # post after refresh_cards: a first-seen sub only has its cards rows by now,
-    # so discord_mentions can resolve its owner on the same run
+    # so touched_owners can resolve its owner on the same run
     if changes:
         msg = "**PSA update**\n" + "\n".join(changes)
         if SITE_URL:
             msg += f"\n{SITE_URL}"
-        ids = discord_mentions(conn, touched)
-        if ids:
-            msg += "\n" + " ".join(f"<@{i}>" for i in ids)
+        names = touched_owners(conn, touched)
+        if names:
+            msg += f"\n{'Owners' if len(names) > 1 else 'Owner'}: " + ", ".join(names)
         psa_common.notify(WEBHOOK, msg, log)
     return 0
 

@@ -577,97 +577,9 @@ def own_conn(a):
         if a["own_db"] not in _OWN_READY:
             c.execute("CREATE TABLE IF NOT EXISTS owners (cert_id TEXT PRIMARY KEY, owner TEXT, updated_at TEXT)")
             c.execute("CREATE TABLE IF NOT EXISTS archived (sub_number TEXT PRIMARY KEY, archived_at TEXT)")
-            # discord_links: owner tag -> Discord user ID for @-mention pings (psa_watch
-            # reads it in notify()). IDs are WRITE-ONLY through the site - no endpoint
-            # ever returns one; the UI only reflects linked yes/no.
-            c.execute("CREATE TABLE IF NOT EXISTS discord_links (owner TEXT COLLATE NOCASE PRIMARY KEY, "
-                      "discord_id TEXT, updated_at TEXT)")
             c.commit()
             _OWN_READY.add(a["own_db"])
     return c
-
-DISCORD_ID_RE = re.compile(r"^\d{17,20}$")
-
-def discord_linked(a, owner):
-    c = own_conn(a)
-    r = c.execute("SELECT 1 FROM discord_links WHERE owner=? AND discord_id != ''",
-                  (owner,)).fetchone()
-    c.close()
-    return bool(r)
-
-def set_discord(a, owner, discord_id):
-    """Set (or clear, with '') the Discord ID for an owner tag."""
-    c = own_conn(a)
-    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    if discord_id:
-        c.execute("""INSERT INTO discord_links (owner, discord_id, updated_at) VALUES (?,?,?)
-                     ON CONFLICT(owner) DO UPDATE SET discord_id=excluded.discord_id,
-                     updated_at=excluded.updated_at""", (owner, discord_id, now))
-    else:
-        c.execute("DELETE FROM discord_links WHERE owner=?", (owner,))
-    c.commit()
-    c.close()
-
-def discord_widget(a, owner):
-    """Small button under the person's name; opens a popout with the Discord
-    linking UI. The saved ID is never rendered - only the on/off state."""
-    linked = discord_linked(a, owner)
-    btn = ('<button type="button" class="f dbtn" id="dopen">'
-           + ("Discord pings: on" if linked else "Link Discord") + "</button>")
-    if linked:
-        inner = (f'<div class="srow" style="margin-top:16px"><span class="dstate">Discord pings on</span>'
-                 f'<button type="button" class="sbtn sdel f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button></div>'
-                 f'<div class="dhint">You’ll be @-mentioned in the site’s Discord channel '
-                 f'when a submission with your cards updates.</div>')
-    else:
-        inner = (f'<div class="srow" style="margin-top:16px">'
-                 f'<input type="password" id="did" placeholder="Discord user ID" '
-                 f'aria-label="Discord user ID" '
-                 f'autocomplete="off" inputmode="numeric" maxlength="20">'
-                 f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Enable</button></div>'
-                 f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a submission with '
-                 f'your cards updates. Discord: Settings &rarr; Advanced &rarr; Developer Mode, then '
-                 f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
-    return (btn + f'<div class="smodal" id="dmodal" role="dialog" aria-modal="true" '
-                  f'aria-labelledby="dmtitle"><div class="card sblock">'
-                  f'<button type="button" class="sclose" id="dclose" aria-label="Close">{ICON_X}</button>'
-                  f'<h2 class="stitle" id="dmtitle">Discord pings</h2>{inner}</div></div>')
-
-DISCORD_JS = """<script>
-(function(){
-  var dm=document.getElementById('dmodal'),db=document.getElementById('dopen');
-  if(db&&dm){
-    db.addEventListener('click',function(){dm.classList.add('on');
-      // focus after the sheet is visible - a hidden field can't take focus
-      var f=document.getElementById('did');
-      if(f)requestAnimationFrame(function(){f.focus();});});
-    document.getElementById('dclose').addEventListener('click',function(){dm.classList.remove('on');});
-    dm.addEventListener('click',function(e){if(e.target===dm)dm.classList.remove('on');});
-    document.addEventListener('keydown',function(e){if(e.key==='Escape')dm.classList.remove('on');});
-  }
-  function post(owner,id,done){
-    fetch('/discord',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'owner='+encodeURIComponent(owner)+'&id='+encodeURIComponent(id)})
-      .then(function(r){done(r.ok);});
-  }
-  function derr(msg){
-    var f=document.getElementById('did'),h=document.querySelector('#dmodal .dhint');
-    f.classList.add('errsave');
-    if(h)h.textContent=msg;  // words, not just a red underline
-  }
-  var link=document.getElementById('dlink');
-  if(link)link.addEventListener('click',function(){
-    var v=(document.getElementById('did').value||'').trim();
-    if(!/^\\d{17,20}$/.test(v)){derr('That doesn’t look like a Discord user ID. It’s a 17\\u201320 digit number.');return;}
-    post(link.dataset.owner,v,function(ok){if(ok)location.reload();
-      else derr('Couldn’t save the ID, try again.');});
-  });
-  var un=document.getElementById('dunlink');
-  if(un)un.addEventListener('click',function(){
-    post(un.dataset.owner,'',function(ok){if(ok)location.reload();});
-  });
-})();
-</script>"""
 
 def archived_set(a):
     c = own_conn(a)
@@ -1427,11 +1339,6 @@ button:disabled{opacity:.5;cursor:default}
  transition:background .18s,opacity .18s,filter .18s,transform .25s cubic-bezier(.23,1,.32,1)}
 .sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:15px;cursor:pointer;
  width:auto;margin:-10px -12px;padding:12px 18px;transition:color .15s,background-color .15s}
-.dbtn{width:auto;margin:-1px -8px -11px;padding:11px 8px;background:transparent;color:var(--ac-pale);
- font-size:14px;font-weight:500}
-.dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
-.dstate{font-size:14px;font-weight:500;color:var(--txt);flex:1}
-.dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
 /* no wash on an archived card: the .5 dim put its text at 2.0 to 3.4 on white (1.4.3). "Past"
    is grayscale alone; the ink keeps its 4.5. */
@@ -1480,7 +1387,7 @@ button:disabled{opacity:.5;cursor:default}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
-.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
+.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
 /* text actions keep the invisible hit box but hover never paints it - the slab hung over the
    stage bar. Hover is the colour deepen; the View pill is the exception, it is a visible
    capsule. */
@@ -3153,7 +3060,7 @@ def _script_body(tagged):
 
 APP_JS = "\n".join(_script_body(s) for s in (
     FX_JS, SORT_JS, SEARCH_JS, OWNER_JS, ARCH_JS, ARCHFOLD_JS,
-    BACK_JS, DISCORD_JS, LIGHTBOX_JS, THEME_JS))
+    BACK_JS, LIGHTBOX_JS, THEME_JS))
 _ASSET_V = hashlib.sha256((CSS + APP_JS).encode()).hexdigest()[:12]
 
 
@@ -3598,7 +3505,7 @@ def people_page(a, owner):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 {back}
 <div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
-<div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
+<div class="sub">{html.escape(sub_line)}</div></div>{est}</div>
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {archpill}
 {grid}
@@ -3698,7 +3605,7 @@ def customer_page(a, email):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="hrow" style="margin-top:14px"><div><div class="brand">{logo_tag()}<h1>Your cards</h1></div>
-<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
+<div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div></div>
 <div class="synced custrow"><div class="custout">Last synced<b>{html.escape(stamp)}</b></div>
 <a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 <div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
@@ -4161,21 +4068,6 @@ class H(BaseHTTPRequestHandler):
             on = (form.get("on") or [""])[0] in ("1", "true", "on")
             if sub:
                 set_archived(acct, sub, on)
-            return self.send(204, "", "text/plain")
-        if path == "/discord":
-            got = self.authed()
-            if not got:
-                return self.send(403, "auth", "text/plain")
-            acct, cust = got
-            n = int(self.headers.get("Content-Length", "0") or 0)
-            form = urllib.parse.parse_qs(self.rfile.read(min(n, 1024)).decode("utf-8", "replace"))
-            owner = (form.get("owner") or [""])[0].strip()
-            did = (form.get("id") or [""])[0].strip()
-            if cust and owner.lower() != cust:  # customers manage only their own tag
-                return self.send(403, "auth", "text/plain")
-            if not owner or len(owner) > 80 or (did and not DISCORD_ID_RE.fullmatch(did)):
-                return self.send(400, "bad request", "text/plain")
-            set_discord(acct, owner, did)
             return self.send(204, "", "text/plain")
         if path == "/setup":
             allowed, retry = setup_state()
