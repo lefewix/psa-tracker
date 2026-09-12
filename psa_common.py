@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Helpers shared by app.py and the three scraper scripts: tagged logging,
 Discord pings, env-file edits. Stdlib only, like the rest of the tracker."""
-import json, os, shlex, urllib.error, urllib.request
+import json, os, shlex, urllib.error, urllib.request, uuid
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
@@ -29,18 +29,37 @@ def split_message(text, limit=1900):
     return parts
 
 
-def notify(webhook, text, log=print):
-    """Post to a Discord webhook. Never fatal: a dead webhook must not take a
-    scan or a login down with it. Cloudflare 403s a missing User-Agent and
-    Discord 404s a deleted webhook, so a non 2xx reply is logged with its body."""
+def _multipart(payload, files):
+    """Discord webhook upload: payload_json + files[n], one boundary."""
+    b = uuid.uuid4().hex
+    out = (f"--{b}\r\nContent-Disposition: form-data; name=\"payload_json\"\r\n"
+           f"Content-Type: application/json\r\n\r\n{json.dumps(payload)}\r\n").encode()
+    for i, (name, data) in enumerate(files):
+        out += (f"--{b}\r\nContent-Disposition: form-data; name=\"files[{i}]\"; "
+                f"filename=\"{name}\"\r\nContent-Type: image/png\r\n\r\n").encode() + data + b"\r\n"
+    out += f"--{b}--\r\n".encode()
+    return out, f"multipart/form-data; boundary={b}"
+
+
+def notify(webhook, text, log=print, files=()):
+    """Post to a Discord webhook, optionally with PNG attachments on the first
+    part (Discord takes up to 10 files per message). Never fatal: a dead webhook
+    must not take a scan or a login down with it. Cloudflare 403s a missing
+    User-Agent and Discord 404s a deleted webhook, so a non 2xx reply is logged
+    with its body."""
     if not webhook:
         return
+    files = list(files)[:10]
     for part in split_message(text):
         try:
-            req = urllib.request.Request(webhook, data=json.dumps({"content": part}).encode(),
-                                         headers={"Content-Type": "application/json",
-                                                  "User-Agent": UA})
-            urllib.request.urlopen(req, timeout=15).read()
+            if files:
+                data, ctype = _multipart({"content": part}, files)
+                files = []  # attachments ride the first part only
+            else:
+                data, ctype = json.dumps({"content": part}).encode(), "application/json"
+            req = urllib.request.Request(webhook, data=data,
+                                         headers={"Content-Type": ctype, "User-Agent": UA})
+            urllib.request.urlopen(req, timeout=30).read()
         except urllib.error.HTTPError as e:
             log(f"webhook returned {e.code}: {e.read(400).decode('utf-8', 'replace').strip()}")
         except Exception as e:

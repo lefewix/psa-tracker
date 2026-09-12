@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """psa-watch: poll PSA orders page, upsert sub statuses into SQLite."""
-import base64, json, os, re, sqlite3, sys, time, urllib.parse
+import base64, json, os, re, sqlite3, subprocess, sys, time, urllib.parse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from curl_cffi import requests as creq  # Chrome TLS impersonation; PSA is behind Cloudflare bot mgmt
@@ -729,8 +729,30 @@ def cycle(conn):
         ids = discord_mentions(conn, touched)
         if ids:
             msg += "\n" + " ".join(f"<@{i}>" for i in ids)
-        psa_common.notify(WEBHOOK, msg, log)
+        psa_common.notify(WEBHOOK, msg, log, files=card_shots(touched))
     return 0
+
+def card_shots(subs):
+    """The dashboard card of each mentioned sub as a PNG, rendered by
+    psa_shot.py against the site on this box (the owner, 2026-09-12: the post
+    should look like the site, not a stack of embeds). A failed render is
+    logged and skipped; the text still goes out."""
+    shots, here = [], os.path.dirname(os.path.abspath(__file__))
+    for n in list(dict.fromkeys(subs))[:10]:
+        out = f"/tmp/psa-shot-{n}.png"
+        try:
+            r = subprocess.run([sys.executable, os.path.join(here, "psa_shot.py"), n, out],
+                               capture_output=True, text=True, timeout=90)
+            if r.returncode == 0 and os.path.exists(out):
+                shots.append((f"sub-{n}.png", open(out, "rb").read()))
+            else:
+                log(f"card shot for #{n} failed: {(r.stderr or r.stdout).strip().splitlines()[-1:] or r.returncode}")
+        except Exception as e:
+            log(f"card shot for #{n} failed: {e}")
+        finally:
+            try: os.remove(out)
+            except OSError: pass
+    return shots
 
 def main():
     sys.exit(cycle(db()))
