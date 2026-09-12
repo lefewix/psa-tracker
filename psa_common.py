@@ -7,9 +7,16 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
 
+# The last line any logger printed. psa_login reports it as the failure cause
+# when it has nothing more specific to say (T105).
+LAST_LINE = ""
+
+
 def log(prefix):
     """Return a logger that tags each line, e.g. log(f"psa-values:{ACCT}")."""
     def _log(msg):
+        global LAST_LINE
+        LAST_LINE = str(msg)
         print(f"[{prefix}] {msg}", flush=True)
     return _log
 
@@ -91,3 +98,20 @@ def env_set(path, updates):
     with os.fdopen(fd, "w") as f:
         f.write("\n".join(out) + "\n")
     os.replace(tmp, path)
+
+
+def set_error(text):
+    """One line saying why this account's scan or login just failed, into
+    `<account dir>/.last_error` (the account dir is PSA_ENV_FILE's parent, which
+    run_scan.sh exports). run_scan.sh puts that line in its Discord alert and
+    deletes the file after a scan that returns 0; app.py serves it in hub.json
+    and on the dashboard banner. Never fatal, and a no-op outside run_scan."""
+    env = os.environ.get("PSA_ENV_FILE", "")
+    if not env:
+        return
+    try:
+        path = os.path.join(os.path.dirname(os.path.abspath(env)), ".last_error")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(" ".join(str(text).split())[:300] + "\n")
+    except OSError as e:
+        print(f"[psa] could not write .last_error: {e}", flush=True)

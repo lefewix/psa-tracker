@@ -1130,6 +1130,24 @@ def main():
                   headers={"X-Hub-Key": HUB_KEY}, must_have='"subs"')
             check("GET /api/hub.json (bad header key)", "/api/hub.json", (404,),
                   headers={"X-Hub-Key": "nope"})
+
+            # --- the hub alerts off the per-account health block, so it has
+            # to carry every account and the cause line run_scan's scripts
+            # write into .last_error (T105)
+            errf = os.path.join(base, "accounts", "demo", ".last_error")
+            with open(errf, "w", encoding="utf-8") as f:
+                f.write("cookie expired: PSA answered the sign-in page\n")
+            hb = check("GET /api/hub.json (accounts)", hub, (200,),
+                       must_have='"accounts"')
+            try:
+                row = (json.loads(hb or b"{}").get("accounts") or {}).get("demo")
+            except ValueError:
+                row = None
+            if not row:
+                fails.append("GET /api/hub.json: no accounts entry for demo")
+            elif "cookie expired" not in (row.get("error") or ""):
+                fails.append(f"GET /api/hub.json: demo carries no .last_error ({row!r})")
+            os.remove(errf)
             if HUB_KEY in open(logpath, encoding="utf-8", errors="replace").read():
                 fails.append("log: /api/hub.json logged the key")
 

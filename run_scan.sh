@@ -14,11 +14,14 @@
 # in, and an account sitting at otp.needed without otp.armed never does - PSA is
 # waiting on an SMS code no login can supply.
 #
-# Failure alerting (2026-07-22): a run whose scan ends non-zero bumps
-# $dir/.scan_fails; at PSA_ALERT_AFTER consecutive failures (default 3) the
-# account's Discord webhook gets a warning ping, repeated every 24 runs while it
-# stays broken, and one recovery ping when scans come back. A broken PSA login
-# page no longer fails silently.
+# Failure alerting (2026-07-22, cause + cadence 2026-09-12): a run whose scan
+# ends non-zero bumps $dir/.scan_fails; at PSA_ALERT_AFTER consecutive failures
+# (default 2, so ~20-45 min of silence) the account's Discord webhook gets a
+# warning ping, repeated every 12 runs (~3 h) while it stays broken, and one
+# recovery ping when scans come back. Whoever failed writes one line of cause to
+# $dir/.last_error (psa_common.set_error) - the ping quotes it and maps it to one
+# instruction, and a scan that returns 0 deletes it. app.py serves the same three
+# files as hub.json's "accounts" block, which is what the hub alerts on.
 #
 # Time budget (2026-09-10): every browser/scan call runs under `timeout`, so one
 # hung account cannot eat the whole run. Login 600s (900s while otp.armed - the
@@ -125,13 +128,14 @@ PYEOF
       fi
     fi
 
-    # consecutive-failure counter -> warning ping, then daily, one recovery ping
+    # consecutive-failure counter -> warning ping, then every 12 runs, one recovery ping
     FAILF="$dir/.scan_fails"
     if [ "$rc" = 0 ]; then
       date -Is > "$dir/.last_ok"   # the dashboard warns when this goes stale
+      rm -f "$dir/.last_error"     # the cause died with the failure
       if [ -f "$FAILF" ]; then
         n=$(cat "$FAILF" 2>/dev/null || echo 0)
-        [ "$n" -ge "${PSA_ALERT_AFTER:-3}" ] 2>/dev/null && \
+        [ "$n" -ge "${PSA_ALERT_AFTER:-2}" ] 2>/dev/null && \
           alert "✅ psa-tracker [$id]: scans recovered after $n failed runs."
         rm -f "$FAILF"
       fi
@@ -139,10 +143,22 @@ PYEOF
       n=$(( $(cat "$FAILF" 2>/dev/null || echo 0) + 1 ))
       echo "$n" > "$FAILF"
       echo "[run_scan] $id: scan failed (rc=$rc), consecutive failures: $n"
-      after=${PSA_ALERT_AFTER:-3}
-      # at the threshold, then once a day after it: a stuck account keeps pinging
-      if [ "$n" -ge "$after" ] 2>/dev/null && [ $(( (n - after) % 24 )) -eq 0 ]; then
-        alert "⚠️ psa-tracker [$id]: $n scans in a row have failed (rc=$rc). Check: journalctl -u psa-scan · screenshots in login_debug/."
+      after=${PSA_ALERT_AFTER:-2}
+      # at the threshold, then every 12 runs (~3 h): a stuck account keeps pinging
+      if [ "$n" -ge "$after" ] 2>/dev/null && [ $(( (n - after) % 12 )) -eq 0 ]; then
+        # the owner, 2026-09-12: the ping has to say what broke and what he does
+        # about it, not just an exit code. The cause line is written by whoever
+        # failed; rc is all we have if nobody wrote one.
+        cause=$(head -n 1 "$dir/.last_error" 2>/dev/null | cut -c1-300)
+        [ -n "$cause" ] || cause="unknown, rc=$rc"
+        case "$cause" in
+          "cookie expired"*) todo="the next login hour retries; if it keeps failing save the PSA password again in Settings" ;;
+          *"SMS code"*)      todo="Settings, Verification code, Send code" ;;
+          "PSA unreachable"*) todo="PSA is down or blocking; nothing to do yet" ;;
+          "login failed"*)   todo="check login_debug/ on the server" ;;
+          *)                 todo="check journalctl -u psa-scan on the server" ;;
+        esac
+        alert "⚠️ psa-tracker [$id]: $n scans failed in a row. Cause: $cause. What to do: $todo"
       fi
     fi
 

@@ -3260,6 +3260,18 @@ def scan_stale_hours(a):
         return None
     return (time.time() - seen) / 3600
 
+def scan_error(a):
+    """The one line whoever failed last wrote to accounts/<id>/.last_error, or "".
+    psa_common.set_error writes it (psa_watch on a dead cookie or an unreachable
+    PSA, psa_login on a failed sign-in) and run_scan.sh deletes it after a scan
+    that returned 0, so it is this account's current cause and never an old one."""
+    try:
+        with open(os.path.join(ACCOUNTS_DIR, a["id"], ".last_error"),
+                  encoding="utf-8", errors="replace") as f:
+            return f.readline().strip()[:300]
+    except OSError:
+        return ""
+
 def dash_page(a, subs):
     arch = archived_set(a)
     active = [s for s in subs if s["sub_number"] not in arch]
@@ -3309,9 +3321,13 @@ def dash_page(a, subs):
         # and the statuses below are older than they look
         stale = scan_stale_hours(a)
         if stale is not None and stale >= 6:
-            hint = ('<div class="hint" role="status">Not connecting to PSA. The last '
-                    f'successful sync was {int(stale)} hours ago, so these statuses '
-                    'may be behind.</div>') + hint
+            # "why" is the scripts' own line, not free text, but it carries an
+            # exception string, so it is escaped like anything else (T105)
+            why = scan_error(a)
+            hint = ('<div class="hint" role="status">Not connecting to PSA since '
+                    f'{int(stale)} hours ago'
+                    + (f': {html.escape(why)}.' if why else '.')
+                    + ' These statuses may be behind.</div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
@@ -4021,7 +4037,24 @@ class H(BaseHTTPRequestHandler):
             traceback.print_exc()
             return self.send(503, '{"error":"unavailable"}',
                              "application/json; charset=utf-8")
-        return self.send(200, json.dumps({"subs": subs}),
+        # Per-account scan health, the three files run_scan.sh keeps. Feeders
+        # are here too: a feeder scans on its own cookie, so it breaks alone and
+        # the hub has to be able to say which account went dark (T105).
+        accounts = {}
+        for a in load_accounts().values():
+            d = os.path.join(ACCOUNTS_DIR, a["id"])
+            try:
+                ok = datetime.fromtimestamp(
+                    os.stat(os.path.join(d, ".last_ok")).st_mtime,
+                    timezone.utc).isoformat(timespec="seconds")
+            except OSError:
+                ok = None
+            try:
+                fails = int(open(os.path.join(d, ".scan_fails")).read().strip() or 0)
+            except (OSError, ValueError):
+                fails = 0
+            accounts[a["id"]] = {"last_ok": ok, "fails": fails, "error": scan_error(a)}
+        return self.send(200, json.dumps({"subs": subs, "accounts": accounts}),
                          "application/json; charset=utf-8")
 
     def send_response(self, *a, **kw):

@@ -653,6 +653,8 @@ def cycle(conn):
     # exit codes: 0 ok, 3 cookie-dead (a JSON answer with no subs in it), 4 not
     # a cookie problem (transport error, non-JSON body, changed payload shape).
     # run_scan only spends a browser login on 3.
+    # Every non-zero exit also writes the human cause to the account's
+    # .last_error, which is what run_scan's alert and hub.json say out loud (T105).
     # one retry on the orders.list fetch - a transient blip otherwise loses a
     # whole scan window (we only run twice a day now)
     ctype = body = ""
@@ -669,23 +671,29 @@ def cycle(conn):
                 time.sleep(5)
     if err is not None:
         log("orders.list unreachable -- transport failure, not a dead cookie")
+        psa_common.set_error(f"PSA unreachable: {err}")
         return 4
     if body.lstrip()[:1] not in ("[", "{"):
         low = body.lower()
         if "login" in low[:4000] and "password" in low:
             log("orders.list answered a login page -- cookie expired/invalid")
+            psa_common.set_error("cookie expired: PSA answered the sign-in page")
             return 3
         log(f"orders.list answered {len(body)} non-JSON bytes (content-type {ctype!r}) "
             "-- blocked or erroring upstream, not a dead cookie")
+        psa_common.set_error(f"PSA unreachable: {len(body)} non-JSON bytes, "
+                             f"content-type {ctype or 'none'}")
         return 4
     subs = parse(ctype, body)
     if not subs:
         log("parsed 0 subs -- parser needs adjusting or cookie expired")
+        psa_common.set_error("cookie expired: PSA listed no submissions at all")
         return 3
     blank = [s for s in subs if not s["status"]]
     if len(blank) * 2 > len(subs):
         log(f"{len(blank)} of {len(subs)} subs parsed with no status -- "
             "PSA payload shape changed; writing nothing")
+        psa_common.set_error("PSA payload changed shape")
         return 4
     # statuses BEFORE this scan's upsert - used to skip detail-fetching subs that
     # were already Shipped last time (their cards can no longer change)

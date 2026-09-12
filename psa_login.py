@@ -44,6 +44,10 @@ DEBUG_DIR = "/opt/psa-tracker/login_debug"
 
 
 log = psa_common.log(f"psa-login:{ACCT}")
+# run_scan's alert prints .last_error, so a login that dies has to say why in
+# one line (T105): CAUSE when the run knows better, otherwise psa_common's last
+# logged line.
+CAUSE = ""
 
 
 def has_tokens(ctx):
@@ -61,6 +65,8 @@ def mfa_flow(page, ctx):
             psa_common.notify(WEBHOOK, f"🔐 psa-tracker [{ACCT}]: PSA wants a verification code for this "
                               "account. Settings → Verification code → Send code, then enter the code it texts.")
         log("MFA screen and not armed - skipping (arm it from Settings)")
+        global CAUSE
+        CAUSE = "login needs an SMS code: arm one in Settings"
         return False
     for name in ("code", "waiting"):
         try: os.remove(marker(name))
@@ -152,6 +158,14 @@ def do_login():
             log("opening PSA (redirects to sign-in)…")
             page.goto(START_URL, wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(2500)  # let SPA + any CF check settle
+            # Cloudflare's interstitial keeps its own title; cheap to read, and
+            # it explains a run that then fails with no form to fill (T105)
+            global CAUSE
+            try:
+                if "just a moment" in (page.title() or "").lower():
+                    CAUSE = "Cloudflare challenge on sign-in"
+            except Exception:
+                pass
             # A saved profile may still hold a live session. Cookie NAMES are not
             # proof: on 2026-09-11 flx carried accessToken/refreshToken that PSA
             # no longer honoured and every "valid" harvest scanned 0 subs for a
@@ -260,4 +274,7 @@ def do_login():
 
 
 if __name__ == "__main__":
-    sys.exit(do_login())
+    rc = do_login()
+    if rc:  # run_scan alerts with this line, so say why in words
+        psa_common.set_error(CAUSE or f"login failed: {psa_common.LAST_LINE}")
+    sys.exit(rc)
