@@ -30,6 +30,12 @@ WEBHOOK = os.environ.get("DISCORD_WEBHOOK", "")
 # Persistent Chromium profile per account: PSA (Descope) trusts a device after one
 # verification code, so keeping the profile means the code is asked once, not
 # every run. Lives outside accounts/ so backup.sh doesn't tar ~100MB of cache.
+# The device trust IS a cookie - Descope's DFN-* on .collectors.com, ~48h - so
+# this script must never clear the jar. It used to: a 2.5s settle after goto()
+# read a still-loading SPA as "stale tokens" and called ctx.clear_cookies(),
+# which deleted DFN-* too, so the next password login hit the SMS screen and the
+# account blocked itself when its 24h token expired (2026-09-12 branavan, fixed
+# 2026-09-13). "Device trust doesn't stick" was us deleting it.
 PROFILE_DIR = os.path.join("/opt/psa-tracker/.profiles", ACCT)
 # OTP hand-off markers, beside account.env (app.py's Settings page reads/writes
 # them): otp.needed = login hit the code screen while unarmed; otp.armed = the owner
@@ -169,16 +175,26 @@ def do_login():
             # A saved profile may still hold a live session. Cookie NAMES are not
             # proof: on 2026-09-11 flx carried accessToken/refreshToken that PSA
             # no longer honoured and every "valid" harvest scanned 0 subs for a
-            # day. The sign-in form on screen is the truth.
+            # day. The sign-in form on screen is the truth - but only once the
+            # SPA has finished landing, so wait for it instead of guessing
+            # (2026-09-13: a 2.5s guess read a LIVE session as stale and wiped
+            # the cookie jar, taking Descope's device trust with it).
             email_sel = ("input[type='email'], input[name='email'], input[name='username'], "
                          "input[autocomplete='username']")
-            at_signin = "signin" in page.url or page.query_selector(email_sel) is not None
-            got = has_tokens(ctx) and not at_signin
+            got = False
+            if has_tokens(ctx):
+                deadline = time.time() + 20
+                while time.time() < deadline:
+                    if "signin" not in page.url and page.query_selector(email_sel) is None:
+                        got = True
+                        break
+                    page.wait_for_timeout(1000)
             if got:
                 log("session still valid in the saved profile - no sign-in needed")
-            elif at_signin and has_tokens(ctx):
-                log("saved profile has stale tokens - PSA shows the sign-in form; clearing them")
-                ctx.clear_cookies()
+            elif has_tokens(ctx):
+                # Stale tokens do not block the form, and NEVER clear_cookies():
+                # that also deletes the DFN-* device-trust cookies and forces MFA.
+                log("saved profile has stale tokens - PSA shows the sign-in form; signing in again")
         except Exception as e:
             log(f"ERROR: {e}"); ctx.close(); return 1
         try:
