@@ -127,8 +127,12 @@ def fetch(url):
         "sec-fetch-mode": "cors",
         "sec-fetch-dest": "empty",
     }
-    r = creq.get(url, headers=headers, impersonate="chrome", timeout=30)
-    return r.headers.get("content-type", ""), r.text
+    # no redirect following: PSA answers a dead accessToken with a 307 to the same
+    # URL (the SPA is meant to refresh in JS), which otherwise looks like a
+    # transport failure after 30 hops instead of the expired cookie it is (T106)
+    r = creq.get(url, headers=headers, impersonate="chrome", timeout=30,
+                 allow_redirects=False)
+    return r.status_code, r.headers.get("content-type", ""), r.text
 
 # set by parse when PSA's payload is truncated; drained into the change list by
 # cycle. A truncated page also hides subs, so cycle skips the missing check then.
@@ -324,11 +328,11 @@ def parse_spec_images(body):
 def fetch_spec_lines(sub_number):
     """Submission 'complete' page -> [{line_number, spec_id, name, front, back}], or [].
     Shared by the prelim-card path and the image-backfill path."""
-    _, body = fetch(completed_url(sub_number))
+    _, _, body = fetch(completed_url(sub_number))
     lines = parse_completed_lines(body)
     if not lines:
         return []
-    _, ibody = fetch(images_url([l["spec_id"] for l in lines]))
+    _, _, ibody = fetch(images_url([l["spec_id"] for l in lines]))
     imgs = parse_spec_images(ibody)
     out = []
     for l in lines:
@@ -515,7 +519,7 @@ def refresh_cards(conn, subs, prev=None, full=False):
         try:
             cards = []
             if has_certs:
-                _, body = fetch(detail_url(sub))
+                _, _, body = fetch(detail_url(sub))
                 cards = parse_detail(sub, body)
                 # orders.get knows nothing about declared values - carry the ones we
                 # already learned forward by line number so we don't re-hit the spec
@@ -657,11 +661,12 @@ def cycle(conn):
     # .last_error, which is what run_scan's alert and hub.json say out loud (T105).
     # one retry on the orders.list fetch - a transient blip otherwise loses a
     # whole scan window (we only run twice a day now)
+    status = 0
     ctype = body = ""
     err = None
     for attempt in (1, 2):
         try:
-            ctype, body = fetch(build_url())
+            status, ctype, body = fetch(build_url())
             err = None
             break
         except Exception as e:
@@ -673,6 +678,10 @@ def cycle(conn):
         log("orders.list unreachable -- transport failure, not a dead cookie")
         psa_common.set_error(f"PSA unreachable: {err}")
         return 4
+    if 300 <= status < 400:
+        log(f"orders.list redirected (HTTP {status}) -- cookie expired")
+        psa_common.set_error("cookie expired: PSA redirected orders.list")
+        return 3
     if body.lstrip()[:1] not in ("[", "{"):
         low = body.lower()
         if "login" in low[:4000] and "password" in low:
