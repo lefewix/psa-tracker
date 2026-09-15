@@ -333,7 +333,7 @@ def smart_title(name):
 
 # ---------- accounts ----------
 
-DEFAULT_PRICES = [("regular", 109.0), ("value max", 89.99), ("bulk", 34.99), ("value", 45.99)]
+DEFAULT_PRICES = [("regular", 109.0), ("value max", 89.99), ("bulk", 34.99), ("value", 45.99), ("express", 279.0)]
 
 def read_env_file(path):
     """Parse a shell-style KEY=VALUE env file (handles quoting via shlex)."""
