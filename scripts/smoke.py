@@ -1160,6 +1160,18 @@ def main():
             check("GET /api/hub.json (bad header key)", "/api/hub.json", (404,),
                   headers={"X-Hub-Key": "nope"})
 
+            # --- the card PNG the hub fetches on a change (T107). Same gate
+            # as hub.json, so no key is a 404 and an unknown sub is a 404. On a
+            # known sub the handler shells out to psa_shot.py, which imports
+            # playwright: absent here, so the expected smoke answer is 503
+            # "render failed" (a 200 PNG means the renderer happened to work).
+            # Either way it must answer, not crash or hang.
+            check("GET /api/shot (no key)", "/api/shot/14900003.png", (404,))
+            check("GET /api/shot (bogus sub)", "/api/shot/14999999.png", (404,),
+                  headers={"X-Hub-Key": HUB_KEY})
+            check("GET /api/shot (known sub)", "/api/shot/14900003.png", (200, 503),
+                  headers={"X-Hub-Key": HUB_KEY})
+
             # --- the hub alerts off the per-account health block, so it has
             # to carry every account and the cause line run_scan's scripts
             # write into .last_error (T105)

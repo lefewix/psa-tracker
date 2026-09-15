@@ -12,7 +12,7 @@ invisible by design. Site passwords must therefore be unique across accounts.
 Config: every environment key this file reads, global (systemd EnvironmentFile)
 and per-account (account.env), is listed with its default in deploy/example.env.
 """
-import base64, csv, gzip, hashlib, hmac, html, io, json, os, re, shlex, sqlite3, subprocess, threading, time, traceback
+import base64, csv, gzip, hashlib, hmac, html, io, json, os, re, shlex, sqlite3, subprocess, sys, tempfile, threading, time, traceback
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -4034,16 +4034,63 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
-    def serve_hub_summary(self, query):
-        # Read-only submissions summary for a personal dashboard. Gated on PSA_HUB_KEY
-        # (unset = feature off, 404): the URL is public via Cloudflare, the key
-        # only lives in the two boxes' env files. The key rides X-Hub-Key; the
-        # query form stays for one release so the server can be updated without an
-        # outage, and it is redacted from the log (see log_message).
+    def hub_key_ok(self, query):
+        """Gate for the hub's LAN endpoints. PSA_HUB_KEY unset = feature off
+        (every caller gets a 404): the URL is public via Cloudflare, the key only
+        lives in the two boxes' env files. The key rides X-Hub-Key; the query
+        form stays for one release so the server can be updated without an outage, and
+        it is redacted from the log (see log_message)."""
         key = os.environ.get("PSA_HUB_KEY", "")
         got = (self.headers.get("X-Hub-Key", "").strip()
                or urllib.parse.parse_qs(query).get("key", [""])[0])
-        if not key or not hmac.compare_digest(got.encode(), key.encode()):
+        return bool(key) and hmac.compare_digest(got.encode(), key.encode())
+
+    def serve_card_shot(self, sub, query):
+        """GET /api/shot/<sub>.png -> the dashboard card of that submission as a
+        PNG, the same render psa_watch attaches to its Discord posts. The hub
+        (the server) fetches it when a submission changes, so one call per change: the
+        subprocess takes 5 to 15 s and blocks this handler thread meanwhile,
+        which is fine (the 30 s handler timeout only covers idle socket reads, it
+        does not run while we work). psa_shot imports playwright, which app.py
+        must never load, so it is a subprocess and never an import."""
+        if not self.hub_key_ok(query):
+            return self.send(404, "not found", "text/plain")
+        acct = next((a for a in load_accounts().values()
+                     if not a.get("feeder") and load_sub(a, sub)), None)
+        if not acct:
+            return self.send(404, "no such submission", "text/plain")
+        env = dict(os.environ, PSA_ACCT_ID=acct["id"],
+                   PLAYWRIGHT_BROWSERS_PATH="/opt/psa-tracker/.pw-browsers")
+        env.setdefault("PSA_WEB_PORT", str(PORT))
+        fd, out = tempfile.mkstemp(suffix=".png", prefix="psa-shot-")
+        os.close(fd)
+        try:
+            here = os.path.dirname(os.path.abspath(__file__))
+            r = subprocess.run([sys.executable, os.path.join(here, "psa_shot.py"), sub, out],
+                               capture_output=True, text=True, timeout=90, env=env)
+            data = open(out, "rb").read() if r.returncode == 0 else b""
+            if not data:
+                print(f"card shot #{sub} failed: rc={r.returncode} "
+                      f"{((r.stderr or r.stdout).strip().splitlines() or [''])[-1]}", flush=True)
+                return self.send(503, "render failed", "text/plain")
+        except Exception as e:  # timeout, missing playwright, unreadable temp file
+            print(f"card shot #{sub} failed: {e.__class__.__name__}: {e}", flush=True)
+            return self.send(503, "render failed", "text/plain")
+        finally:
+            try: os.remove(out)
+            except OSError: pass
+        self.send_response(200)
+        self.send_header("Content-Type", "image/png")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def serve_hub_summary(self, query):
+        # Read-only submissions summary for a personal dashboard, key-gated like the
+        # card shot. hub keys each entry on "sub_number".
+        if not self.hub_key_ok(query):
             return self.send(404, "not found", "text/plain")
         subs = []
         try:
@@ -4126,6 +4173,9 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, MANIFEST, "application/manifest+json")
         if path == "/api/hub.json":  # LAN summary for the hub (the server), key-gated
             return self.serve_hub_summary(parsed.query)
+        m = re.fullmatch(r"/api/shot/(\d{1,20})\.png", path)  # card PNG for the hub
+        if m:
+            return self.serve_card_shot(m.group(1), parsed.query)
         if path == "/img":  # hot path: skip the setup-state machinery entirely
             if not self.authed():
                 return self.send(200, gate_page())
