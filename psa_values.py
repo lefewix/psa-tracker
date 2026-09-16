@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""psa-values: pull PSA's own value data for graded cards of completed orders.
+"""psa-values: pull PSA's own value data for graded cards.
 
-For each card of a Shipped submission (cert_no + grade known) we open the PUBLIC
+For each graded card (cert_no + grade known, which psa_watch fills as soon as
+the submission's grades are ready) we open the PUBLIC
 cert-verification page https://www.psacard.com/cert/<cert_no>/psa in a real
 Chromium (headful under xvfb - the same Cloudflare-passing recipe as
 psa_login.py; plain-HTTP requests get challenged, no login/cookie is needed)
@@ -113,15 +114,16 @@ def parse_cert_text(text):
 
 
 def pick_groups(conn):
-    """Unique (name, grade) groups of shipped+graded certs needing a fetch:
-    groups with any un-valued cert first, then stale ones (oldest first)."""
+    """Unique (name, grade) groups of graded certs needing a fetch: groups with
+    any un-valued cert first, then stale ones (oldest first). A cert number plus
+    a grade is the whole precondition - psa_watch fills both at grades-ready,
+    well before the submission ships."""
     conn.executescript(SCHEMA)
     have = {r[0]: r[1] for r in conn.execute("SELECT cert_no, fetched_at FROM card_values")}
     groups = {}
     for name, grade, cert in conn.execute(
             """SELECT c.name, c.grade, c.cert_no FROM cards c
-               JOIN subs s ON s.sub_number = c.sub_number
-               WHERE s.status = 'Shipped' AND c.cert_no != '' AND c.grade != ''
+               WHERE c.cert_no != '' AND c.grade != ''
                ORDER BY c.cert_no"""):
         groups.setdefault((name, grade), []).append(cert)
     cutoff = (datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)).isoformat(timespec="seconds")
