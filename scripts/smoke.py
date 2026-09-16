@@ -18,7 +18,7 @@ SITE_PW = "smoke-site-pw"
 SET_PW = "smoke-settings-pw"
 SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
 HUB_KEY = "smoke-hub-key"
-MAX_FAILS = 8  # app.py's login budget, per IP and site-wide
+MAX_FAILS = 8  # app.py's login budget: a hard per-IP pause, site-wide a delay
 NOW = "2026-01-01T00:00:00+00:00"
 # ETA dates are relative to the run: one still to come, one next year (the year
 # has to print), one PSA has blown through (T65)
@@ -405,6 +405,8 @@ def main():
 
         # --- no session: every page is the gate, assets are public
         check("GET / (no session)", "/", (200,), must_have='action="/login"')
+        # the gate says who has the password, always, not only after an error (T115)
+        check("GET / (gate hint)", "/", (200,), must_have="Ask the store for the password.")
         check("GET /sub/14900001 (no session)", "/sub/14900001", (200,))
         check("GET / (bad token)", "/", (200,), cookie="psa_session=nope.nope.nope",
               must_have='action="/login"')
@@ -1161,14 +1163,28 @@ def main():
             if code != 302 or not (hdrs.get("Set-Cookie") or ""):
                 fails.append("POST /login after a spoofed-header failure: "
                              f"got {code}, another visitor is locked out")
-            for i in range(MAX_FAILS):  # a rotating header still fills one budget
-                check(f"POST /login (rotating header {i})", "/login", (200,),
+            # --- one guesser pauses itself, never the store's customers (T115)
+            for i in range(MAX_FAILS):
+                check(f"POST /login (one IP, wrong {i})", "/login", (200,),
                       form={"password": "nope"},
-                      headers={"X-Forwarded-For": f"10.0.0.{i}"},
+                      headers={"X-Forwarded-For": "10.0.0.7"},
                       must_have="Incorrect password")
-            check("POST /login (rotating header, locked)", "/login", (200,),
+            check("POST /login (offending IP, paused)", "/login", (200,),
+                  form={"password": "nope"}, headers={"X-Forwarded-For": "10.0.0.7"},
+                  must_have="paused for 15 minutes")
+            # a second visitor still gets the gate, and the site-wide budget
+            # only slows that attempt down (0.4s base, 2.4s while hot)
+            t0 = time.time()
+            check("POST /login (second visitor, wrong)", "/login", (200,),
                   form={"password": "nope"}, headers={"X-Forwarded-For": "10.0.1.1"},
-                  must_have="Too many attempts")
+                  must_have="Incorrect password")
+            if time.time() - t0 < 2:
+                fails.append("POST /login: a spread-out guess buys no site-wide delay")
+            code, _, hdrs = call(url, "/login", form={"password": SITE_PW},
+                                 headers={"X-Forwarded-For": "10.0.1.2"})
+            if code != 302 or not (hdrs.get("Set-Cookie") or ""):
+                fails.append(f"POST /login from a second visitor: got {code}, "
+                             "one guesser locked the whole site out")
 
             # --- a failed read is a 500 page, never an empty account (T3)
             hub = "/api/hub.json?key=" + HUB_KEY

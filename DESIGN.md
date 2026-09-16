@@ -841,6 +841,10 @@ the search preview panel (14px, 6px padding, solid `--surface`) and the modal sh
 **Failure reuses the 404 card**: a read that fails (locked or unreadable db) answers 500 with the
 same gate box, titled "Something went wrong", never an empty dashboard.
 
+**The gate keeps a standing line** under the error rung, a `.setupnote` reading "Ask the store
+for the password.", so a visitor who cannot get in is told who to ask before they guess. Lockout
+copy names the wait ("paused for 15 minutes"), never "a few minutes".
+
 ### Filmstrip (signature)
 Every dashboard row carries its own contact sheet: up to eight card fronts (`STRIP_MAX = 8`)
 in line order, 84×117px at 6px radius with a hairline and a quiet-fill ground, 10px apart,

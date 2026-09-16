@@ -504,8 +504,8 @@ _FAILS_LOCK = threading.Lock()
 MAX_FAILS = 8
 FAIL_WINDOW = 900  # 15 min
 # Backstop: a guess spread over many IPs never trips the per-IP counter, so the
-# same budget also applies site-wide. Any successful login clears it, so real
-# people fumbling the password never lock the site.
+# same budget is also counted site-wide. It only slows every attempt down, it
+# never blocks: one guesser must not shut the store's customers out.
 _ALL_FAILS = [0, 0.0]  # count, window_start
 
 def _evict(d, window):
@@ -515,11 +515,17 @@ def _evict(d, window):
         for k in [k for k, v in d.items() if v[1] < cut]:
             del d[k]
 
+def login_pause():
+    """Seconds to sleep before an attempt is judged. Six times slower while the
+    site-wide counter is hot, which is all the spread-out guess ever gets."""
+    with _FAILS_LOCK:
+        hot = (_ALL_FAILS[0] >= MAX_FAILS
+               and time.time() - _ALL_FAILS[1] <= FAIL_WINDOW)
+    return 2.4 if hot else 0.4
+
 def login_locked(ip):
     with _FAILS_LOCK:
         now = time.time()
-        if _ALL_FAILS[0] >= MAX_FAILS and now - _ALL_FAILS[1] <= FAIL_WINDOW:
-            return True
         rec = _FAILS.get(ip)
         if not rec:
             return False
@@ -1872,6 +1878,7 @@ def gate_page(error=""):
  spellcheck="false" aria-describedby="err"{inv}>
 <button type="submit" class="fillbtn">Enter</button></form>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
+<div class="setupnote">Ask the store for the password.</div>
 </div></div></main>{GATE_JS if email_on else ""}{THEME_JS}</body></html>"""
 
 def not_found_page(msg="There’s no page at this address.", title="Not found"):
@@ -4397,9 +4404,10 @@ class H(BaseHTTPRequestHandler):
             n = int(self.headers.get("Content-Length", "0") or 0)
             form = urllib.parse.parse_qs(self.rfile.read(min(n, 2048)).decode("utf-8", "replace"))
             given = (form.get("password") or [""])[0]
-            time.sleep(0.4)
+            time.sleep(login_pause())
             if login_locked(ip):
-                return self.send(200, settings_gate("Too many attempts. Try again in a few minutes."))
+                return self.send(200, settings_gate(
+                    "Sign-in is paused for 15 minutes after too many wrong passwords."))
             if not is_settings_pw(given):
                 login_fail(ip)
                 return self.send(200, settings_gate("Incorrect password."))
@@ -4542,9 +4550,10 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length", "0") or 0)
         form = urllib.parse.parse_qs(self.rfile.read(min(n, 4096)).decode("utf-8", "replace"))
         given = (form.get("password") or [""])[0]
-        time.sleep(0.4)  # blunt the brute force; throttle below does the real work
+        time.sleep(login_pause())  # blunt the brute force; throttle below does the real work
         if login_locked(ip):
-            return self.send(200, gate_page("Too many attempts. Try again in a few minutes."))
+            return self.send(200, gate_page(
+                "Sign-in is paused for 15 minutes after too many wrong passwords."))
         if is_settings_pw(given):  # the settings password routes to /settings
             login_ok(ip)
             return self.send(302, "", extra=[("Location", "/settings"),
