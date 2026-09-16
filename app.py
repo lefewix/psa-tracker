@@ -1831,8 +1831,10 @@ def eta_pill(s):
 
 # NO grades-landed pill and NO red announcement of grades arriving: shipped
 # briefly on 2026-08-01 (red "N grades landed" pill + a "Grades ready" sort)
-# and REMOVED by the owner's call on 2026-08-02. Grades-ready stays a muted footer
-# line; red belongs to the grade on the tile, holds, and alerts only.
+# and REMOVED by the owner's call on 2026-08-02. The news rides the stage word
+# instead (T114, 2026-09-16: timeline_html prints "Grades ready" for stage 7 on
+# the dashboard row and the detail page) - no pill, no badge, no sort control.
+# Red belongs to the grade on the tile, holds, and alerts only.
 
 # The gate is ONE field on purpose (the account chooser is invisible by design),
 # but that field was always type=password - so a customer typing a 20-character
@@ -2362,7 +2364,7 @@ def stage_dates(a, sub):
         d["Shipped"] = fmt_mdy(sub["shipped"])
     return d
 
-def timeline_html(status, dates=None, aside="", key=""):
+def timeline_html(status, dates=None, aside="", key="", ready=False):
     """Stage state as one text line (current stage, accent) above the 4px
     progress capsule. `dates` (stage -> 'Jul 20', from stage_dates) appends when
     the sub entered its current stage - detail pages only, so a dashboard row
@@ -2371,6 +2373,9 @@ def timeline_html(status, dates=None, aside="", key=""):
     `key` is the sub number: FX_JS remembers each sub's stage per browser and
     only runs the bar's run-out for one that actually MOVED since the last
     visit, so the motion means "your cards advanced" and not "a page loaded".
+    `ready` is the sub's grades_ready flag: stage 7 is only ever "Completing"
+    because the grades landed, so the stage word says so (T114). Still no pill,
+    no badge, no colour.
     A status STAGES does not know prints "Status unknown" and no bar at all."""
     idx = stage_index(status)
     if idx is None:
@@ -2378,7 +2383,8 @@ def timeline_html(status, dates=None, aside="", key=""):
         # stage 1 of 8, which read as "Arrived" for a sub that could be anywhere.
         return f'<div class="stage nobar"><span>Status unknown</span>{aside}</div>'
     pct = 100.0 * (idx + 1) / len(STAGES)
-    line = f'<b>{html.escape(STAGES[idx])}</b> · stage {idx + 1} of {len(STAGES)}'
+    word = "Grades ready" if (ready and idx == 6) else STAGES[idx]
+    line = f'<b>{html.escape(word)}</b> · stage {idx + 1} of {len(STAGES)}'
     since = (dates or {}).get(STAGES[idx], "")
     if since:
         line += f' · since {html.escape(since)}'
@@ -2442,7 +2448,8 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
             foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
     else:
         # no foot for holds (the owner, 2026-09-09: the pill is enough) or
-        # grades_ready (2026-08-08: "i dont need the grades ready tab")
+        # grades_ready (2026-08-08: "i dont need the grades ready tab";
+        # since T114 the stage line says "Grades ready" instead)
         foot = ""
 
     strip = strip_html(s, fronts)
@@ -2474,7 +2481,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
 <div class="meta">{html.escape(s['service'])} · {ncards} card{"s" if ncards != 1 else ""}</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
-{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>', key=sub)}
+{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>', key=sub, ready=s["grades_ready"])}
 {foot_h}</div>"""
 
 def search_box(value="", owner="", ph=None):
@@ -3513,14 +3520,15 @@ def eta_badge(s, extra=""):
         val = f"{d1} to {d2}"
     if val == "ETA pending":
         val = "Pending"  # the badge already says "PSA ETA" on the label rung
-    note = '<span class="estnote">grades ready</span>' if s["grades_ready"] else ""
+    # no grades-ready note here: the stage line under this badge carries the
+    # news as its own stage word now (T114)
     eta = f'{label}<b>{html.escape(val)}</b>'
     if s["on_hold"]:
         # the hold leads and the date stays: the one page you click THROUGH for
         # an explanation used to drop the return window entirely
         eta = (f'Status<b class="holdb">On hold</b>'
                f'<span class="lbl2">{label}</span><b>{html.escape(val)}</b>')
-    return f'<div class="synced">{eta}{note}{extra}</div>'
+    return f'<div class="synced">{eta}{extra}</div>'
 
 def detail_page(a, sub):
     num = sub["sub_number"]
@@ -3553,15 +3561,19 @@ def detail_page(a, sub):
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1">Archive</button>'
         tag = ""
     nc = sub['card_count']
+    # the header rung and the stage line say the same word, so a grades-ready
+    # sub does not read "Completing" above a line that says "Grades ready" (T114)
+    stage_word = ("Grades ready" if sub["grades_ready"] and stage_index(sub["status"]) == 6
+                  else sub["status"])
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(sub['status'])}{tag}</div></div>
+<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
-<div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num)}</div>
+<div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
 {body}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""

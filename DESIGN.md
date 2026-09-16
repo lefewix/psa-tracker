@@ -488,9 +488,11 @@ darker.
 **The Reserved Red Rule.** Red belongs to a landed grade (on the scan tile), an alert, or a
 hold. It never *announces* — **owner ruling, 2026-08-02**: a critique argued the grades-landed
 event deserved red in the status column, that shipped as a "N grades landed" pill plus a red
-detail badge, and the owner rejected both on sight. Grades-ready is a lowercase detail note and
-nothing else; the news is the grade's own chip under the scan — a 14% tint, not a filled red
-banner about it.
+detail badge, and the owner rejected both on sight. The news is the grade's own chip under the
+scan — a 14% tint, not a filled red banner about it. **Superseded in part, 2026-09-16 (T114):**
+grades-ready is no longer a lowercase detail note, it is the stage word itself. The stage line
+reads "Grades ready" instead of "Completing" on the dashboard row and the detail page. Still no
+pill, no badge, no colour, no sort control.
 Red is never a heading color, a hover state, an emphasis device, or an event announcement.
 
 **The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
@@ -814,8 +816,10 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
   alone: no explaining sentence on any surface (the owner, 2026-09-09 · the pill is enough). The
   detail page states the same alarm at the value rung, replacing its ETA figure with a red
   "On hold" (`.synced b.holdb`); a held sub rendering a normal ETA badge is a bug.
-Grades-ready is not a pill and not a row footer line either (the owner, 2026-08-08): it is a
-lowercase `.estnote` under the detail page's ETA badge, and nowhere else.
+Grades-ready is still not a pill and not a row footer line (the owner, 2026-08-08). Since T114
+(2026-09-16) it is not an `.estnote` under the detail badge either: `timeline_html` prints
+"Grades ready" as the stage word in place of "Completing" on the dashboard row and the detail
+page, and that is the whole treatment.
 
 **The Hold Rule.** A hold never hides the return date: the dashboard row prints the hold pill
 beside the return pill, and the detail badge leads with "On hold" above a "Back" line (T65).

@@ -654,6 +654,15 @@ def main():
                 if body.count(b'<div class="bar">') != 2:
                     fails.append("GET /: the unmapped status still draws a stage bar")
 
+                # --- grades landing is the stage word itself on the dashboard
+                # row, in place of "Completing", and nothing else: no pill, no
+                # badge, no colour, no sort control (T114)
+                if "<b>Grades ready</b> · stage 7 of 8".encode() not in body:
+                    fails.append("GET /: the grades-ready sub still reads as Completing")
+                if b"<b>Completing</b>" in body:
+                    fails.append("GET /: a grades-ready row still prints the Completing "
+                                 "stage word")
+
                 # --- filmstrip tiles are 64-84 CSS px: they serve the stored
                 # thumbnail, never the /small/ 380x636 scan (T20)
                 strips = re.findall(rb'<div class="strip">.*?</div>', body, re.S)
@@ -848,9 +857,20 @@ def main():
                          must_have="Charizard")
             if b'<div class="cn">99000001</div>' not in body:
                 fails.append("GET /sub/14900001: a graded tile lost its cert number")
+            # --- the detail page says the same word on the same rung, and the
+            # old lowercase note under the ETA badge is gone (T114)
+            if "<b>Grades ready</b> · stage 7 of 8".encode() not in body:
+                fails.append("GET /sub/14900001: the stage word is not Grades ready")
+            if b'estnote">grades ready' in body:
+                fails.append("GET /sub/14900001: the redundant grades ready note is back")
+            if b"Completing" in body:
+                fails.append("GET /sub/14900001: the header rung still says Completing")
             body = check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
             if b'class="cn pre" title="No cert number until PSA grades it"' not in body:
                 fails.append("GET /sub/14900002: the Prelim slot is unexplained again")
+            if b"<b>Arrived</b>" not in body or b"Grades ready" in body:
+                fails.append("GET /sub/14900002: a sub with no grades yet lost its "
+                             "own stage word (T114)")
             body = check("GET /sub/14900003 (unmapped status)", "/sub/14900003",
                          (200,), cookie, must_have="Status unknown")
             if b'<div class="bar">' in body:
