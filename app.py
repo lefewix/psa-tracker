@@ -2760,6 +2760,9 @@ document.querySelectorAll('.own').forEach(function(i){
     if(coarse){ visit(); return; }                 // the pencil edits - taps go straight through
     nav=setTimeout(function(){ nav=null; visit(); },280);
   });
+  // iOS focuses the input on the synthesized mousedown, and focus on a sub-16px
+  // field zooms the page - kill the focus, the click (and visit()) still fires.
+  i.addEventListener('mousedown', function(e){ if(coarse&&i.readOnly) e.preventDefault(); });
   var eb=row.querySelector('.ownedit');
   if(eb) eb.addEventListener('click', edit);
   i.addEventListener('focus', function(){ prev=i.value; });
