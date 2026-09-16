@@ -962,8 +962,14 @@ while editing, never on the row's `:focus-within`, which swallowed its own tap.
 ### Scan Tile (signature)
 Each tile is an **inset well**: `--surface3` under a 1px `--hair`, 12px radius, 10px padding,
 and **no shadow** — a well inside a raised card is still one card deep, and a second shadow
-would make it a nested card. Inside it the image keeps its fixed 1.72/2.4 card ratio and 6px
-radius but carries **no hairline of its own** (the well already draws the edge; two rules 10px
+would make it a nested card. Inside it the image sits in one fixed **380/635 box** — the ratio of a
+slabbed PSA scan — under `object-fit: contain` on a transparent ground, so it is **never
+cropped**: PSA's `/small/` renditions are not one shape (a slab is 380x635, a raw prelim photo
+380x527, and some graded certs still ship a raw-card photo at 380x528), and the old
+`1.72/2.4` + `cover` sliced the label off the top and bottom of every slab. A shorter image
+centres in the same-height box with the well showing above and below — the well **is** the
+letterbox, which is why the box is transparent and why tiles stay uniform whatever PSA sends.
+The image keeps its 6px radius but carries **no hairline of its own** (the well already draws the edge; two rules 10px
 apart read as a double line). Bare images on the card's own surface at an 18px gap were what
 the owner saw on 2026-09-16 — "the page is a bit too flat, and cards get visually muddled" — so the
 grid gap dropped to 12px, the track grew by the well's padding to hold the image width, and

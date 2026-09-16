@@ -1272,9 +1272,16 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    track grows by the well's padding so the image keeps its width. */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:12px;margin-top:24px}
 /* no hairline on the image: the well already draws the edge, two lines 10px apart read as
-   a double rule. */
-.grid img{width:100%;border-radius:6px;background:var(--ph);
- aspect-ratio:1.72/2.4;object-fit:cover;display:block}
+   a double rule.
+   ONE box, never cropped. PSA's /small/ renditions are not one shape: a slabbed scan is
+   380x635, a raw prelim photo 380x527, and some graded certs still ship the raw-card photo at
+   380x528 - the ratio is per image, not per state. cover at 1.72/2.4 sliced the top and bottom
+   off every slab, taking the label with it. The box is the slab's own 380/635 and the fit is
+   contain, so a shorter image sits centred in the same height with the well showing above and
+   below. The well IS the letterbox - transparent, no second frame, and the image already lost
+   its hairline. (T113) */
+.grid img{width:100%;border-radius:6px;background:transparent;
+ aspect-ratio:380/635;object-fit:contain;display:block}
 /* NO content-visibility: its paint containment clips focus rings and .sublink's
    negative-margin bleed. FX_JS handles the off-screen sweep instead. */
 .gc{background:var(--surface3);border:1px solid var(--hair);border-radius:12px;padding:10px;
@@ -1282,7 +1289,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* --ph, on both grounds now: the well under it is --surface3 everywhere, so the ground-tuned
    placeholder reads against it inside a card as well as on the page ground - the old
    .card .gc .ph override would paint the well's own colour on the well. */
-.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:6px;
+.gc .ph{width:100%;aspect-ratio:380/635;border-radius:6px;
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
@@ -2862,7 +2869,7 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
     if(p&&p.tagName==='A'){p.classList.add('ld');p.classList.remove('ldg');}
   };
   /* a scan that never arrives is swapped for the SAME placeholder a card with
-     no scan renders, so the tile keeps its 1.72/2.4 box and the grid rhythm
+     no scan renders, so the tile keeps its 380/635 box and the grid rhythm
      holds instead of collapsing around a broken image. Replacing the anchor
      takes the lightbox listener with it, so a dead tile cannot open an empty
      reveal. A broken image reports .complete with naturalWidth 0, so the
