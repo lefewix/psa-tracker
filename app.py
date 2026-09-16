@@ -3161,7 +3161,14 @@ def _script_body(tagged):
 APP_JS = "\n".join(_script_body(s) for s in (
     FX_JS, SORT_JS, SEARCH_JS, OWNER_JS, ARCH_JS, ARCHFOLD_JS,
     BACK_JS, DISCORD_JS, LIGHTBOX_JS, THEME_JS))
-_ASSET_V = hashlib.sha256((CSS + APP_JS).encode()).hexdigest()[:12]
+# The sheet's comments carry the constraints behind each rule - they are for
+# whoever edits app.py, not for the phone downloading it. They are stripped out
+# of the served copy (and the hash) so the source can explain itself at length
+# while the wire stays small; APP_JS keeps its comments, it has room. (T112)
+CSS_SERVED = re.sub(r"\n{2,}", "\n",
+                    re.sub(r"[ \t]+\n", "\n",
+                           re.sub(r"/\*.*?\*/", "", CSS, flags=re.S))).strip() + "\n"
+_ASSET_V = hashlib.sha256((CSS_SERVED + APP_JS).encode()).hexdigest()[:12]
 
 
 def _bundle(text):
@@ -3171,7 +3178,7 @@ def _bundle(text):
     return raw, gzip.compress(raw, 6)
 
 
-CSS_BYTES = _bundle(CSS)
+CSS_BYTES = _bundle(CSS_SERVED)
 APP_JS_BYTES = _bundle(APP_JS)
 APP_CSS_TAG = f'<link rel="stylesheet" href="/app.css?v={_ASSET_V}">'
 APP_JS_TAG = f'<script src="/app.js?v={_ASSET_V}"></script>'

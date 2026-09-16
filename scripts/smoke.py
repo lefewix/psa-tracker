@@ -410,8 +410,9 @@ def main():
               must_have='action="/login"')
         css = check("GET /app.css", "/app.css", (200,))
         js = check("GET /app.js", "/app.js", (200,))
-        # the sheet every browser downloads is CSS, not an essay: the comments
-        # carry constraints only, the history lives in HANDOFF (T82)
+        # the sheet every browser downloads is CSS, not an essay. Source comments
+        # are stripped when the served copy is built, so this caps the RULES, not
+        # the prose - app.py may explain itself at length (T82, T112)
         if css and len(css) >= 40000:
             fails.append(f"GET /app.css: {len(css)} bytes, want under 40000")
         # a scan that 404s is swapped for the no-scan placeholder, anchor and
