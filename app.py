@@ -1166,7 +1166,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* each submission is a raised card on the grouped ground: 16px radius, hair2 edge, quiet
    shadow. Depth is glass chrome and card lift only; a card's inside is flat. */
 .card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
- padding:18px 16px;margin:0 0 14px;box-shadow:0 2px 10px var(--shc3);
+ padding:18px 16px;margin:0 0 14px;box-shadow:0 4px 14px var(--shc3);
  transition:background .18s,opacity .18s,filter .18s}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
@@ -1228,7 +1228,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .archbtn:active{transform:scale(.97)}
 .empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.7;
  background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
- box-shadow:0 2px 10px var(--shc3)}
+ box-shadow:0 4px 14px var(--shc3)}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* up to 8 tiles, the 8th a "+N" chip when the sub has more imaged cards than fit. */
 /* the strip scrolls at every width: 8 tiles = 742px, so a sheet under ~782px would scroll the
@@ -1259,28 +1259,43 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  .strip.sr{--fader:28px}}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
  color:var(--m1);background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
- box-shadow:0 2px 10px var(--shc3)}
+ box-shadow:0 4px 14px var(--shc3)}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
  color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
-/* ---- scans: image, 6px radius, hairline, no shadow ------------------------ */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:18px;margin-top:24px}
-.grid img{width:100%;border-radius:6px;border:1px solid var(--hair);background:var(--surface3);
+/* ---- scans: each tile is a well, image 6px, no shadow --------------------- */
+/* a grid of bare images on the card's own surface muddled together (the owner, 2026-09-16:
+   "the page is a bit too flat, and cards get visually muddled"). Each tile gets an INSET
+   surface instead - --surface3 under a hairline - so the tiles separate and the page gains
+   a second plane. Inset, not raised: a well inside a card is still one card deep, a second
+   shadow would be a nested card. Gap drops 18 -> 12 so the wells read as one set, and the
+   track grows by the well's padding so the image keeps its width. */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:12px;margin-top:24px}
+/* no hairline on the image: the well already draws the edge, two lines 10px apart read as
+   a double rule. */
+.grid img{width:100%;border-radius:6px;background:var(--ph);
  aspect-ratio:1.72/2.4;object-fit:cover;display:block}
 /* NO content-visibility: its paint containment clips focus rings and .sublink's
    negative-margin bleed. FX_JS handles the off-screen sweep instead. */
-.gc{background:transparent;border:0;border-radius:0;padding:0;display:flex;flex-direction:column}
-.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:6px;border:1px solid var(--hair);
+.gc{background:var(--surface3);border:1px solid var(--hair);border-radius:12px;padding:10px;
+ display:flex;flex-direction:column}
+/* --ph, on both grounds now: the well under it is --surface3 everywhere, so the ground-tuned
+   placeholder reads against it inside a card as well as on the page ground - the old
+   .card .gc .ph override would paint the well's own colour on the well. */
+.gc .ph{width:100%;aspect-ratio:1.72/2.4;border-radius:6px;
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
-.card .gc .ph{background:var(--surface3)}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
 .gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:600;line-height:17px;
  padding:1px 8px;border:1px solid transparent;border-radius:999px;margin-top:9px;min-height:21px}
 .gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade);
  border-color:color-mix(in srgb,var(--grade) 45%,transparent)}
-.gc .g9{background:var(--surface3);color:var(--txt);border-color:var(--hairh)}
-.gc .glo{background:var(--surface3);color:var(--m1);border-color:var(--hair)}
+/* the neutral tiers took --surface3 when the tile was bare; the well IS --surface3 now, so
+   they would paint their own ground. --surface - the card plane showing through the well -
+   separates in both palettes (white on the grey well in light, the dark card under the lifted
+   well in dark) and keeps --m1 over 4.5:1, which --ph does not in dark (3.8). (T112) */
+.gc .g9{background:var(--surface);color:var(--txt);border-color:var(--hairh)}
+.gc .glo{background:var(--surface);color:var(--m1);border-color:var(--hair)}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
@@ -1556,7 +1571,10 @@ button:disabled{opacity:.5;cursor:default}
  .filterrow .filters{min-width:0}
  .archn{display:none}
  .filterrow .filters .f{padding:5px 11px 7px}
- .grid{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:14px}
+ /* the wells cost 20px of track to their padding, so the phone track grows to match: at
+    375 the sheet is 347, a card's inside 319, and 2 x 152 + 12 = 316 still holds two
+    columns with a 132px image - 2px off the 134 the bare tile had. */
+ .grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:12px}
  /* phone filmstrip: 64x89 tiles, bleeding to the card's padding edge (-14px) so the last
     tile runs off as the "there is more" cue. */
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px}

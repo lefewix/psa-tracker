@@ -960,10 +960,18 @@ since a tap navigates instantly; it hides on `.own:focus` so the underline runs 
 while editing, never on the row's `:focus-within`, which swallowed its own tap.
 
 ### Scan Tile (signature)
-Image at a fixed 1.72/2.4 card ratio with a 6px radius and a hairline — no shadow, no
-container. Below it: the grade as a small filled chip (13px/600, 1px 8px, fully rounded, a 1px
+Each tile is an **inset well**: `--surface3` under a 1px `--hair`, 12px radius, 10px padding,
+and **no shadow** — a well inside a raised card is still one card deep, and a second shadow
+would make it a nested card. Inside it the image keeps its fixed 1.72/2.4 card ratio and 6px
+radius but carries **no hairline of its own** (the well already draws the edge; two rules 10px
+apart read as a double line). Bare images on the card's own surface at an 18px gap were what
+the owner saw on 2026-09-16 — "the page is a bit too flat, and cards get visually muddled" — so the
+grid gap dropped to 12px, the track grew by the well's padding to hold the image width, and
+`.card` stepped its shadow one notch to `0 4px 14px`. The neutral grade chips moved off
+`--surface3` to `--surface` for the same reason: the well wears their old ground. Below the
+image: the grade as a small filled chip (13px/600, 1px 8px, fully rounded, a 1px
 border) in one of three tiers — a 14% Grade Red tint for a PSA 10 behind a 45% Grade Red border,
-a neutral `--surface3` chip with `--txt` and a `--hairh` border for a 9, the same neutral chip in
+a neutral `--surface` chip with `--txt` and a `--hairh` border for a 9, the same neutral chip in
 `--m1` behind the softer `--hair` for 8 and below — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
 baseline, cert number in monospace micro, card name
