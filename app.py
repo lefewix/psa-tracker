@@ -1022,7 +1022,7 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg);
 @view-transition{navigation:auto}
 /* ---- ambient ground ------------------------------------------------------ */
 /* ambient accent radials for the glass to refract. Fixed pseudo, not background-attachment
-   (iOS Safari repaints that every frame); z-index:-1 = behind. */
+   (iOS Safari repaints that every frame); z-index:-1. */
 body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
  background:var(--amb)}
 body{background:transparent;min-height:100vh;color:var(--txt);
@@ -1042,7 +1042,7 @@ body{background:transparent;min-height:100vh;color:var(--txt);
 .skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
 /* Three rungs: 26/700 title, 17/650 data + section titles, 14/400 body; 13 on control labels
-   only. Tracking scales with size (26=-.021em, 24=-.020, 22=-.017, 17=-.012, 14 and under 0),
+   only. Tracking scales with size (26=-.021em, 24=-.020, 22=-.017, 17=-.012, <=14 = 0) and is
    never positive. */
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
@@ -1066,7 +1066,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
 /* sync state: one dot and one word, never a stamp. The dot is 6px of non-text, so
-   --ok's 3:1 check covers it; the full phrase rides in the .vh span. */
+   --ok's 3:1 check covers it; the phrase rides in the .vh span. */
 .sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
  font-weight:500;color:var(--m1);line-height:1.5;white-space:nowrap}
 .sync i{width:6px;height:6px;border-radius:50%;background:var(--m1);flex-shrink:0}
@@ -1086,8 +1086,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 10px 26px var(--shc)}
 .toolbar{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:10px;
  margin:16px 0 4px;padding:12px 14px;border-radius:16px}
-/* NO view-transition-name on glass: a named backdrop-filter panel floats through the
-   navigation as a blurred rectangle when the far page lacks its twin. */
+/* NO view-transition-name on glass: a named backdrop-filter panel floats through the nav
+   as a blurred rectangle when the far page lacks its twin. */
 /* elevation is earned: FX_JS flips .raised off a 1px sentinel. Named apart from the masthead
    bar so a compact bar never morphs into a tall one. */
 .toolbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 1px 2px var(--shc3);
@@ -1118,7 +1118,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
 /* the tag is a category, not a sentence, so a quiet capsule demotes it. Fill mixes from
-   --ac-pale so white-label swaps re-tint it; line-height:1 holds the row height. */
+   --ac-pale so white-label swaps re-tint it; line-height:1 holds the row. */
 .pvtag{font-size:11px;font-weight:500;line-height:1;color:var(--ac-pale);flex-shrink:0;
  padding:3px 9px;border-radius:999px;
  background:color-mix(in srgb,var(--ac-pale) var(--tagmix),transparent)}
@@ -1130,8 +1130,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:20px 0 12px}
 /* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule cannot
-   park it off-screen, with its own glass (.f.fsolo). "N need owners" is a second solo pill;
-   .rowend wraps the pair as one flex item. */
+   park it off-screen, own glass (.f.fsolo). "N need owners" is a second solo pill; .rowend
+   wraps the pair as one flex item. */
 .filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
 .rowend{display:flex;align-items:center;gap:10px}
 .filterrow .filters{margin:0}
@@ -1148,14 +1148,14 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  -webkit-user-select:none;user-select:none;
  transition:background .18s,color .18s,transform .14s ease-out}
 /* the pill looks 30px tall; the hit area grows invisibly past the capsule (30 + 14 = 44, the
-   HIG floor). Vertical only; z-index:-1 keeps it behind real boxes. Under 360px it clips. */
+   HIG floor). Vertical only; z-index:-1 keeps it behind real boxes. Under 360px clips. */
 .f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
 /* Archived pressed borrows .fillbtn's grammar (--ac-fill + #fff), not the segment's --segon
    wash: it is a view switch, not a fourth sort. */
 .f.farch.on{background:var(--ac-fill);color:#fff}
 /* the solo Archived pill is its own capsule, one rung quieter (12/500). The 20px vertical pad
-   is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both breakpoints.
+   is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both widths.
    inline-block, NOT inline-flex, or the count reads "Archived· 18". */
 .fsolo{font-size:12px;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
 /* pressed it must read as one solid lozenge: the hairline goes transparent, not to 0, so the
@@ -1164,7 +1164,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .f:active{transform:scale(.97)}
 /* ---- content cards: App Store grammar (owner call 2026-08-08) -------------- */
 /* each submission is a raised card on the grouped ground: 16px radius, hair2 edge, quiet
-   shadow. Depth is glass chrome and card lift only; inside a card all is flat. */
+   shadow. Depth is glass chrome and card lift only; a card's inside is flat. */
 .card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  padding:18px 16px;margin:0 0 14px;box-shadow:0 2px 10px var(--shc3);
  transition:background .18s,opacity .18s,filter .18s}
@@ -1178,7 +1178,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
 /* two gray levels: Shipped = ink, in flight = muted. A third, lighter gray cannot clear 4.5:1
-   at 14px, so pending keeps --m1 and its clock. No red status pill. */
+   at 14px, so pending keeps --m1 and a clock. No red status pill. */
 .pill.shipped{color:var(--txt)}
 .pill.shipped svg{color:var(--m1)}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
@@ -1248,7 +1248,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px;
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
 /* no bleed past the phone breakpoint, so an overflowing strip is sliced mid tile; the cue is
-   a 28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr). */
+   a 28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr) */
 @media(min-width:641px){
  .strip{--fadel:0px;--fader:0px;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
@@ -1274,12 +1274,13 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 .card .gc .ph{background:var(--surface3)}
-/* chip, always emitted, empty when ungraded or rows stagger. 17+2+2 = 21. Red = a 10 only. */
+/* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
 .gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:600;line-height:17px;
- padding:2px 8px;border-radius:999px;margin-top:9px;min-height:21px}
-.gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade)}
-.gc .g9{background:var(--surface3);color:var(--txt)}
-.gc .glo{background:var(--surface3);color:var(--m1)}
+ padding:1px 8px;border:1px solid transparent;border-radius:999px;margin-top:9px;min-height:21px}
+.gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade);
+ border-color:color-mix(in srgb,var(--grade) 45%,transparent)}
+.gc .g9{background:var(--surface3);color:var(--txt);border-color:var(--hairh)}
+.gc .glo{background:var(--surface3);color:var(--m1);border-color:var(--hair)}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
@@ -1345,8 +1346,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 @media(hover:hover){.lbx:hover{background:rgba(0,0,0,.55)}}
 .grid a{cursor:zoom-in;position:relative;display:block}
 /* the loading sweep is one transform-moved overlay on the anchor, compositor only.
-   [href^="/img"] is the lightbox's selector, so .sublink is untouched; overflow clips the
-   band. */
+   [href^="/img"] is the lightbox's selector, so .sublink is spared; overflow clips it. */
 .grid a[href^="/img"]{overflow:hidden;border-radius:6px}
 /* the sweep runs only on .ldg, set by FX_JS when a loading tile nears the viewport, so
    below-the-fold tiles cost nothing. */
@@ -1399,7 +1399,7 @@ button:disabled{opacity:.5;cursor:default}
 .srow input{flex:1;min-width:150px;margin-top:0}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
 /* a destructive text action is not a primary, so .sdel never takes .fillbtn; the radius is
-   restated because the element rule hands none out. .squiet is that in accent. */
+   restated because the element rule hands none out. .squiet: same, in accent. */
 .sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
  border-radius:999px}
 .sbtn.sdel{color:var(--err)}
@@ -1452,7 +1452,7 @@ button:disabled{opacity:.5;cursor:default}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
  transition:color .15s,background-color .15s}
 /* a 22px line, so it takes the sort pills' invisible hit pseudo: 22 + 11 each way = 44.
-   Vertical only, so it never reaches the pills across the row. */
+   Vertical only, so it never reaches the pills across it. */
 .numlink{text-decoration:none;color:inherit;display:inline-block;position:relative}
 .numlink::before{content:'';position:absolute;inset:-11px 0}
 .numlink .num{transition:color .15s}
@@ -1489,7 +1489,7 @@ button:disabled{opacity:.5;cursor:default}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
 .view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
 /* text actions keep the invisible hit box but hover never paints it - the slab hung over the
-   stage bar. Hover is the colour deepen; the View pill is the exception, a visible capsule. */
+   stage bar. Hover is the colour deepen; View is the one visible capsule. */
 .stage .view:hover{color:var(--ac-hot);background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
 /* the glyph actions ARE square-ish targets, so theirs is a circle */
 .hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
@@ -1522,7 +1522,7 @@ button:disabled{opacity:.5;cursor:default}
  .brand{gap:10px;min-width:0}
  .logo{height:26px}
  /* the large title tracks the sheet, not the type scale: at 26px beside the logo it pushes
-    .tbend to a second line at 347px. .gbox h1 stays untouched on purpose. */
+    .tbend to a second line at 347px. .gbox h1 stays untouched. */
  h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
  /* page-header summaries take the full sheet width instead of clipping right */
@@ -1533,13 +1533,13 @@ button:disabled{opacity:.5;cursor:default}
  .hrow>.synced .estnote{margin-left:0}
  /* the segment never breaks to a second row, nor is it an overflow box to 360px: three pills
     measure ~247px, and staying un-clipped is what lets the hit pseudo work (28 + 8 each way
-    = 44 on the 38px capsule). Below 360 it scrolls and clips. */
+    = 44 on the 38px capsule). Under 360 it scrolls and clips. */
  .filters{display:flex;flex-wrap:nowrap;max-width:100%;padding:4px 3px;align-items:center}
  .filters .f{flex:0 0 auto}
  .filterrow .filters .f::before{inset:-8px 0}
  /* scroll cue, live only below 360px where the capsule scrolls with its scrollbar hidden: a
-    22px shade on each edge with content past it, FX_JS flips .sl/.sr. Default attachment, not
-    the CSS-only local trick, whose opaque cover patches over the glass. */
+    22px shade per edge with content past it, FX_JS flips .sl/.sr. Default attachment, not the
+    CSS-only local trick, whose opaque cover patches over the glass. */
  .filters{--cuel:transparent;--cuer:transparent;
   background-image:linear-gradient(90deg,var(--cuel),transparent),
    linear-gradient(270deg,var(--cuer),transparent),
@@ -1552,13 +1552,13 @@ button:disabled{opacity:.5;cursor:default}
  .filters.sr{--cuer:var(--shc3)}
  /* the capsule hugs its pills - no flex:1, or empty glass track past the last pill reads as
     broken; the slack belongs between the controls. min-width:0 lets it scroll at 360px,
-    where the count leaves Archived and pill padding goes 14 -> 11. */
+    where the count leaves Archived and pill pad goes 14 -> 11. */
  .filterrow .filters{min-width:0}
  .archn{display:none}
  .filterrow .filters .f{padding:5px 11px 7px}
  .grid{grid-template-columns:repeat(auto-fill,minmax(136px,1fr));gap:14px}
- /* phone filmstrip: 64x89 tiles, bleeding to the card's own padding edge (-14px) so the last
-    tile runs off the edge as the "there is more" cue. */
+ /* phone filmstrip: 64x89 tiles, bleeding to the card's padding edge (-14px) so the last
+    tile runs off as the "there is more" cue. */
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px}
  .strip img,.morechip{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
@@ -1569,8 +1569,8 @@ button:disabled{opacity:.5;cursor:default}
  .own:not([readonly]){font-size:16px}
  .gc .nm{min-height:0}}
 /* sub-360: pills plus the solo pill can exceed the sheet, so the capsule scrolls. The one
-   width where overflow clips the hit pseudo to 36px (past WCAG 2.5.8's 24px floor);
-   overflow-y hidden so the -8px pseudo cannot open a phantom scroll. */
+   width where overflow clips the hit pseudo to 36px (past 2.5.8's 24px floor); overflow-y
+   hidden so the -8px pseudo cannot open a phantom scroll. */
 @media(max-width:359px){
  .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
  .filters::-webkit-scrollbar{display:none}}
@@ -1581,7 +1581,7 @@ button:disabled{opacity:.5;cursor:default}
  .own:not([readonly]){font-size:16px}}
 /* ---- reduced motion: named, not blanket ---------------------------------- */
 /* kill the travel, keep the feedback: hover tints, focus rings and overlay fades still land.
-   After the mobile block so it out-orders the capsule cue. */
+   After the mobile block so it out-orders the cue. */
 @media(prefers-reduced-motion:reduce){
  html{scroll-behavior:auto}
  /* travel: the row settle, the bar running out, the loading sweep */

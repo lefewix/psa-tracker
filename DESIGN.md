@@ -961,9 +961,10 @@ while editing, never on the row's `:focus-within`, which swallowed its own tap.
 
 ### Scan Tile (signature)
 Image at a fixed 1.72/2.4 card ratio with a 6px radius and a hairline — no shadow, no
-container. Below it: the grade as a small filled chip (13px/600, 2px 8px, fully rounded) in one
-of three tiers — a 14% Grade Red tint for a PSA 10, a neutral `--surface3` chip with `--txt` for
-a 9, the same neutral chip in `--m1` for 8 and below — hugging its own text and sitting in a
+container. Below it: the grade as a small filled chip (13px/600, 1px 8px, fully rounded, a 1px
+border) in one of three tiers — a 14% Grade Red tint for a PSA 10 behind a 45% Grade Red border,
+a neutral `--surface3` chip with `--txt` and a `--hairh` border for a 9, the same neutral chip in
+`--m1` behind the softer `--hair` for 8 and below — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
 baseline, cert number in monospace micro, card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
