@@ -1278,7 +1278,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .card .gc .ph{background:var(--surface3)}
 /* always emitted, empty when ungraded, else rows stagger. 14 x 1.5 = 21. Red = a 10 only. */
 .gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px;min-height:21px}
-.g9{color:var(--txt)}.glo{color:var(--m1)}
+.gc .g9{color:var(--txt)}.gc .glo{color:var(--m1)}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
