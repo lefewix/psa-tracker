@@ -425,9 +425,12 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   briefly on 2026-08-01 and were removed the next day by owner ruling — see the Reserved Red
   Rule. It is the emotional payoff of the product; its scarcity is why it lands. And only a
   **PSA 10** gets it: at this store a 10 is the norm (603 of 715 graded cards), so painting
-  every grade red spent the color on the ordinary. A 9 prints in body ink (`--txt`), an 8 or
-  lower — and any non-numeric grade — in muted (`--m1`); weight, size and line box never change,
-  so the tier reads as a step down in temperature, not in importance.
+  every grade red spent the color on the ordinary. The grade rides in a small filled chip, not
+  plain text: a 10 takes a 14% Grade Red tint under Grade Red ink, a 9 a neutral `--surface3`
+  chip with body ink (`--txt`), an 8 or lower — and any non-numeric grade — the same neutral
+  chip in muted (`--m1`). A tint, never a solid red block: a solid fill would be the badge the
+  Reserved Red Rule already rejected. Chip size and its 21px line box never change, so the tier
+  reads as a step down in temperature, not in importance.
 - **Alert Red** (`--err` / `--holdtx`): form errors, destructive text actions, and the "On
   hold" pill. Same family as Grade Red, distinct token, distinct job.
 - **Saved Green** (`--ok`): one use only — the owner tag's underline flashing on a successful
@@ -486,7 +489,8 @@ darker.
 hold. It never *announces* — **owner ruling, 2026-08-02**: a critique argued the grades-landed
 event deserved red in the status column, that shipped as a "N grades landed" pill plus a red
 detail badge, and the owner rejected both on sight. Grades-ready is a lowercase detail note and
-nothing else; the news is the grade printed under the scan, not a banner about it.
+nothing else; the news is the grade's own chip under the scan — a 14% tint, not a filled red
+banner about it.
 Red is never a heading color, a hover state, an emphasis device, or an event announcement.
 
 **The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
@@ -957,9 +961,11 @@ while editing, never on the row's `:focus-within`, which swallowed its own tap.
 
 ### Scan Tile (signature)
 Image at a fixed 1.72/2.4 card ratio with a 6px radius and a hairline — no shadow, no
-container. Below it: grade at 600/14px in one of three tiers — Grade Red for a PSA 10, `--txt`
-for a 9, `--m1` for 8 and below — on a reserved 21px line box so the tier never shifts the
-grid, cert number in monospace micro, card name
+container. Below it: the grade as a small filled chip (13px/600, 2px 8px, fully rounded) in one
+of three tiers — a 14% Grade Red tint for a PSA 10, a neutral `--surface3` chip with `--txt` for
+a 9, the same neutral chip in `--m1` for 8 and below — hugging its own text and sitting in a
+reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
+baseline, cert number in monospace micro, card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), the set line demoted below it, value on
 the 17/650 data rung, then the owner tag pinned to the bottom via `margin-top: auto`. Tiles

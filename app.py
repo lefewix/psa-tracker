@@ -1022,7 +1022,7 @@ html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg);
 @view-transition{navigation:auto}
 /* ---- ambient ground ------------------------------------------------------ */
 /* ambient accent radials for the glass to refract. Fixed pseudo, not background-attachment
-   (mobile Safari repaints that every frame); z-index:-1 sits behind content. */
+   (iOS Safari repaints that every frame); z-index:-1 = behind. */
 body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
  background:var(--amb)}
 body{background:transparent;min-height:100vh;color:var(--txt);
@@ -1041,9 +1041,9 @@ body{background:transparent;min-height:100vh;color:var(--txt);
  text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
 .skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
-/* Three rungs: 26/700 title, 17/650 data and section titles, 14/400 body; 13 on control labels
-   only. Tracking scales with size (26 = -.021em, 24 = -.020, 22 = -.017, 17 = -.012, 14 and
-   below 0) and is never positive. */
+/* Three rungs: 26/700 title, 17/650 data + section titles, 14/400 body; 13 on control labels
+   only. Tracking scales with size (26=-.021em, 24=-.020, 22=-.017, 17=-.012, 14 and under 0),
+   never positive. */
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
 .toolbar .sub{font-size:12.5px}
@@ -1076,7 +1076,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  transition:color .15s,background-color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
 /* the dual rim reads as a lens: light on the top edge (--rim), falling off at the bottom
-   (--rimb). Both sub-threshold; the drop shadow carries elevation. */
+   (--rimb). Both sub-threshold; the shadow carries elevation. */
 /* two classes on purpose: .f below zeroes background and border, and 0,2,0 lets the solo pill
    keep its glass. */
 .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{
@@ -1118,7 +1118,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
 /* the tag is a category, not a sentence, so a quiet capsule demotes it. Fill mixes from
-   --ac-pale so white-label swaps re-tint it; line-height:1 keeps the row height. */
+   --ac-pale so white-label swaps re-tint it; line-height:1 holds the row height. */
 .pvtag{font-size:11px;font-weight:500;line-height:1;color:var(--ac-pale);flex-shrink:0;
  padding:3px 9px;border-radius:999px;
  background:color-mix(in srgb,var(--ac-pale) var(--tagmix),transparent)}
@@ -1129,9 +1129,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .filters,.sbar{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:20px 0 12px}
-/* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule can never
-   park it off-screen, carrying its own glass (.f.fsolo). "N need owners" is a second solo
-   pill; .rowend wraps the pair as one flex item. */
+/* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule cannot
+   park it off-screen, with its own glass (.f.fsolo). "N need owners" is a second solo pill;
+   .rowend wraps the pair as one flex item. */
 .filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
 .rowend{display:flex;align-items:center;gap:10px}
 .filterrow .filters{margin:0}
@@ -1139,8 +1139,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* user-select:none on controls only - names, lot numbers, tags, values and inputs stay
    selectable. */
 /* line-height stated, not inherited: the UA sheet pins normal on <button>, so pills and the
-   one <a class="f"> measured differently. 16px makes every pill the same box, so .fsolo
-   matches. */
+   one <a class="f"> measured differently. 16px makes every pill one box, .fsolo too. */
 /* 6/8, not 7/7: no descenders in these labels, so -1/+1 rides the x-height to optical centre
    at the same height. */
 .f{font-size:13px;font-weight:500;color:var(--m1);background:transparent;border:0;line-height:16px;
@@ -1149,8 +1148,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  -webkit-user-select:none;user-select:none;
  transition:background .18s,color .18s,transform .14s ease-out}
 /* the pill looks 30px tall; the hit area grows invisibly past the capsule (30 + 14 = 44, the
-   HIG floor). Vertical only; z-index:-1 keeps it behind every real box. Below 360px the
-   capsule clips it. */
+   HIG floor). Vertical only; z-index:-1 keeps it behind real boxes. Under 360px it clips. */
 .f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
 /* Archived pressed borrows .fillbtn's grammar (--ac-fill + #fff), not the segment's --segon
@@ -1158,7 +1156,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .f.farch.on{background:var(--ac-fill);color:#fff}
 /* the solo Archived pill is its own capsule, one rung quieter (12/500). The 20px vertical pad
    is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both breakpoints.
-   inline-block, NOT inline-flex, or the count prints "Archived· 18". */
+   inline-block, NOT inline-flex, or the count reads "Archived· 18". */
 .fsolo{font-size:12px;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
 /* pressed it must read as one solid lozenge: the hairline goes transparent, not to 0, so the
    height match is untouched. Rims go, shadow stays. */
@@ -1166,7 +1164,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .f:active{transform:scale(.97)}
 /* ---- content cards: App Store grammar (owner call 2026-08-08) -------------- */
 /* each submission is a raised card on the grouped ground: 16px radius, hair2 edge, quiet
-   shadow. Depth is glass chrome and card lift only; inside a card everything is flat. */
+   shadow. Depth is glass chrome and card lift only; inside a card all is flat. */
 .card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  padding:18px 16px;margin:0 0 14px;box-shadow:0 2px 10px var(--shc3);
  transition:background .18s,opacity .18s,filter .18s}
@@ -1180,7 +1178,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
 /* two gray levels: Shipped = ink, in flight = muted. A third, lighter gray cannot clear 4.5:1
-   at 14px, so pending keeps --m1 and its clock icon. No red status pill. */
+   at 14px, so pending keeps --m1 and its clock. No red status pill. */
 .pill.shipped{color:var(--txt)}
 .pill.shipped svg{color:var(--m1)}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
@@ -1218,8 +1216,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  align-items:center;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:14px;font-weight:400;color:var(--m1)}
-/* bare 14px text actions: pad the hit box to about 43px and cancel it with an equal negative
-   margin, so the resting layout is byte-identical. */
+/* bare 14px text actions: pad the hit box to ~43px, cancel it with an equal negative margin,
+   so the resting layout is byte-identical. */
 .view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
@@ -1233,8 +1231,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  box-shadow:0 2px 10px var(--shc3)}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* up to 8 tiles, the 8th a "+N" chip when the sub has more imaged cards than fit. */
-/* the strip scrolls at every width: 8 tiles measure 742px, so any sheet under ~782px would
-   scroll the page sideways. */
+/* the strip scrolls at every width: 8 tiles = 742px, so a sheet under ~782px would scroll the
+   page sideways. */
 .strip{display:flex;gap:10px;margin-top:14px;overflow-x:auto;
  overscroll-behavior-x:contain;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
@@ -1249,8 +1247,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .morechip{width:84px;height:117px;border-radius:6px;border:1px solid var(--hair);
  background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px;
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
-/* no bleed past the phone breakpoint, so an overflowing strip is sliced mid tile; the cue is a
-   28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr). */
+/* no bleed past the phone breakpoint, so an overflowing strip is sliced mid tile; the cue is
+   a 28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr). */
 @media(min-width:641px){
  .strip{--fadel:0px;--fader:0px;
   -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
@@ -1276,14 +1274,17 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 .card .gc .ph{background:var(--surface3)}
-/* always emitted, empty when ungraded, else rows stagger. 14 x 1.5 = 21. Red = a 10 only. */
-.gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px;min-height:21px}
-.gc .g9{color:var(--txt)}.gc .glo{color:var(--m1)}
+/* chip, always emitted, empty when ungraded or rows stagger. 17+2+2 = 21. Red = a 10 only. */
+.gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:600;line-height:17px;
+ padding:2px 8px;border-radius:999px;margin-top:9px;min-height:21px}
+.gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade)}
+.gc .g9{background:var(--surface3);color:var(--txt)}
+.gc .glo{background:var(--surface3);color:var(--m1)}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
 /* the name is the subject only (split_name demotes the set). Two lines reserved so a grid row
-   shares a baseline: 2 x 14 x 1.4 = 39.2 -> 40. min-height, not height (WCAG 1.4.4). */
+   shares a baseline: 2 x 14 x 1.4 = 39.2 -> 40. min-height, not height (1.4.4). */
 .gc .nm{font-size:14px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:40px;
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .gc .nmset{font-size:12px;color:var(--m1);margin-top:2px;white-space:nowrap;overflow:hidden;
@@ -1294,28 +1295,26 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color .15s,background-color .15s}
-/* a real class, not "has any inline style": keying on [style] repainted unrelated inline
-   styles. */
+/* a real class, not "has any inline style": [style] repainted unrelated inline styles. */
 .sublink.sublink-static{color:var(--m1);font-weight:400;cursor:default}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
  padding:11px 0 10px;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
-/* touch: tap navigates, the pencil edits (double-tap-to-edit races navigation). Hidden while
-   editing. */
+/* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
 .ownedit{display:none;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
 @media(pointer:coarse){
  .ownedit{display:flex;align-items:center;justify-content:center;width:40px;
   margin-right:-6px;align-self:stretch}
  .ownedit:active{color:var(--txt)}
- /* the input's focus hides it, not the row's: :focus-within matched the pencil's own focus and
-    the tap did nothing. */
+ /* the input's focus hides it, not the row's: :focus-within matched the pencil's own focus,
+    so the tap did nothing. */
  .own:focus + .ownedit{display:none}}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
 /* pointer focus keeps the underline; keyboard focus gets the ring - 1px is not a visible
-   indicator (WCAG 2.4.11). focus-visible after :focus so it wins. */
+   indicator (2.4.11). focus-visible after :focus so it wins. */
 .own:focus{border-bottom-color:var(--ring);outline:none}
 .own:focus-visible{border-bottom-color:var(--ring);outline:2px solid var(--ring);outline-offset:2px}
 .own.saved{border-bottom-color:var(--ok)}
@@ -1349,7 +1348,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    [href^="/img"] is the lightbox's selector, so .sublink is untouched; overflow clips the
    band. */
 .grid a[href^="/img"]{overflow:hidden;border-radius:6px}
-/* the sweep only runs on .ldg, which FX_JS sets when a loading tile nears the viewport, so
+/* the sweep runs only on .ldg, set by FX_JS when a loading tile nears the viewport, so
    below-the-fold tiles cost nothing. */
 .grid a[href^="/img"].ldg::after{content:'';position:absolute;inset:0;border-radius:6px;
  pointer-events:none;
@@ -1368,8 +1367,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 #themeflip{right:20px}
 #gearbtn{right:72px}
 #gearbtn:active,#themeflip:active{transform:scale(.94)}
-/* the orbs float over the owner tag and View, so FX_JS marks the document scrolling for 150ms
-   after each scroll and they go inert - the tap falls through. Pointer devices keep them live. */
+/* the orbs float over the owner tag and View, so FX_JS marks the doc scrolling for 150ms after
+   each scroll and they go inert - the tap falls through. Pointers keep them live. */
 @media(hover:none){
  html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none;opacity:.55}}
 /* ---- forms --------------------------------------------------------------- */
@@ -1380,12 +1379,12 @@ input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:99
  font-family:inherit;outline:none}
 input:focus,input:focus-visible{outline:2px solid var(--ring);outline-offset:0}
 input::placeholder{color:var(--m1)}
-/* BUTTONS ARE NOT FILLED BY DEFAULT: the fill is opt-in via .fillbtn, the element rule keeps
+/* BUTTONS ARE NOT FILLED BY DEFAULT: fill is opt-in via .fillbtn, the element rule keeps
    neutral resets only. Typography stays - a reset, not an identity. */
 button{background:transparent;border:0;color:inherit;
  font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
-/* filled primary: form submits and modal saves. Carries the width:100% and margin-top:12px the
-   element rule used to hand out. */
+/* filled primary: form submits and modal saves. Carries the width:100% and margin-top:12px
+   the element rule used to hand out. */
 .fillbtn{width:100%;margin-top:12px;background:var(--ac-fill);border-radius:999px;color:#fff;
  padding:12px;transition:background .18s,transform .14s ease-out}
 /* press-scale stays element-level: it sets no colour, so it cannot leak a fill. */
@@ -1400,7 +1399,7 @@ button:disabled{opacity:.5;cursor:default}
 .srow input{flex:1;min-width:150px;margin-top:0}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
 /* a destructive text action is not a primary, so .sdel never takes .fillbtn; the radius is
-   restated because the element rule hands none out. .squiet is the same in accent. */
+   restated because the element rule hands none out. .squiet is that in accent. */
 .sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
  border-radius:999px}
 .sbtn.sdel{color:var(--err)}
@@ -1412,8 +1411,8 @@ button:disabled{opacity:.5;cursor:default}
 .snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
-/* attention dot: the account PSA wants verified. Accent, not red - red is grades and the hold
-   pill. The label rides in a .vh span. */
+/* attention dot: the account PSA wants verified. Accent, not red - red is grades and the
+   hold pill. The label rides in a .vh span. */
 .schip.att::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
  border-radius:50%;background:var(--ac);vertical-align:1px}
 .spane{margin-top:16px}
@@ -1444,8 +1443,8 @@ button:disabled{opacity:.5;cursor:default}
 /* no wash on an archived card: the .5 dim put its text at 2.0 to 3.4 on white (1.4.3). "Past"
    is grayscale alone; the ink keeps its 4.5. */
 .card.arch{filter:grayscale(.55)}
-/* an archived tile dims its scan, not its data - tiles render inline in search results, so .5
-   put real content near 1.9:1 (1.4.3). The no-scan placeholder is a label, not a scan. */
+/* an archived tile dims its scan, not its data - tiles render inline in search, so .5 put real
+   content near 1.9:1 (1.4.3). The no-scan placeholder is a label. */
 .gc.arch a[href^="/img"]{opacity:.5;filter:grayscale(.6);
  transition:opacity .18s,filter .18s}
 .card.tlcard{padding:16px;margin:14px 0}
@@ -1462,12 +1461,12 @@ button:disabled{opacity:.5;cursor:default}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
 /* the gate is a card too: on the grouped ground a bare stack floats anchorless and the quiet
-   input fill vanished. */
+   fill vanished. */
 .gbox{width:min(340px,100%);text-align:center;background:var(--surface);
  border:1px solid var(--hair2);border-radius:20px;padding:28px 22px;
  box-shadow:0 2px 10px var(--shc3)}
 /* the gate is a narrow card, not a page: a title sized for an 820px sheet wraps a two-word
-   name. One step down, and unchanged on phones. */
+   name. One step down, unchanged on phones. */
 .gbox h1{font-size:24px;letter-spacing:-.02em}
 .gbox input{text-align:center}
 .gbox .sub{margin-top:6px}
@@ -1476,8 +1475,8 @@ button:disabled{opacity:.5;cursor:default}
 /* the hover tint layers on the card surface - background replaces, so a bare alpha wash would
    show page ground. */
 .card:hover{background:color-mix(in srgb,var(--txt) 4%,var(--surface))}
-/* group wrappers and the timeline block are .card for the lift but are not targets; only the
-   sub-number link is. */
+/* group wrappers and the timeline block are .card for the lift but are not targets; only
+   the sub-number link is. */
 .card.grp:hover,.card.tlcard:hover{background:var(--surface)}
 .card.arch:hover{filter:none}
 .gc.arch:hover a[href^="/img"]{opacity:.78;filter:grayscale(.3)}
@@ -1490,8 +1489,7 @@ button:disabled{opacity:.5;cursor:default}
 .lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
 .view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
 /* text actions keep the invisible hit box but hover never paints it - the slab hung over the
-   stage bar. Hover is the colour deepen; the View pill is the exception, it is a visible
-   capsule. */
+   stage bar. Hover is the colour deepen; the View pill is the exception, a visible capsule. */
 .stage .view:hover{color:var(--ac-hot);background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
 /* the glyph actions ARE square-ish targets, so theirs is a circle */
 .hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
@@ -1524,7 +1522,7 @@ button:disabled{opacity:.5;cursor:default}
  .brand{gap:10px;min-width:0}
  .logo{height:26px}
  /* the large title tracks the sheet, not the type scale: at 26px beside the logo it pushes
-    .tbend to a second line at 347px. .gbox h1 is deliberately untouched. */
+    .tbend to a second line at 347px. .gbox h1 stays untouched on purpose. */
  h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
  /* page-header summaries take the full sheet width instead of clipping right */
@@ -1533,15 +1531,15 @@ button:disabled{opacity:.5;cursor:default}
  /* the 34ch measure keeps its width but not its right edge: full-width and left-aligned,
     margin-left:auto floated it to the middle. */
  .hrow>.synced .estnote{margin-left:0}
- /* the segment never breaks to a second row, and to 360px is not an overflow box either: three
-    pills measure ~247px, and staying un-clipped is what lets the hit pseudo work (28 + 8 each
-    way = 44 on the thin 38px capsule). Below 360 it scrolls and clips. */
+ /* the segment never breaks to a second row, nor is it an overflow box to 360px: three pills
+    measure ~247px, and staying un-clipped is what lets the hit pseudo work (28 + 8 each way
+    = 44 on the 38px capsule). Below 360 it scrolls and clips. */
  .filters{display:flex;flex-wrap:nowrap;max-width:100%;padding:4px 3px;align-items:center}
  .filters .f{flex:0 0 auto}
  .filterrow .filters .f::before{inset:-8px 0}
- /* scroll cue, live only below 360px where the capsule scrolls and the scrollbar is hidden: a
+ /* scroll cue, live only below 360px where the capsule scrolls with its scrollbar hidden: a
     22px shade on each edge with content past it, FX_JS flips .sl/.sr. Default attachment, not
-    the CSS-only local trick, whose opaque cover would patch over the glass. */
+    the CSS-only local trick, whose opaque cover patches over the glass. */
  .filters{--cuel:transparent;--cuer:transparent;
   background-image:linear-gradient(90deg,var(--cuel),transparent),
    linear-gradient(270deg,var(--cuer),transparent),
@@ -1552,9 +1550,9 @@ button:disabled{opacity:.5;cursor:default}
   transition:--cuel .18s ease-out,--cuer .18s ease-out}
  .filters.sl{--cuel:var(--shc3)}
  .filters.sr{--cuer:var(--shc3)}
- /* the capsule hugs its pills - no flex:1, or a long empty glass track past the last pill
-    reads as broken; the slack belongs between the controls. min-width:0 is what lets it scroll
-    at 360px, where the count leaves Archived and pill padding goes 14 -> 11. */
+ /* the capsule hugs its pills - no flex:1, or empty glass track past the last pill reads as
+    broken; the slack belongs between the controls. min-width:0 lets it scroll at 360px,
+    where the count leaves Archived and pill padding goes 14 -> 11. */
  .filterrow .filters{min-width:0}
  .archn{display:none}
  .filterrow .filters .f{padding:5px 11px 7px}
@@ -1571,7 +1569,7 @@ button:disabled{opacity:.5;cursor:default}
  .own:not([readonly]){font-size:16px}
  .gc .nm{min-height:0}}
 /* sub-360: pills plus the solo pill can exceed the sheet, so the capsule scrolls. The one
-   width where the overflow box clips the hit pseudo to 36px (past WCAG 2.5.8's 24px floor);
+   width where overflow clips the hit pseudo to 36px (past WCAG 2.5.8's 24px floor);
    overflow-y hidden so the -8px pseudo cannot open a phantom scroll. */
 @media(max-width:359px){
  .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
@@ -3212,7 +3210,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     name = html.escape(subject)
     nmset = f'<div class="nmset">{html.escape(setline)}</div>' if setline else ""
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
-    # the grade is the news on this tile: plain text, PSA-label red, under the scan
+    # the grade is the news on this tile: a small tinted chip under the scan, red for a 10
     gtx = f'PSA {html.escape(c["grade"])}' if c.get("grade") else ""
     try:
         g = float(c.get("grade"))
