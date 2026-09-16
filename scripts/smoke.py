@@ -490,6 +490,9 @@ def main():
                 fails.append("GET /app.css: a focused corner orb can stay invisible")
             if js and b"'scrolldn'" not in js:
                 fails.append("GET /app.js: nothing marks the scroll direction")
+            if js and b"y=pageYOffset" not in js:
+                fails.append("GET /app.js: a restored scroll position reads as a "
+                             "scroll down and hides the orbs")
             # the orbs and the landing zone they sit in clear the home indicator (T116)
             if css.count(b"env(safe-area-inset-bottom,0px)") < 2:
                 fails.append("GET /app.css: the orbs and the page foot ignore the safe area")

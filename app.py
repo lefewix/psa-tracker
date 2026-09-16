@@ -3031,9 +3031,11 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
    orbs outright on the way down the page. 6px of slop so a rubber-band bounce is
    not a direction change, and nothing hides in the first 120px, where the page
    has barely moved and the gear is still the obvious way to settings. One passive
-   listener, one property read, so it still costs nothing. */
+   listener, one property read, so it still costs nothing. y starts where the page
+   does: coming back to a restored scroll position fires one big scroll event, and
+   from 0 that would read as a scroll down and hide the orbs nobody moved. */
 (function(){
-  var d=document.documentElement,t,y=0;
+  var d=document.documentElement,t,y=pageYOffset||0;
   addEventListener('scroll',function(){
     var n=pageYOffset||d.scrollTop||0;
     d.classList.add('scrolling');
