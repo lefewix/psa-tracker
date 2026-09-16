@@ -1276,9 +1276,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 .card .gc .ph{background:var(--surface3)}
-/* the grade line is always emitted, empty on an ungraded card, or neighbours in a grid row
-   stagger. 14 x 1.5 = 21. */
+/* always emitted, empty when ungraded, else rows stagger. 14 x 1.5 = 21. Red = a 10 only. */
 .gc .gr{font-size:14px;font-weight:600;color:var(--grade);margin-top:9px;min-height:21px}
+.g9{color:var(--txt)}.glo{color:var(--m1)}
 .gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
@@ -3214,7 +3214,12 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
     # the grade is the news on this tile: plain text, PSA-label red, under the scan
     gtx = f'PSA {html.escape(c["grade"])}' if c.get("grade") else ""
-    grade = f'<div class="gr">{gtx}</div>'
+    try:
+        g = float(c.get("grade"))
+    except (TypeError, ValueError):
+        g = 0.0  # 'Auth', 'A' and friends grade with the low tier
+    gcls = "" if not gtx else (" g10" if g >= 10 else " g9" if g >= 9 else " glo")
+    grade = f'<div class="gr{gcls}">{gtx}</div>'
     if is_prelim:
         head = ('<div class="cn pre" title="No cert number until PSA grades it">'
                 'Prelim</div>')
