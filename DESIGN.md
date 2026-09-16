@@ -980,11 +980,17 @@ border) in one of three tiers — a 14% Grade Red tint for a PSA 10 behind a 45%
 a neutral `--surface` chip with `--txt` and a `--hairh` border for a 9, the same neutral chip in
 `--m1` behind the softer `--hair` for 8 and below — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
-baseline, cert number in monospace micro, card name
+baseline, cert number in **11px** monospace micro in `--tert` — lookup text, not reading text,
+and measured on the well at 3.24:1 light / 3.91:1 dark, past the 3:1 floor for its kind (the
+`Prelim` label keeps 12px; it is a state, not a number) — card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), **no set line** (the name carries the
-subject; the set is read on the detail header, not scanned in a grid), value at 15/600 —
-one step below the 17/650 data rung, which a well holding six things could not afford — then
+subject; the set is read on the detail header, not scanned in a grid), value at 15/600 in
+**`--ac-pale`** — one step below the 17/650 data rung, which a well holding six things could
+not afford, and in Accent as Text because the value is the tile's **second reveal** after the
+grade: six greys in one well read as a single block (the owner, 2026-09-16: "still too uniform,
+needs another color"). It measures 4.84:1 light and 7.16:1 dark on the well; the `CAD` caption
+stays `--m1` and the owner tag stays `--txt`, so the accent lands once. Then
 the owner tag pinned to the bottom via `margin-top: auto`. The rhythm between them is tight
 by intent: 8px above the chip, 4px above the cert and the value. the owner, 2026-09-16, on the
 first pass: "better, but within each card pill it's still a bit much." Tiles

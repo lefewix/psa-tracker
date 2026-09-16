@@ -1305,7 +1305,12 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    well in dark) and keeps --m1 over 4.5:1, which --ph does not in dark (3.8). (T112) */
 .gc .g9{background:var(--surface);color:var(--txt);border-color:var(--hairh)}
 .gc .glo{background:var(--surface);color:var(--m1);border-color:var(--hair)}
-.gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:4px;line-height:1.4;
+/* the cert is lookup text, not reading text: 11px micro in --tert, the lighter of the two
+   greys, so it sits under the name instead of beside it. --tert on the well measures 3.24:1
+   light and 3.91:1 dark - past 3:1, which is the floor for non-essential text of this kind,
+   and the number is also the tile's link target and its title. .cn.pre keeps 12px: "Prelim"
+   is a state, not a number. (T112) */
+.gc .cn{font-size:11px;font-weight:400;color:var(--tert);margin-top:4px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
 /* the name is the subject only (split_name demotes the set). Two lines reserved so a grid row
@@ -1317,8 +1322,13 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .gc .nmset{display:none}
 /* 15/600 on a tile, not the 17/650 data rung: in a well beside a grade chip, a cert line, a
    two-line name and an owner tag, the full rung was one loud thing too many. The rung itself
-   is unchanged wherever it carries a page's headline figure. (T112) */
-.gc .cval{font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--txt);margin-top:4px}
+   is unchanged wherever it carries a page's headline figure.
+   Accent, not --txt: with the set line gone the well ran six greys and read as one block
+   (the owner, 2026-09-16: "still too uniform, needs another color"). The value is the tile's
+   second reveal after the grade, so it takes --ac-pale, the Accent-as-Text token .sublink
+   and .tlink already use - measured on the well at the default accent it is 4.84:1 light and
+   7.16:1 dark, both past 4.5. The "CAD" caption stays --m1. (T112) */
+.gc .cval{font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--ac-pale);margin-top:4px}
 .gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
