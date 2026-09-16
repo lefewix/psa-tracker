@@ -1033,7 +1033,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
  background:var(--amb)}
 body{background:transparent;min-height:100vh;color:var(--txt);
  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
- -webkit-font-smoothing:antialiased;padding:18px 20px 96px;
+ -webkit-font-smoothing:antialiased;padding:18px 20px calc(96px + env(safe-area-inset-bottom,0px));
  font-size:14px;line-height:1.5;font-variant-numeric:tabular-nums}
 :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
 .mono{font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
@@ -1404,7 +1404,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 /* ---- corner controls: glass orbs ----------------------------------------- */
 /* 44x44 is the HIG floor; the 8px gap is kept by pushing the gear to 20 + 44 + 8 = 72. */
-#gearbtn,#themeflip{position:fixed;bottom:20px;z-index:40;width:44px;height:44px;
+#gearbtn,#themeflip{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));
+ z-index:40;width:44px;height:44px;
  border-radius:50%;color:var(--m1);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  transition:color .15s,opacity .15s,transform .14s ease-out;text-decoration:none}
@@ -1415,6 +1416,13 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    each scroll and they go inert - the tap falls through. Pointers keep them live. */
 @media(hover:none){
  html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none;opacity:.55}}
+/* reading goes down the page, so on the way down the orbs leave: FX_JS marks the direction
+   on <html>, scrolling back up brings them in. The search preview owns that corner outright
+   while it is open. Focus out-orders both, so a keyboard walk never lands on an orb that
+   isn't painted. */
+html.scrolldn #gearbtn,html.scrolldn #themeflip,
+body:has(.preview.on) #gearbtn,body:has(.preview.on) #themeflip{opacity:0;pointer-events:none}
+#sitectl:focus-within #gearbtn,#sitectl:focus-within #themeflip{opacity:1;pointer-events:auto}
 /* ---- forms --------------------------------------------------------------- */
 /* every single-line control is a capsule; 3px extra side padding buys the curve back.
    Content-side radii stay square-ish. */
@@ -1561,7 +1569,7 @@ button:disabled{opacity:.5;cursor:default}
  /* phone navigations are instant swaps: the crossfade shows a stale snapshot for about a
     quarter second, which reads as lag. */
  :root{view-transition-name:none}
- body{padding:16px 14px 88px}
+ body{padding:16px 14px calc(88px + env(safe-area-inset-bottom,0px))}
  .tbtop{flex-wrap:wrap;gap:10px}
  .brand{gap:10px;min-width:0}
  .logo{height:26px}
@@ -3019,11 +3027,17 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
 })();
 /* the corner orbs step aside mid scroll: .scrolling on <html> for 150ms after
    every scroll event is what the touch rule hangs off (see #gearbtn's media
-   block). One passive listener, no layout read, so it costs nothing. */
+   block). The same listener carries the direction as .scrolldn, which hides the
+   orbs outright on the way down the page. 6px of slop so a rubber-band bounce is
+   not a direction change, and nothing hides in the first 120px, where the page
+   has barely moved and the gear is still the obvious way to settings. One passive
+   listener, one property read, so it still costs nothing. */
 (function(){
-  var d=document.documentElement,t;
+  var d=document.documentElement,t,y=0;
   addEventListener('scroll',function(){
+    var n=pageYOffset||d.scrollTop||0;
     d.classList.add('scrolling');
+    if(Math.abs(n-y)>6){d.classList.toggle('scrolldn',n>y&&n>120);y=n;}
     clearTimeout(t);
     t=setTimeout(function(){d.classList.remove('scrolling');},150);
   },{passive:true});

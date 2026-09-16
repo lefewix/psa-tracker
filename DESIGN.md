@@ -574,10 +574,15 @@ and anything a webfont would buy is bought instead with spacing and weight.
 ## Layout
 
 A single centered column, `max-width: 820px`, on a page padded `18px 20px 96px`
-(`16px 14px 88px` under 640px). The bottom padding reserves the corner-orb landing zone.
+(`16px 14px 88px` under 640px). The bottom padding reserves the corner-orb landing zone, and
+both it and the orbs' own `bottom` carry `env(safe-area-inset-bottom, 0px)` so the home
+indicator never shares the zone.
 Both orbs sit in one `<nav aria-label="Site controls">`, and on a touch screen they go inert
 (`pointer-events:none`, `opacity .55`) for 150ms after each scroll event, so a tap that lands
-mid scroll falls through to the card underneath.
+mid scroll falls through to the card underneath. Reading goes down the page, so they leave on
+the way down (`html.scrolldn`, past 120px, 6px of slop) and return on the way up, and an open
+search preview (`body:has(.preview.on)`) hides them outright since it owns that column.
+`#sitectl:focus-within` out-orders both: a focused orb is always painted (T116).
 
 Content sits in **raised cards flush with the column**: each submission is a card at
 `padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px

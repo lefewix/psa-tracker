@@ -480,6 +480,19 @@ def main():
             if b"html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none" \
                     not in css:
                 fails.append("GET /app.css: the corner orbs still take taps mid scroll")
+            # and on the way down the page they leave altogether, come back on the
+            # way up, and never paint over an open search preview (T116)
+            if b"html.scrolldn #gearbtn,html.scrolldn #themeflip," not in css \
+                    or b"body:has(.preview.on) #gearbtn" not in css:
+                fails.append("GET /app.css: the corner orbs no longer hide on scroll "
+                             "down or behind the search preview")
+            if b"#sitectl:focus-within #gearbtn" not in css:
+                fails.append("GET /app.css: a focused corner orb can stay invisible")
+            if js and b"'scrolldn'" not in js:
+                fails.append("GET /app.js: nothing marks the scroll direction")
+            # the orbs and the landing zone they sit in clear the home indicator (T116)
+            if css.count(b"env(safe-area-inset-bottom,0px)") < 2:
+                fails.append("GET /app.css: the orbs and the page foot ignore the safe area")
         check("GET /logo", "/logo", (200,))
 
         # --- /img and /logo are cached at the Cloudflare edge on origin TTL, so
