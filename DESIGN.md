@@ -969,15 +969,19 @@ the owner saw on 2026-09-16 — "the page is a bit too flat, and cards get visua
 grid gap dropped to 12px, the track grew by the well's padding to hold the image width, and
 `.card` stepped its shadow one notch to `0 4px 14px`. The neutral grade chips moved off
 `--surface3` to `--surface` for the same reason: the well wears their old ground. Below the
-image: the grade as a small filled chip (13px/600, 1px 8px, fully rounded, a 1px
+image: the grade as a small filled chip (13px/500, 1px 7px, fully rounded, a 1px
 border) in one of three tiers — a 14% Grade Red tint for a PSA 10 behind a 45% Grade Red border,
 a neutral `--surface` chip with `--txt` and a `--hairh` border for a 9, the same neutral chip in
 `--m1` behind the softer `--hair` for 8 and below — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
 baseline, cert number in monospace micro, card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
-clips the second line mid-glyph under text-only zoom), the set line demoted below it, value on
-the 17/650 data rung, then the owner tag pinned to the bottom via `margin-top: auto`. Tiles
+clips the second line mid-glyph under text-only zoom), **no set line** (the name carries the
+subject; the set is read on the detail header, not scanned in a grid), value at 15/600 —
+one step below the 17/650 data rung, which a well holding six things could not afford — then
+the owner tag pinned to the bottom via `margin-top: auto`. The rhythm between them is tight
+by intent: 8px above the chip, 4px above the cert and the value. the owner, 2026-09-16, on the
+first pass: "better, but within each card pill it's still a bit much." Tiles
 carry **no `content-visibility`** — its paint containment clipped everything that reaches past
 the tile box (focus rings, the hover pill's negative-margin bleed), so it was removed; the
 off-screen cost it targeted is handled in FX_JS instead, which lands the loading sweep only

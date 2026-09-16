@@ -1286,8 +1286,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  background:var(--ph);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
-.gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:600;line-height:17px;
- padding:1px 8px;border:1px solid transparent;border-radius:999px;margin-top:9px;min-height:21px}
+/* 500, not 600, and a tighter 1px 7px: the chip still reads as the news, it just stops
+   shouting over the five lines under it. Border and the 21px reserved box are untouched. */
+.gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:500;line-height:17px;
+ padding:1px 7px;border:1px solid transparent;border-radius:999px;margin-top:8px;min-height:21px}
 .gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade);
  border-color:color-mix(in srgb,var(--grade) 45%,transparent)}
 /* the neutral tiers took --surface3 when the tile was bare; the well IS --surface3 now, so
@@ -1296,16 +1298,20 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    well in dark) and keeps --m1 over 4.5:1, which --ph does not in dark (3.8). (T112) */
 .gc .g9{background:var(--surface);color:var(--txt);border-color:var(--hairh)}
 .gc .glo{background:var(--surface);color:var(--m1);border-color:var(--hair)}
-.gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:5px;line-height:1.4;
+.gc .cn{font-size:12px;font-weight:400;color:var(--m1);margin-top:4px;line-height:1.4;
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
 /* the name is the subject only (split_name demotes the set). Two lines reserved so a grid row
    shares a baseline: 2 x 14 x 1.4 = 39.2 -> 40. min-height, not height (1.4.4). */
 .gc .nm{font-size:14px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:40px;
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.gc .nmset{font-size:12px;color:var(--m1);margin-top:2px;white-space:nowrap;overflow:hidden;
- text-overflow:ellipsis}
-.gc .cval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);margin-top:4px}
+/* the set line is off the tile: the well already frames six things and the name carries the
+   subject, so the set stays on the detail header where it is read, not scanned. (T112) */
+.gc .nmset{display:none}
+/* 15/600 on a tile, not the 17/650 data rung: in a well beside a grade chip, a cert line, a
+   two-line name and an owner tag, the full rung was one loud thing too many. The rung itself
+   is unchanged wherever it carries a page's headline figure. (T112) */
+.gc .cval{font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--txt);margin-top:4px}
 .gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
