@@ -10,7 +10,7 @@ PSA_SECRET, PSA_ACCT_ID, PSA_MERGE_INTO (the account dir holding the universal
 db; falls back to PSA_ACCT_ID), PSA_ACCOUNTS_DIR, PSA_WEB_PORT.
 """
 import hashlib, hmac, os, sys, time
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 ACCTS = os.environ.get("PSA_ACCOUNTS_DIR", "/opt/psa-tracker/accounts")
 PORT = os.environ.get("PSA_WEB_PORT", "8080")
@@ -42,7 +42,10 @@ def shoot(sub, out):
         # separate headless shell is not installed on the box)
         b = p.chromium.launch(headless=True, channel="chromium",
                               args=["--no-sandbox", "--disable-dev-shm-usage"])
-        ctx = b.new_context(viewport={"width": 900, "height": 900}, device_scale_factor=2)
+        # reduced motion: the rise keyframe starts the card at opacity 0, and a
+        # shot fired mid-animation is a blank picture
+        ctx = b.new_context(viewport={"width": 900, "height": 900}, device_scale_factor=2,
+                            reduced_motion="reduce")
         ctx.add_cookies([{"name": "psa_session", "value": session_cookie(acct),
                           "domain": "127.0.0.1", "path": "/"}])
         page = ctx.new_page()
@@ -50,7 +53,21 @@ def shoot(sub, out):
         card = page.locator(f'.card[data-sub="{sub}"]').first
         card.wait_for(timeout=15000)
         card.scroll_into_view_if_needed()
-        page.wait_for_timeout(600)  # let the lazy scans in the strip paint
+        # the strip scans are loading="lazy" and a freshly scanned sub is not in
+        # imgcache yet, so /img has to go to CloudFront: ask for them eagerly and
+        # wait for every one to decode. No scans yet = no img elements = passes.
+        handle = card.element_handle()
+        handle.evaluate("c => c.querySelectorAll('img').forEach(i => {i.loading = 'eager'})")
+        try:
+            page.wait_for_function(
+                "c => [...c.querySelectorAll('img')]"
+                ".every(i => i.complete && i.naturalWidth > 0)",
+                arg=handle, timeout=25000)
+        except PWTimeout:
+            raise SystemExit(f"card #{sub}: scans still blank after 25s, no shot")
+        box = card.bounding_box()
+        if not box or box["height"] < 100:
+            raise SystemExit(f"card #{sub}: card is {box and int(box['height'])}px tall, no shot")
         card.screenshot(path=out)
         ctx.close(); b.close()
 

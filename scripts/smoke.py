@@ -311,6 +311,25 @@ def comment_checks(fails):
                      "the global env (T96)")
 
 
+def shot_checks(fails):
+    """A Discord card shot is never blank (T194): the context kills the rise
+    animation, the lazy strip scans are forced eager and waited for, and a card
+    that is still unpainted or too short exits non-zero instead of writing a
+    file. Playwright is not installed here, so this reads the source."""
+    src = open(os.path.join(ROOT, "psa_shot.py"), encoding="utf-8").read()
+    for want, why in ((' reduced_motion="reduce"', "does not disable the rise animation"),
+                      ("i.loading = 'eager'", "does not force the lazy scans eager"),
+                      ("i.complete && i.naturalWidth > 0", "does not wait for the scans"),
+                      ("page.wait_for_function", "does not wait for the scans"),
+                      ('box["height"] < 100', "does not reject a collapsed card")):
+        if want not in src:
+            fails.append(f"psa_shot.py: {why} ({want!r} missing) (T194)")
+    if "wait_for_timeout" in src:
+        fails.append("psa_shot.py: still shoots on a fixed timer (T194)")
+    if src.index("card.screenshot") < src.index("page.wait_for_function"):
+        fails.append("psa_shot.py: screenshots before waiting for the scans (T194)")
+
+
 def setup_instance_checks(fails):
     """An instance whose single account has never connected: the setup form is
     the owner's retry, not a public takeover, and an account.env that stops
@@ -559,6 +578,7 @@ def main():
         common_checks(fails)
         tracking_checks(fails)
         comment_checks(fails)
+        shot_checks(fails)
 
         # --- non-ASCII credentials compare, they don't crash the handler (T5)
         check("GET /api/hub.json (non-ASCII key)", "/api/hub.json?key=caf%C3%A9", (404,))
