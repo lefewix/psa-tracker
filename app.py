@@ -1334,8 +1334,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    second reveal after the grade, so it takes --ac-pale, the Accent-as-Text token .sublink
    and .tlink already use - measured on the well at the default accent it is 4.84:1 light and
    7.16:1 dark, both past 4.5. The "CAD" caption stays --m1. (T112) */
-.gc .cval{font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--ac-pale);margin-top:4px}
+.gc .cval{display:block;width:fit-content;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--ac-pale);margin-top:4px}
 .gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
+.gc .cval:hover{text-decoration:underline;text-underline-offset:3px}
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
@@ -3331,7 +3332,10 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
                    '<path d="M11.1 2.2a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3L6.4 12.3l-3.1.8.8-3.1z" '
                    'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>'
                    '</button></div>')
-    val = (f'<div class="cval">${value:,.0f} <span>{vcur} · estimated</span></div>'
+    # the value opens PSA's public cert page: its estimate and the similar-sales comps it came from
+    val = (f'<a class="cval" href="https://www.psacard.com/cert/{html.escape(c["cert_no"] or "")}/psa" '
+           f'target="_blank" rel="noopener" title="See PSA\'s estimate and recent sales">'
+           f'${value:,.0f} <span>{vcur} · estimated</span></a>'
            if value is not None and not customer else "")
     return (f'<div class="gc{" arch" if archived else ""}">{img}{grade}{head}'
             f'<div class="nm">{name}</div>{nmset}'
