@@ -73,7 +73,8 @@ CREATE TABLE IF NOT EXISTS subs (
   first_seen   TEXT,
   updated_at   TEXT,
   missing_since TEXT,
-  acct         TEXT
+  acct         TEXT,
+  hold_reason  TEXT
 );
 CREATE TABLE IF NOT EXISTS status_history (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,7 +105,8 @@ def db():
     conn.executescript(SCHEMA)
     for stmt in ("ALTER TABLE cards ADD COLUMN declared_value REAL",
                  "ALTER TABLE subs ADD COLUMN missing_since TEXT",
-                 "ALTER TABLE subs ADD COLUMN acct TEXT"):
+                 "ALTER TABLE subs ADD COLUMN acct TEXT",
+                 "ALTER TABLE subs ADD COLUMN hold_reason TEXT"):
         try:  # migrations for DBs created before these columns existed
             conn.execute(stmt)
             conn.commit()
@@ -194,6 +196,8 @@ def parse(ctype, body):
             # PSA signals some holds only via status (e.g. "ReceivedHold"
             # with onHold still false), so treat either as a hold
             "on_hold": bool(o.get("onHold")) or "hold" in (o.get("status") or "").lower(),
+            # e.g. "HOLD.DCC" (a financial hold); psa_common.HOLD_LABELS names it
+            "hold_reason": o.get("holdReasonCode") or "",
             "thumb": thumb or "",
             "cert_ids": json.dumps(o.get("certIds") or []),
         })
@@ -614,17 +618,18 @@ def upsert(conn, subs, quiet=()):
             # the sub's status, service, card count and tracking
             log(f"sub #{s['sub_number']}: parsed with no status -- row left untouched")
             continue
-        row = conn.execute("SELECT status, grades_ready, on_hold FROM subs WHERE sub_number=?",
+        row = conn.execute("SELECT status, grades_ready, on_hold, hold_reason FROM subs WHERE sub_number=?",
                            (s["sub_number"],)).fetchone()
         vals = (s["order_number"], s["service"], s["status"], s["card_count"],
                 s["destination"], s["arrived"], s["est_start"], s["est_end"],
                 s["shipped"], s["tracking"], s["carrier"], int(s["grades_ready"]),
-                int(s["on_hold"]), s["thumb"], s["cert_ids"])
+                int(s["on_hold"]), s["thumb"], s["cert_ids"], s["hold_reason"])
         if row is None:
             conn.execute("""INSERT INTO subs (sub_number, order_number, service, status,
                 card_count, destination, arrived, est_start, est_end, shipped, tracking,
-                carrier, grades_ready, on_hold, thumb, cert_ids, first_seen, updated_at, acct)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                carrier, grades_ready, on_hold, thumb, cert_ids, hold_reason, first_seen,
+                updated_at, acct)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (s["sub_number"],) + vals + (now, now, ACCT))
             conn.execute("INSERT INTO status_history(sub_number,status,seen_at) VALUES (?,?,?)",
                          (s["sub_number"], s["status"], now))
@@ -642,12 +647,17 @@ def upsert(conn, subs, quiet=()):
                 note(s["sub_number"], f"sub #{s['sub_number']}: grades are ready")
             # a hold usually flips with the stage unchanged (14956985 went on
             # hold at QA Check, 2026-09) - status diff alone never saw it
+            # a new reason on a standing hold is news too
+            code = s["hold_reason"]
+            why = (f" ({psa_common.HOLD_LABELS.get(code, code)})") if code else ""
             if bool(row[2]) != s["on_hold"]:
                 note(s["sub_number"],
-                     f"sub #{s['sub_number']}: {'ON HOLD' if s['on_hold'] else 'hold cleared'}")
+                     f"sub #{s['sub_number']}: {'ON HOLD' + why if s['on_hold'] else 'hold cleared'}")
+            elif s["on_hold"] and (row[3] or "") != s["hold_reason"]:
+                note(s["sub_number"], f"sub #{s['sub_number']}: hold reason now{why or ' unknown'}")
             conn.execute("""UPDATE subs SET order_number=?, service=?, status=?, card_count=?,
                 destination=?, arrived=?, est_start=?, est_end=?, shipped=?, tracking=?,
-                carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, updated_at=?,
+                carrier=?, grades_ready=?, on_hold=?, thumb=?, cert_ids=?, hold_reason=?, updated_at=?,
                 missing_since=NULL, acct=?
                 WHERE sub_number=?""", vals + (now, ACCT, s["sub_number"]))
     conn.commit()

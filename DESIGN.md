@@ -431,8 +431,8 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   chip in muted (`--m1`). A tint, never a solid red block: a solid fill would be the badge the
   Reserved Red Rule already rejected. Chip size and its 21px line box never change, so the tier
   reads as a step down in temperature, not in importance.
-- **Alert Red** (`--err` / `--holdtx`): form errors, destructive text actions, and the "On
-  hold" pill. Same family as Grade Red, distinct token, distinct job.
+- **Alert Red** (`--err` / `--holdtx`): form errors, destructive text actions, and the hold
+  pill, which names PSA's reason when known ("Financial hold") and says "On hold" otherwise. Same family as Grade Red, distinct token, distinct job.
 - **Saved Green** (`--ok`): one use only — the owner tag's underline flashing on a successful
   save. It is confirmation, never decoration, and never a status color anywhere else.
 

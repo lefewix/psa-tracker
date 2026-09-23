@@ -6,6 +6,15 @@ import json, os, shlex, urllib.error, urllib.request, uuid
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0 Safari/537.36")
 
+# PSA's holdReasonCode -> what the pill says. HOLD.DCC seen on 14676927
+# (2026-09-21, orders.get accountingHold true). Unmapped codes read "On hold";
+# the Discord line quotes them raw so they can be added here.
+HOLD_LABELS = {"HOLD.DCC": "Financial hold"}
+
+
+def hold_label(code):
+    return HOLD_LABELS.get(code or "", "On hold")
+
 
 # The last line any logger printed. psa_login reports it as the failure cause
 # when it has nothing more specific to say (T105).

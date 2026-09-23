@@ -17,7 +17,7 @@ import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from zoneinfo import ZoneInfo
-from psa_common import env_set
+from psa_common import env_set, hold_label
 
 SECRET = os.environ.get("PSA_SECRET", "").encode()
 BIND = os.environ.get("PSA_BIND", "0.0.0.0")
@@ -1837,7 +1837,8 @@ def eta_pill(s):
     scans (the old .done class was emitted for two different states and had
     no CSS rule at all - the column read as one gray).
     A hold no longer swallows the date: both pills render, stacked by .pills."""
-    hold = f'<span class="pill hold">{ICON_HOLD}On hold</span>' if s["on_hold"] else ""
+    hold = (f'<span class="pill hold">{ICON_HOLD}{hold_label(s.get("hold_reason"))}</span>'
+            if s["on_hold"] else "")
     if s["status"] == "Shipped":
         return hold + f'<span class="pill shipped">{ICON_CHECK}Shipped</span>'
     label, val, muted = eta_words(s)
@@ -3553,7 +3554,7 @@ def eta_badge(s, extra=""):
     if s["on_hold"]:
         # the hold leads and the date stays: the one page you click THROUGH for
         # an explanation used to drop the return window entirely
-        eta = (f'Status<b class="holdb">On hold</b>'
+        eta = (f'Status<b class="holdb">{hold_label(s.get("hold_reason"))}</b>'
                f'<span class="lbl2">{label}</span><b>{html.escape(val)}</b>')
     return f'<div class="synced">{eta}{extra}</div>'
 
@@ -4195,6 +4196,7 @@ class H(BaseHTTPRequestHandler):
                     subs.append({k: s[k] for k in ("sub_number", "status", "card_count",
                                  "arrived", "est_end", "grades_ready", "on_hold",
                                  "shipped", "updated_at")}
+                                | {"hold_reason": s.get("hold_reason") or ""}
                                 | {"archived": 1 if s["sub_number"] in arc else 0})
         except sqlite3.Error:  # a failed read is not "no submissions" - hub must not cache it
             traceback.print_exc()
