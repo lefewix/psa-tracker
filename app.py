@@ -1416,6 +1416,15 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
  animation:sweep 1.1s linear infinite}
 .busy{animation:pulse 1s ease-in-out infinite;pointer-events:none}
 @keyframes pulse{50%{opacity:.45}}
+/* skeletons (T199): the loading ground, pulsing, and the pulse outlives reduced motion */
+.sk{display:block;background:var(--sk);border-radius:6px;animation:pulse 1s ease-in-out infinite}
+.skl{height:12px}
+.skl+.skl{margin-top:8px}
+.skcard .skl:first-child{height:17px}
+.skt{flex-shrink:0;width:84px;height:117px}
+.skb{height:4px;border-radius:2px;margin-top:30px}
+.skcard,.skrow{pointer-events:none}
+.skrow>span:last-child{flex:1}
 .view:active,.numlink:active{opacity:.6}
 /* ---- corner controls: glass orbs ----------------------------------------- */
 /* 44x44 is the HIG floor; the 8px gap is kept by pushing the gear to 20 + 44 + 8 = 72. */
@@ -1628,7 +1637,7 @@ button:disabled{opacity:.5;cursor:default}
  /* phone filmstrip: 64x89 tiles, bleeding to the card's padding edge (-14px) so the last
     tile runs off as the "there is more" cue. */
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px}
- .strip img,.strip a[href^="/img"],.morechip{width:64px;height:89px}
+ .strip img,.strip a[href^="/img"],.morechip,.skt{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
  .card.tlcard{margin:14px 0}
  input,.searchbar{font-size:16px}
@@ -2621,15 +2630,23 @@ SEARCH_JS = """<script>
     say(rows.length?rows.length+' suggestion'+(rows.length!==1?'s':''):'No matches');
     open(true);
   }
+  /* seq drops any answer older than the latest ask (T199): a closed preview
+     shows skeleton rows after 200 ms, an open one dims its stale rows */
+  var seq=0, sk;
+  var SK=new Array(4).join('<div class="pvrow skrow" aria-hidden="true"><i class="sk pvimg"></i><span><i class="sk skl" style="width:55%"></i><i class="sk skl" style="width:30%"></i></span></div>');
   function go(){
     clearTimeout(t);
     t=setTimeout(function(){
-      if(!pv.classList.contains('on')){pv.innerHTML='<div class="pvempty">Searching…</div>';rows=[];ai=-1;open(true);}
+      var my=++seq;
+      clearTimeout(sk);
+      if(pv.classList.contains('on'))rows.forEach(function(r){r.classList.add('busy');});
+      else{say('Searching');sk=setTimeout(function(){pv.innerHTML=SK;rows=[];ai=-1;open(true);},200);}
       /* non-OK (the 429 rate limit included) closes the preview instead of
          rendering as a false "No matches" */
       fetch('/suggest?q='+encodeURIComponent(q.value.trim())+scope,{headers:{'X-Requested-With':'fetch'}})
-        .then(function(r){if(!r.ok)throw 0;return r.json();}).then(render)
-        .catch(function(){rows=[];open(false);});
+        .then(function(r){if(!r.ok)throw 0;return r.json();})
+        .then(function(d){if(my===seq){clearTimeout(sk);render(d);}})
+        .catch(function(){if(my===seq){clearTimeout(sk);rows=[];open(false);}});
     },110);
   }
   q.addEventListener('input',go);
@@ -2648,7 +2665,7 @@ SEARCH_JS = """<script>
     }
     /* type=search clears itself on Escape, and that clear fires `input`,
        which reopens the preview - so the first press looked ignored */
-    else if(e.key==='Escape'){e.preventDefault();clearTimeout(t);open(false);}
+    else if(e.key==='Escape'){e.preventDefault();clearTimeout(t);clearTimeout(sk);seq++;open(false);}
   });
   document.addEventListener('click',function(e){ if(!pv.contains(e.target)&&e.target!==q) open(false); });
 })();
@@ -3540,6 +3557,8 @@ def dash_page(a, subs):
  if(x)x.addEventListener('click',function(){{h.style.display='none';
   try{{localStorage.setItem('psa_hint_seen','1');}}catch(e){{}}}});}})();
 var af=document.getElementById('archtoggle');
+function unsk(){{var l=document.getElementById('list');clearTimeout(af.skt);
+ l.querySelectorAll('.skcard').forEach(function(c){{c.remove();}});l.removeAttribute('aria-busy');}}
 if(af)af.addEventListener('click',function(){{
   var on=af.classList.toggle('on');
   af.setAttribute('aria-pressed',on?'true':'false');
@@ -3548,16 +3567,27 @@ if(af)af.addEventListener('click',function(){{
   // reads the pill, never the `on` above: show() also runs when the fetch
   // lands, and by then the pill may have been switched back off
   function show(){{var v=af.classList.contains('on');
-   document.querySelectorAll('#list .card').forEach(function(c){{
+   document.querySelectorAll('#list .card:not(.skcard)').forEach(function(c){{
     var a=c.dataset.arch==='1';
     c.style.display=(v?a:!a)?'':'none';
   }});}}
+  unsk();
   // the archived rows are not in the first paint: fetch them once, here, and
   // put the pill back to off if that fetch fails (an empty list says nothing)
   if(on&&lst&&!af.dataset.got){{
+    // a slow fetch shows skeleton rows, never an empty list (T199)
+    af.skt=setTimeout(function(){{
+      var s='<div class="card skcard" aria-hidden="true"><i class="sk skl" style="width:38%"></i>'
+       +'<i class="sk skl" style="width:24%"></i><div class="strip">'
+       +new Array(6).join('<i class="sk skt"></i>')+'</div><i class="sk skb"></i></div>';
+      lst.insertAdjacentHTML('beforeend',new Array({min(len(gone), 3) + 1}).join(s));
+      lst.setAttribute('aria-busy','true');
+    }},120);
+    if(!af.dataset.ask){{af.dataset.ask='1';
     fetch('/?arch=1').then(function(r){{if(!r.ok)throw 0;return r.text();}})
      .then(function(h){{
        af.dataset.got='1';
+       unsk();
        var d=document.createElement('div'); d.innerHTML=h;
        // a row archived in this session is already here, flipped in place
        [].slice.call(d.children).forEach(function(c){{
@@ -3565,7 +3595,7 @@ if(af)af.addEventListener('click',function(){{
        }});
        if(lst.psaSort)lst.psaSort();
        show();
-     }}).catch(function(){{af.click();}});
+     }}).catch(function(){{af.dataset.ask='';unsk();if(af.classList.contains('on'))af.click();}});}}
   }}
   show();
 }});

@@ -1020,6 +1020,10 @@ a .3s delay, and the image fades in over .25s when the loaded class lands. A sca
 load is swapped for the same `.ph` placeholder (on `--sk`, no sweep) a card with no scan renders,
 anchor and all, so the grid rhythm holds and the dead tile no longer opens the lightbox; a dead
 filmstrip thumb becomes an empty chip-sized box, so the strip keeps its height. (T197)
+Fetched lists never read empty: 120 ms into the Archived fetch `#list` gets up to three
+`.skcard` rows (number line, meta line, five `.skt` tiles, bar line), and a closed search preview
+opens on three `.skrow` rows after 200 ms; an open one dims its stale rows with `.busy`. Skeletons
+are `.sk` blocks on `--sk` under the `pulse`, which stays under reduced motion. (T199)
 
 ### Named Rules
 **The Opt-In Fill Rule.** Filled accent identity is opt-in, per element. It lives on

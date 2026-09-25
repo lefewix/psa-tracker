@@ -466,6 +466,12 @@ def main():
         if css and (b"html.navw body::after" not in css or b".busy{" not in css
                     or b".view:active,.numlink:active{opacity:.6}" not in css):
             fails.append("GET /app.css: the nav bar or busy pulse is gone (T198)")
+        # search drops stale answers and shows skeleton rows while waiting (T199)
+        if js and (b"if(my===seq){clearTimeout(sk);render(d);}" not in js
+                   or b"pvrow skrow" not in js):
+            fails.append("GET /app.js: search renders stale answers or looks empty (T199)")
+        if css and b".sk{display:block;background:var(--sk);border-radius:6px;animation:pulse" not in css:
+            fails.append("GET /app.css: the skeleton pulse is gone (T199)")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button
@@ -1161,6 +1167,10 @@ def main():
                 fails.append("GET /?arch=1: the archived row is missing")
             if b"14900001" in frag:
                 fails.append("GET /?arch=1: an active row rode along")
+            # a slow archived fetch shows skeleton rows, never an empty list (T199)
+            if (b"lst.setAttribute('aria-busy','true')" not in body
+                    or b"#list .card:not(.skcard)" not in body):
+                fails.append("GET /: the Archived pill has no skeleton while fetching (T199)")
             if archive("14900002", "0") != 204:
                 fails.append("POST /archive (unarchive): refused")
 
