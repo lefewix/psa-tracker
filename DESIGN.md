@@ -883,8 +883,11 @@ long walk otherwise; that walk is also why the dashboard has a skip link.
 - **Error:** a 12px alert-red message below the form with a reserved `min-height` so the layout
   never jumps when it appears. It is a `role="alert"` associated to the field by
   `aria-describedby`, and the field takes `aria-invalid` — the color is the least of it.
-- **Disabled:** `opacity: .5` and the default cursor, nothing else. Submit buttons disable
-  themselves in flight, so the dim *is* the loading state.
+- **Disabled:** `opacity: .5` and the default cursor, nothing else.
+- **In flight:** a submit button is never disabled (it would drop its value); 150 ms into the
+  POST it takes `.busy` (an opacity pulse, pointer-events none, `aria-busy`) and a second submit
+  is dropped. Any same-origin navigation slower than 250 ms shows a 3px `--bar` sweep fixed at
+  the top edge (a pulse under reduced motion); `pageshow` clears both. (T198)
 
 ### Navigation
 Navigation is the sticky glass toolbar: brand/logo and the 26px large title on the left, sync

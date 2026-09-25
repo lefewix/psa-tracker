@@ -454,6 +454,18 @@ def main():
                     or b'.strip a[href^="/img"].ldg::after' not in css
                     or b".gc:nth-child" in css):
                 fails.append("GET /app.css: the calm loading ground or sweep is gone (T197)")
+        # taps and submits show they are working: a guarded nav bar, one POST per
+        # form, a busy submitter, all cleared on back/forward restore (T198)
+        gate = check("GET / (gate nav bar)", "/", (200,), must_have="window.psaNav=function")
+        if js and gate:
+            for want in (b"if(window.psaNav)return;", b"if(f.dataset.sent){e.preventDefault();return;}",
+                         b"s.classList.add('busy')", b"addEventListener('pageshow'",
+                         b"if(window.psaNav)psaNav();", b".catch(function(){done(false);})"):
+                if want not in js:
+                    fails.append(f"GET /app.js: {want.decode()!r} missing (T198)")
+        if css and (b"html.navw body::after" not in css or b".busy{" not in css
+                    or b".view:active,.numlink:active{opacity:.6}" not in css):
+            fails.append("GET /app.css: the nav bar or busy pulse is gone (T198)")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button
@@ -815,6 +827,9 @@ def main():
                 if want not in sbody:
                     fails.append("GET /cards?owner=Solo: the value block is missing "
                                  + want.decode())
+            # the CSV is a file, so the nav bar never starts on it (T198)
+            if b'&amp;format=csv" download>' not in sbody:
+                fails.append("GET /cards?owner=Solo: Export CSV lacks download (T198)")
             # --- format=csv hands the person page's rows out as a spreadsheet:
             # one data row per tile the HTML renders, archived tiles included,
             # under a text/csv type and a download name (T74)

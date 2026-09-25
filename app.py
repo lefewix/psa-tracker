@@ -654,7 +654,7 @@ DISCORD_JS = """<script>
   function post(owner,id,done){
     fetch('/discord',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'owner='+encodeURIComponent(owner)+'&id='+encodeURIComponent(id)})
-      .then(function(r){done(r.ok);});
+      .then(function(r){done(r.ok);}).catch(function(){done(false);});
   }
   function derr(msg){
     var f=document.getElementById('did'),h=document.querySelector('#dmodal .dhint');
@@ -665,12 +665,16 @@ DISCORD_JS = """<script>
   if(link)link.addEventListener('click',function(){
     var v=(document.getElementById('did').value||'').trim();
     if(!/^\\d{17,20}$/.test(v)){derr('That doesn’t look like a Discord user ID. It’s a 17\\u201320 digit number.');return;}
+    link.classList.add('busy');
     post(link.dataset.owner,v,function(ok){if(ok)location.reload();
-      else derr('Couldn’t save the ID, try again.');});
+      else{link.classList.remove('busy');derr('Couldn’t save the ID, try again.');}});
   });
   var un=document.getElementById('dunlink');
   if(un)un.addEventListener('click',function(){
-    post(un.dataset.owner,'',function(ok){if(ok)location.reload();});
+    un.classList.add('busy');
+    post(un.dataset.owner,'',function(ok){if(ok)location.reload();
+      else{un.classList.remove('busy');var h=document.querySelector('#dmodal .dhint');
+        if(h)h.textContent='Couldn’t turn pings off, try again.';}});
   });
 })();
 </script>"""
@@ -1405,6 +1409,14 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    older Safari/Firefox never resolve. */
 .grid a.ld::after,.strip a.ld::after{display:none}
 @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+/* in-flight feedback (T198): THEME_JS sets html.navw 250 ms into a navigation, and .busy on a
+   submit button 150 ms into its POST. Tap highlight is off globally, hence the :active dim. */
+html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;z-index:90;
+ pointer-events:none;background:linear-gradient(90deg,transparent,var(--bar) 50%,transparent);
+ animation:sweep 1.1s linear infinite}
+.busy{animation:pulse 1s ease-in-out infinite;pointer-events:none}
+@keyframes pulse{50%{opacity:.45}}
+.view:active,.numlink:active{opacity:.6}
 /* ---- corner controls: glass orbs ----------------------------------------- */
 /* 44x44 is the HIG floor; the 8px gap is kept by pushing the gear to 20 + 44 + 8 = 72. */
 #gearbtn,#themeflip{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));
@@ -1644,6 +1656,7 @@ button:disabled{opacity:.5;cursor:default}
  .card{animation:none}
  .bar i{transition:none}
  .grid a[href^="/img"]::after,.strip a[href^="/img"]::after{display:none}
+ html.navw body::after{background:var(--bar);animation:pulse 1s ease-in-out infinite}
  .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
  .toolbar{transition:none}
  .filters{transition:none}
@@ -1770,6 +1783,41 @@ THEME_JS = f"""<script>
   mq.addEventListener('change',function(e){{
     var stored=null;try{{stored=localStorage.getItem('psa_theme');}}catch(x){{}}
     if(!stored){{cur=e.matches?'dark':'light';d.dataset.theme=cur;render();}}
+  }});
+}})();
+/* taps and submits show they are working (T198). Guarded: the gate, setup and 404 inline
+   this script, every other page gets it in app.js. */
+(function(){{
+  if(window.psaNav)return;
+  var d=document.documentElement,t1,t2,t3;
+  window.psaNav=function(){{
+    clearTimeout(t1);clearTimeout(t2);
+    t1=setTimeout(function(){{d.classList.add('navw');}},250);
+    t2=setTimeout(function(){{d.classList.remove('navw');}},15000);
+  }};
+  /* window, not document: every other click handler has had its say by now */
+  addEventListener('click',function(e){{
+    var a=e.target.closest&&e.target.closest('a[href]');
+    if(!a||e.defaultPrevented||e.button||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey
+       ||a.target||a.hasAttribute('download')||a.origin!==location.origin
+       ||(a.hash&&a.pathname===location.pathname&&a.search===location.search))return;
+    psaNav();
+  }});
+  /* the button is never disabled here: a disabled submitter drops its name=value */
+  addEventListener('submit',function(e){{
+    var f=e.target;
+    if(e.defaultPrevented)return;
+    if(f.dataset.sent){{e.preventDefault();return;}}
+    f.dataset.sent='1';psaNav();
+    var s=e.submitter||f.querySelector('[type=submit]');
+    t3=setTimeout(function(){{if(s){{s.classList.add('busy');s.setAttribute('aria-busy','true');}}}},150);
+  }});
+  /* back/forward cache restores the page as it was left */
+  addEventListener('pageshow',function(){{
+    clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);
+    d.classList.remove('navw');
+    document.querySelectorAll('form[data-sent]').forEach(function(f){{f.removeAttribute('data-sent');}});
+    document.querySelectorAll('.busy').forEach(function(b){{b.classList.remove('busy');b.removeAttribute('aria-busy');}});
   }});
 }})();
 </script>"""
@@ -2806,6 +2854,7 @@ document.querySelectorAll('.own').forEach(function(i){
     // already on this person's page? a click shouldn't reload it
     if(location.pathname==='/cards'
        && (new URLSearchParams(location.search).get('owner')||'')===i.value) return;
+    if(window.psaNav)psaNav();
     location.href='/cards?owner='+encodeURIComponent(i.value);
   }
   function edit(){
@@ -3740,7 +3789,7 @@ def people_page(a, owner):
             '<span class="footacts"><a class="view" id="backlk" href="/">← Back</a>'
             '<a class="view" href="/">Home</a></span>'
             f'<span class="footacts"><a class="view" href="/cards?owner='
-            f'{urllib.parse.quote(owner)}&amp;format=csv">Export CSV</a></span></div>')
+            f'{urllib.parse.quote(owner)}&amp;format=csv" download>Export CSV</a></span></div>')
     page_title = "Unassigned cards" if unassigned else f"{title}'s cards"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
