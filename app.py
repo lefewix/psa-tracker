@@ -179,8 +179,6 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff",
  "ok": "#43c383"}
 _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
- # ph is white, not the old #f2f2f4: placeholder tiles now sit on the grey
- # ground (detail-page grids), where a grey ph would vanish into it
  "surface3": "#f2f2f4", "inp": "#f2f2f4",
  "hovrow": "rgba(0,0,0,.05)", "tagmix": "12%",
  "amb": ("radial-gradient(120% 62% at 84% -22%,color-mix(in srgb,var(--ac2) 6%,transparent),"
