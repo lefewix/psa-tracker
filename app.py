@@ -147,7 +147,7 @@ _AC_MIX_D = {"--ac-hot": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 4.5, 82)}%,white",
 # blue-gray, never pure black.
 _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "surface3": "rgba(255,255,255,.08)", "inp": "rgba(255,255,255,.08)",
- "ph": "rgba(255,255,255,.06)", "hovrow": "rgba(255,255,255,.07)",
+ "hovrow": "rgba(255,255,255,.07)",
  # search-preview tag chip: dark grounds swallow a low-alpha accent wash, so the
  # same chip needs a heavier mix here than in light to read at all.
  "tagmix": "18%",
@@ -175,12 +175,13 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "segtrack": "rgba(255,255,255,.05)", "segon": "rgba(255,255,255,.1)",
  "shc": "rgba(0,0,0,.34)", "shc2": "rgba(0,0,0,.5)", "shc3": "rgba(0,0,0,.28)",
  "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.4)",
+ "sk": "color-mix(in srgb,var(--txt) 7%,transparent)",
  "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff",
  "ok": "#43c383"}
 _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  # ph is white, not the old #f2f2f4: placeholder tiles now sit on the grey
  # ground (detail-page grids), where a grey ph would vanish into it
- "surface3": "#f2f2f4", "inp": "#f2f2f4", "ph": "#ffffff",
+ "surface3": "#f2f2f4", "inp": "#f2f2f4",
  "hovrow": "rgba(0,0,0,.05)", "tagmix": "12%",
  "amb": ("radial-gradient(120% 62% at 84% -22%,color-mix(in srgb,var(--ac2) 6%,transparent),"
          "transparent 60%),"
@@ -194,7 +195,8 @@ _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  "rimb": "rgba(15,20,30,.06)",
  "segtrack": "rgba(0,0,0,.045)", "segon": "#ffffff",
  "shc": "rgba(20,25,35,.1)", "shc2": "rgba(20,25,35,.18)", "shc3": "rgba(20,25,35,.08)",
- "sh2": "#e8e8ec", "scrim": "rgba(0,0,0,.4)",
+ "sh2": "rgba(255,255,255,.75)", "scrim": "rgba(0,0,0,.4)",
+ "sk": "color-mix(in srgb,var(--txt) 7%,transparent)",
  "err": "#b03a2e", "holdtx": "#b03a2e", "grade": "#b12b2b", "fhov": "#1d1d1f",
  "ok": "#2f9e68"}
 # The accent ramp is clamped above; the NEUTRAL ramp is hand-picked, and the
@@ -1245,14 +1247,16 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* the strip clips vertically too, so a tile's focus ring draws inside the tile. */
 .strip a:focus-visible{outline-offset:-2px}
 /* [href^="/img"] is the lightbox's own selector, so the "+N" chip keeps its display:flex. */
-.strip a[href^="/img"]{display:block;flex-shrink:0;line-height:0}
-.strip img{width:84px;height:117px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
- background:var(--surface3);cursor:zoom-in;flex-shrink:0}
-/* --surface3, not --ph: inside a white card the ground-tuned --ph vanishes. --ph stays for
-   grids on the page ground. */
+.strip a[href^="/img"]{display:block;flex-shrink:0;line-height:0;width:84px;height:117px;
+ position:relative;overflow:hidden;border-radius:6px}
+.strip img{display:block;width:84px;height:117px;object-fit:cover;border-radius:6px;
+ border:1px solid var(--hair);background:transparent;cursor:zoom-in;flex-shrink:0}
+/* --surface3: inside a white card a white fill would vanish. */
 .morechip{width:84px;height:117px;border-radius:6px;border:1px solid var(--hair);
  background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:14px;
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
+/* a dead strip thumb: the chip's box, empty, on the loading ground */
+.morechip.dead{background:var(--sk)}
 /* no bleed past the phone breakpoint, so an overflowing strip is sliced mid tile; the cue is
    a 28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr) */
 @media(min-width:641px){
@@ -1292,11 +1296,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    negative-margin bleed. FX_JS handles the off-screen sweep instead. */
 .gc{background:var(--surface3);border:1px solid var(--hair);border-radius:12px;padding:10px;
  display:flex;flex-direction:column}
-/* --ph, on both grounds now: the well under it is --surface3 everywhere, so the ground-tuned
-   placeholder reads against it inside a card as well as on the page ground - the old
-   .card .gc .ph override would paint the well's own colour on the well. */
+/* --sk, the loading ground: a dead tile is the loading tile without the sweep, so it reads
+   quieter than a scan still on its way instead of brighter. (T197) */
 .gc .ph{width:100%;aspect-ratio:380/635;border-radius:6px;
- background:var(--ph);display:flex;align-items:center;justify-content:center;
+ background:var(--sk);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
 /* 500, not 600, and a tighter 1px 7px: the chip still reads as the news, it just stops
@@ -1395,13 +1398,14 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .grid a[href^="/img"]{overflow:hidden;border-radius:6px}
 /* the sweep runs only on .ldg, set by FX_JS when a loading tile nears the viewport, so
    below-the-fold tiles cost nothing. */
-.grid a[href^="/img"].ldg::after{content:'';position:absolute;inset:0;border-radius:6px;
- pointer-events:none;
+.grid a[href^="/img"]:not(.ld),.strip a[href^="/img"]:not(.ld){background:var(--sk)}
+.grid a[href^="/img"].ldg::after,.strip a[href^="/img"].ldg::after{content:'';position:absolute;
+ inset:0;border-radius:6px;pointer-events:none;
  background:linear-gradient(100deg,transparent 20%,var(--sh2) 50%,transparent 80%);
- animation:sweep 1.15s linear infinite}
+ animation:sweep 1.15s linear .3s infinite backwards}
 /* FX_JS tags the anchor when its img settles: a plain class match, not :has(img.ld), which
    older Safari/Firefox never resolve. */
-.grid a.ld::after{display:none}
+.grid a.ld::after,.strip a.ld::after{display:none}
 @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 /* ---- corner controls: glass orbs ----------------------------------------- */
 /* 44x44 is the HIG floor; the 8px gap is kept by pushing the gear to 20 + 44 + 8 = 72. */
@@ -1552,15 +1556,13 @@ button:disabled{opacity:.5;cursor:default}
 #gearbtn:hover,#themeflip:hover{color:var(--txt)}}
 /* ---- motion: one settle on the rows, nothing decorative ------------------- */
 @media(prefers-reduced-motion:no-preference){
- .card,.gc{animation:rise .38s cubic-bezier(.2,.7,.3,1) both}
- .card:nth-child(2),.gc:nth-child(2){animation-delay:.04s}
- .card:nth-child(3),.gc:nth-child(3){animation-delay:.08s}
- .card:nth-child(4),.gc:nth-child(4){animation-delay:.12s}
- .card:nth-child(5),.gc:nth-child(5){animation-delay:.16s}
- .card:nth-child(6),.gc:nth-child(6){animation-delay:.2s}
- .card:nth-child(7),.gc:nth-child(7){animation-delay:.24s}
- .card:nth-child(8),.gc:nth-child(8){animation-delay:.28s}}
-@keyframes rise{from{opacity:0;transform:translateY(8px)}}
+ .card{animation:rise .28s cubic-bezier(.2,.7,.3,1) both}
+ .card:nth-child(2){animation-delay:.04s}
+ .card:nth-child(3){animation-delay:.08s}
+ .card:nth-child(n+4){animation-delay:.12s}
+ .grid img.pend,.strip img.pend{opacity:0;transition:opacity .25s}
+ .grid img.pend.ld,.strip img.pend.ld{opacity:1}}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}}
 /* registered so the mobile capsule cue can fade rather than pop; unsupported, the vars still
    resolve. */
 @property --cuel{syntax:'<color>';inherits:false;initial-value:transparent}
@@ -1616,7 +1618,7 @@ button:disabled{opacity:.5;cursor:default}
  /* phone filmstrip: 64x89 tiles, bleeding to the card's padding edge (-14px) so the last
     tile runs off as the "there is more" cue. */
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px}
- .strip img,.morechip{width:64px;height:89px}
+ .strip img,.strip a[href^="/img"],.morechip{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
  .card.tlcard{margin:14px 0}
  input,.searchbar{font-size:16px}
@@ -1641,9 +1643,9 @@ button:disabled{opacity:.5;cursor:default}
 @media(prefers-reduced-motion:reduce){
  html{scroll-behavior:auto}
  /* travel: the row settle, the bar running out, the loading sweep */
- .card,.gc{animation:none}
+ .card{animation:none}
  .bar i{transition:none}
- .grid a[href^="/img"]::after{display:none}
+ .grid a[href^="/img"]::after,.strip a[href^="/img"]::after{display:none}
  .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
  .toolbar{transition:none}
  .filters{transition:none}
@@ -2907,24 +2909,26 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
      holds instead of collapsing around a broken image. Replacing the anchor
      takes the lightbox listener with it, so a dead tile cannot open an empty
      reveal. A broken image reports .complete with naturalWidth 0, so the
-     synchronous path has to tell the two apart. Only a tile inside .gc is
-     swapped: the filmstrip chip is a different box and keeps its own fill. */
+     synchronous path has to tell the two apart. A dead filmstrip thumb becomes
+     an empty chip-sized box, so the strip row keeps its height. */
   var fail=function(){
-    var p=m.parentNode,t=(p&&p.tagName==='A')?p:m;
-    if(!t.parentNode||!t.parentNode.classList.contains('gc')){done();return;}
+    var p=m.parentNode,t=(p&&p.tagName==='A')?p:m,box=t.parentNode;
+    var gc=box&&box.classList.contains('gc'),st=box&&box.classList.contains('strip');
+    if(!gc&&!st){done();return;}
     var d=document.createElement('div');
-    d.className='ph'; d.textContent='No image yet';
+    if(gc){d.className='ph'; d.textContent='No image yet';}
+    else{d.className='morechip dead'; d.setAttribute('aria-hidden','true');}
     t.parentNode.replaceChild(d,t);
   };
   if(m.complete){if(m.naturalWidth)done();else fail();}
-  else{m.addEventListener('load',done);m.addEventListener('error',fail);}
+  else{m.classList.add('pend');m.addEventListener('load',done);m.addEventListener('error',fail);}
 });
 /* the loading sweep starts only when a still-loading tile approaches the
    viewport (.ldg) - below-the-fold lazy tiles never load, so an always-on
    sweep would tick forever. Without IntersectionObserver, sweep everything
    (the pre-existing behavior). */
 (function(){
-  var scans=document.querySelectorAll('.grid a[href^="/img"]:not(.ld)');
+  var scans=document.querySelectorAll('.grid a[href^="/img"]:not(.ld),.strip a[href^="/img"]:not(.ld)');
   if(!scans.length)return;
   if(!window.IntersectionObserver){
     scans.forEach(function(a){a.classList.add('ldg');});
@@ -2979,7 +2983,7 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
     });
     if(run.length){
       run.forEach(function(p){
-        p[0].style.transitionDelay=Math.min(stagger++,7)*40+'ms';
+        p[0].style.transitionDelay=Math.min(stagger++,3)*40+'ms';
         p[0].style.width='0%';
       });
       void document.body.offsetWidth;    // commit the 0 so the width transition fires

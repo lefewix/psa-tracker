@@ -445,6 +445,15 @@ def main():
                 fails.append("GET /app.js: a broken scan is treated as loaded again")
             if b"replaceChild(d,t)" not in js or b"'No image yet'" not in js:
                 fails.append("GET /app.js: a failed scan no longer shows the placeholder")
+            # a dead strip thumb keeps the strip's height as an empty chip, and
+            # a loading scan fades in rather than popping (T197)
+            if b"'morechip dead'" not in js or b"classList.add('pend')" not in js:
+                fails.append("GET /app.js: dead strip thumbs collapse or scans pop in")
+        if css:
+            if (b".morechip.dead{background:var(--sk)}" not in css
+                    or b'.strip a[href^="/img"].ldg::after' not in css
+                    or b".gc:nth-child" in css):
+                fails.append("GET /app.css: the calm loading ground or sweep is gone (T197)")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button

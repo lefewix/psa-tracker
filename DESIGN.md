@@ -363,7 +363,8 @@ carry no fill, no tint, no shadow of their own. The material story is glass floa
 refracts; cards sit raised on the ground; content inside them does not move.
 
 Character is delivered by motion and precision instead of ornament. Rows settle in on a
-short staggered rise; a stage bar is knocked to zero and released to its served width **only
+short staggered rise (cards only, .28s, 6px, the first four staggered; scan tiles fade in as
+their image lands instead); a stage bar is knocked to zero and released to its served width **only
 when that submission actually advanced since this browser last saw it**, so the one motion the
 product exists for means "your cards moved" rather than "a page loaded"; the toolbar earns its
 shadow only once content slides underneath it; overlays materialize by fading their scrim, ramping
@@ -446,8 +447,8 @@ glass, and a reserved red that appears only on a landed grade or an alert.
 - **Muted** (`--m1`): secondary text — metadata, captions, ETA pills, empty states, the
   inactive filter label, the archived stage-bar fill.
 - **Tertiary Gray** (`--tert`): the search glyph and other non-text furniture.
-- **Quiet Fill** (`--inp` / `--surface3` / `--ph`): input grounds, image placeholders, and the
-  hover pill behind text actions. The only filled rectangles in content, and they carry no border.
+- **Quiet Fill** (`--inp` / `--surface3`): input grounds and the hover pill behind text
+  actions. **Skeleton** (`--sk`, `--txt` at 7%): the ground of a loading or dead scan tile. The only filled rectangles in content, and they carry no border.
 - **Hairline** (`--hair`): every rule in the system — row separators, image borders, glass
   edges, filmstrip tiles — with `--hairh` as its hover state and `--hair2` as the softer
   variant used in exactly one place, the rule above a settings danger zone.
@@ -1010,10 +1011,12 @@ first pass: "better, but within each card pill it's still a bit much." Tiles
 carry **no `content-visibility`** — its paint containment clipped everything that reaches past
 the tile box (focus rings, the hover pill's negative-margin bleed), so it was removed; the
 off-screen cost it targeted is handled in FX_JS instead, which lands the loading sweep only
-when a still-loading tile approaches the viewport. While an image loads it carries a 1.1s
-linear shimmer sweep that stops the instant the loaded class lands. A scan that fails to load
-is swapped for the same `.ph` placeholder a card with no scan renders, anchor and all, so the
-grid rhythm holds and the dead tile no longer opens the lightbox.
+when a still-loading tile approaches the viewport. While an image loads, grid or filmstrip, it
+sits on `--sk` and carries a 1.15s linear sweep in `--sh2` (a highlight, white in light) after
+a .3s delay, and the image fades in over .25s when the loaded class lands. A scan that fails to
+load is swapped for the same `.ph` placeholder (on `--sk`, no sweep) a card with no scan renders,
+anchor and all, so the grid rhythm holds and the dead tile no longer opens the lightbox; a dead
+filmstrip thumb becomes an empty chip-sized box, so the strip keeps its height. (T197)
 
 ### Named Rules
 **The Opt-In Fill Rule.** Filled accent identity is opt-in, per element. It lives on
