@@ -3171,7 +3171,7 @@ SORT_JS = """<script>
     var act=cards.filter(function(c){return c.dataset.arch!=='1'});
     var arc=cards.filter(function(c){return c.dataset.arch==='1'});
     var by=function(a,b){return cmp(a,b,m,d)};
-    act.sort(by); arc.sort(by);
+    act.sort(by); arc.sort(subDesc);  // archive always newest first (T203)
     act.concat(arc).forEach(function(c){list.appendChild(c)});
     btns.forEach(function(b){
       var on=b.dataset.sort===m;
