@@ -431,7 +431,13 @@ def _names_match(a, b):
     tb = {t for t in re.sub(r"[^a-z0-9 ]", " ", (b or "").lower()).split() if len(t) > 2}
     if not ta or not tb:
         return True  # no name to compare - fall back to line-number trust
-    return len(ta & tb) / min(len(ta), len(tb)) >= 0.5
+    if len(ta & tb) / min(len(ta), len(tb)) < 0.5:
+        return False
+    # set words alone clear 50% ("2025 one piece championship ... event pack"), so the
+    # tokens with digits in them (year, card number) must agree too (T213)
+    na = {t for t in ta if any(ch.isdigit() for ch in t)}
+    nb = {t for t in tb if any(ch.isdigit() for ch in t)}
+    return not na or not nb or na <= nb or nb <= na
 
 def _copy_idx(cid):
     """spec:<sub>:<specId>[:<n>] -> n (0 for the base key)."""
