@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-"""psa-values: pull PSA's own value data for graded cards.
+"""psa-values: pull PSA's own sales data for graded cards.
 
 For each graded card (cert_no + grade known, which psa_watch fills as soon as
-the submission's grades are ready) we open the PUBLIC
-cert-verification page https://www.psacard.com/cert/<cert_no>/psa in a real
-Chromium (headful under xvfb - the same Cloudflare-passing recipe as
-psa_login.py; plain-HTTP requests get challenged, no login/cookie is needed)
-and read off the rendered text:
-  - "PSA ESTIMATE"            PSA's published estimate for this card AT THIS GRADE
-  - "Sales of Similar Items"  recent comp sales, newest first (price + date)
+the submission's grades are ready, plus spec_id, PSA's id for the card itself)
+we ask the logged-in psacard.com API what that card sold for AT THAT GRADE:
+researchJourney.getSalesBySpecId, the call behind the "Sales History" tab on
+psacard.com/spec/psa/<spec_id>. Newest sale first; the latest price is the value.
 
-Cards sharing (name, grade) share a value, so we visit ONE cert page per unique
-pair and write the result to every matching cert. Values are USD.
+The public cert page (and its "PSA ESTIMATE") sits behind an interactive
+Cloudflare challenge from the server since late Sep 2026, so there is no estimate any
+more: `estimate` stays NULL and `last_sale` carries the value (T215). The call
+needs the scanner's PSA_COOKIE; run_scan.sh only runs this after a clean scan.
+
+Cards sharing (spec_id, grade) share a value, so ONE call per unique pair writes
+every matching cert. Values are USD.
 
 Everything lands in the additive `card_values` table - the rest of the schema is
 untouched, so DROP TABLE card_values (or just unsetting PSA_VALUES for the web
@@ -21,16 +23,16 @@ Also refreshes the USDCAD rate into fx_rates each run (keyless public FX API);
 app.py converts the stored USD values to CAD at render time.
 
 Usage: psa_values.py [--all | --fx-only | --new-only]
-       --new-only: only never-fetched certs, no FX; exits before any browser when
-       there are none, so run_scan.sh calls it every scan (values land the scan after
-       grades do, not at the next login hour).
+       --new-only: only never-fetched certs, no FX; quiet when there are none, so
+       run_scan.sh calls it every scan (values land the scan after grades do).
 Env:   PSA_DB              account database (same as psa_watch.py)
-       PSA_VALUES_BATCH    max cert pages per run (default 40; --all = no cap)
+       PSA_COOKIE          the scanner's psacard.com session
+       PSA_VALUES_BATCH    max calls per run (default 40; --all = no cap)
        PSA_VALUES_MAX_AGE  refresh values older than this many days (default 14)
 """
-import json, os, re, sqlite3, sys, time
+import base64, json, os, re, sqlite3, sys, time, urllib.parse
 from datetime import datetime, timezone, timedelta
-from playwright.sync_api import sync_playwright
+from curl_cffi import requests as creq
 
 import psa_common
 
@@ -39,16 +41,13 @@ ACCT = os.environ.get("PSA_ACCT_ID", "account")
 BATCH = int(os.environ.get("PSA_VALUES_BATCH", "40"))
 MAX_AGE_DAYS = int(os.environ.get("PSA_VALUES_MAX_AGE", "14"))
 log = psa_common.log(f"psa-values:{ACCT}")
-# Cloudflare's challenge page is not "no data": storing it as such blanked good values
+# A Cloudflare challenge is not "no data": storing it as such blanked good values
 # and froze them for MAX_AGE_DAYS (T215). A challenged run stores nothing and touches
 # this marker; --new-only runs sit out BLOCK_HOURS after it, full runs always try.
 BLOCKED = os.path.join(os.path.dirname(DB_PATH) or ".", ".values_blocked")
 BLOCK_HOURS = 6
-UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-      "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
-
-MONEY = re.compile(r"^\$([\d,]+(?:\.\d{2})?)$")
-DATE = re.compile(r"^\d{2}/\d{2}/\d{2}$")
+SALES_URL = "https://www.psacard.com/api/psa/trpc/researchJourney.getSalesBySpecId"
+N_SALES = 5  # newest sales kept in sales_json
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS card_values (
@@ -93,71 +92,71 @@ def fetch_fx(conn):
         return False
 
 
-def parse_cert_text(text):
-    """Rendered cert-page text -> (estimate, [(price, 'MM/DD/YY'), ...] newest first)."""
-    lines = [l.strip() for l in text.splitlines() if l.strip()]
-    est = None
-    for i, l in enumerate(lines):
-        if l.upper() == "PSA ESTIMATE":
-            for j in range(i + 1, min(i + 4, len(lines))):
-                m = MONEY.match(lines[j])
-                if m:
-                    est = float(m.group(1).replace(",", ""))
-                    break
-            break
-    sales, seen = [], set()
-    start = next((i for i, l in enumerate(lines) if l.lower().startswith("sales of similar")), None)
-    if start is not None:
-        price = None
-        for l in lines[start + 1:start + 90]:
-            m = MONEY.match(l)
-            if m:
-                price = float(m.group(1).replace(",", ""))
-            elif price is not None and DATE.match(l):
-                if (price, l) not in seen:  # page can render the list twice (responsive)
-                    seen.add((price, l))
-                    sales.append((price, l))
-                price = None
-    return est, sales
+class Blocked(Exception):
+    pass
+
+
+def fetch_sales(spec_id, grade):
+    """(latest price, latest ISO date, total sale count, [(price, date), ...]) for one
+    card at one grade. Raises Blocked on a challenge or a dead session."""
+    m = re.match(r"(\d+(?:\.\d+)?)\s*(.*)", grade)
+    inp = {"specId": str(spec_id), "grade": m.group(1) if m else grade,
+           "gradingType": "ALL",
+           # "9 OC" and friends are qualified grades, priced separately by PSA
+           "qualifiers": "QUALIFIERS" if m and m.group(2) else "NON_QUALIFIERS",
+           "pageSize": N_SALES, "cursor": 1, "timeRange": 0}
+    blob = base64.b64encode(json.dumps({"json": inp}, separators=(",", ":")).encode()).decode().rstrip("=")
+    url = SALES_URL + "?batch=1&input=" + urllib.parse.quote(json.dumps({"0": blob}, separators=(",", ":")))
+    r = creq.get(url, headers={"Cookie": os.environ.get("PSA_COOKIE", ""), "Accept": "*/*",
+                               "Referer": f"https://www.psacard.com/spec/psa/{spec_id}",
+                               "sec-fetch-site": "same-origin", "sec-fetch-mode": "cors",
+                               "sec-fetch-dest": "empty"},
+                 impersonate="chrome", timeout=30, allow_redirects=False)
+    if r.status_code in (401, 403) or "just a moment" in r.text[:2000].lower():
+        raise Blocked(f"HTTP {r.status_code}" + (" Cloudflare challenge" if r.status_code == 403 else ""))
+    d = r.json()[0]["result"]["data"]["json"]
+    sales = [(x["salePrice"], (x.get("saleDate") or "")[:10])
+             for x in (d.get("sales") or []) if x.get("salePrice") is not None]
+    last, last_date = sales[0] if sales else (None, None)
+    return last, last_date, d.get("totalCount") or len(sales), sales
 
 
 def pick_groups(conn, new_only=False):
-    """Unique (name, grade) groups of graded certs needing a fetch: groups with
-    any un-valued cert first, then stale ones (oldest first). A cert number plus
-    a grade is the whole precondition - psa_watch fills both at grades-ready,
-    well before the submission ships."""
+    """Unique (spec_id, grade) groups of graded certs needing a fetch: groups with
+    any un-valued cert first, then stale ones (oldest first). Cert number, grade and
+    spec_id are the whole precondition - psa_watch fills them at grades-ready, well
+    before the submission ships."""
     conn.executescript(SCHEMA)
     have = {r[0]: r[1] for r in conn.execute("SELECT cert_no, fetched_at FROM card_values")}
     groups = {}
-    for name, grade, cert in conn.execute(
-            """SELECT c.name, c.grade, c.cert_no FROM cards c
-               WHERE c.cert_no != '' AND c.grade != ''
+    for spec, grade, cert, name in conn.execute(
+            """SELECT c.spec_id, c.grade, c.cert_no, c.name FROM cards c
+               WHERE c.cert_no != '' AND c.grade != '' AND c.spec_id != ''
                ORDER BY c.cert_no"""):
-        groups.setdefault((name, grade), []).append(cert)
+        groups.setdefault((spec, grade), (name, []))[1].append(cert)
     cutoff = (datetime.now(timezone.utc) - timedelta(days=MAX_AGE_DAYS)).isoformat(timespec="seconds")
     todo = []
-    for key, certs in groups.items():
+    for key, (name, certs) in groups.items():
         stamps = [have.get(c) for c in certs]
         if any(s is None for s in stamps):
-            todo.append((0, "", key, certs))          # never fetched
+            todo.append((0, "", key, name, certs))          # never fetched
         elif not new_only and min(stamps) < cutoff:
-            todo.append((1, min(stamps), key, certs))  # stale
+            todo.append((1, min(stamps), key, name, certs))  # stale
     todo.sort()
-    return [(key, certs) for _, _, key, certs in todo]
+    return [(key, name, certs) for _, _, key, name, certs in todo]
 
 
-def upsert(conn, certs, est, sales, error=""):
+def upsert(conn, certs, last, last_date, n, sales):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    last, last_date = (sales[0] if sales else (None, None))
     for cn in certs:
         conn.execute("""INSERT INTO card_values
             (cert_no, estimate, last_sale, last_sale_date, n_sales, sales_json, fetched_at, error)
-            VALUES (?,?,?,?,?,?,?,?)
-            ON CONFLICT(cert_no) DO UPDATE SET estimate=excluded.estimate,
+            VALUES (?,NULL,?,?,?,?,?,?)
+            ON CONFLICT(cert_no) DO UPDATE SET estimate=NULL,
               last_sale=excluded.last_sale, last_sale_date=excluded.last_sale_date,
               n_sales=excluded.n_sales, sales_json=excluded.sales_json,
               fetched_at=excluded.fetched_at, error=excluded.error""",
-            (cn, est, last, last_date, len(sales), json.dumps(sales), now, error))
+            (cn, last, last_date, n, json.dumps(sales), now, "" if sales else "no-data"))
     conn.commit()
 
 
@@ -181,53 +180,32 @@ def main():
         if not new_only:  # new-only runs every scan: stay quiet
             log("nothing to fetch (all values fresh)")
         return 0
-    log(f"fetching {len(todo)} cert pages ({sum(len(c) for _, c in todo)} cards)")
-    done = hard_fails = 0
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False,
-            args=["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu",
-                  "--disable-blink-features=AutomationControlled"])
-        ctx = browser.new_context(user_agent=UA, locale="en-CA",
-                                  viewport={"width": 1366, "height": 900})
-        ctx.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
-        page = ctx.new_page()
+    log(f"fetching {len(todo)} card/grade sales ({sum(len(c) for _, _, c in todo)} cards)")
+    done = fails = 0
+    for (spec, grade), name, certs in todo:
         try:
-            for (name, grade), certs in todo:
-                cert = certs[0]
-                try:
-                    page.goto(f"https://www.psacard.com/cert/{cert}/psa",
-                              wait_until="domcontentloaded", timeout=45000)
-                    page.wait_for_timeout(3200)
-                    for _ in range(12):  # an interstitial can clear itself
-                        if "just a moment" not in (page.title() or "").lower():
-                            break
-                        page.wait_for_timeout(1000)
-                    else:
-                        with open(BLOCKED, "w") as f:
-                            f.write(datetime.now(timezone.utc).isoformat(timespec="seconds") + "\n")
-                        log(f"{cert}: Cloudflare challenge on the cert page - stopping, nothing stored")
-                        return 1
-                    if os.path.exists(BLOCKED):
-                        os.remove(BLOCKED)
-                    est, sales = parse_cert_text(page.inner_text("body"))
-                    if est is None and not sales:      # slow render? one more beat
-                        page.wait_for_timeout(2500)
-                        est, sales = parse_cert_text(page.inner_text("body"))
-                    upsert(conn, certs, est, sales, "" if (est or sales) else "no-data")
-                    done += 1
-                    e = f"${est:,.0f}" if est is not None else "-"
-                    log(f"{cert} PSA {grade} {name[:48]!r}: est {e}, {len(sales)} sales"
-                        + (f" x{len(certs)} certs" if len(certs) > 1 else ""))
-                except Exception as ex:
-                    hard_fails += 1
-                    log(f"{cert} FAILED: {str(ex)[:120]}")
-                    if hard_fails >= 3 and done == 0:
-                        log("first pages all failing - aborting run (blocked?)")
-                        return 1
-                time.sleep(1.0)
-        finally:
-            ctx.close(); browser.close()
-    log(f"done: {done} fetched, {hard_fails} failed, {len(todo) - done - hard_fails} skipped")
+            last, last_date, n, sales = fetch_sales(spec, grade)
+        except Blocked as ex:
+            with open(BLOCKED, "w") as f:
+                f.write(datetime.now(timezone.utc).isoformat(timespec="seconds") + "\n")
+            log(f"spec {spec}: {ex} - stopping, nothing stored")
+            return 1
+        except Exception as ex:
+            fails += 1
+            log(f"spec {spec} PSA {grade} FAILED: {str(ex)[:120]}")
+            if fails >= 3 and done == 0:
+                log("first calls all failing - aborting run")
+                return 1
+            continue
+        if os.path.exists(BLOCKED):
+            os.remove(BLOCKED)
+        upsert(conn, certs, last, last_date, n, sales)
+        done += 1
+        v = f"${last:,.2f} on {last_date}" if last is not None else "-"
+        log(f"spec {spec} PSA {grade} {name[:48]!r}: last {v}, {n} sales"
+            + (f" x{len(certs)} certs" if len(certs) > 1 else ""))
+        time.sleep(1.0)
+    log(f"done: {done} fetched, {fails} failed")
     return 0
 
 

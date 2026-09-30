@@ -18,12 +18,12 @@ Completing → Shipped.
   (pulled from the submission's spec images), duplicate-aware (a line with
   qty 34 renders 34 tiles), with owner tagging, per-person pages, estimated
   grading cost, live search, and per-submission archiving.
-- **Card values** (optional, `PSA_VALUES=1`) - `psa_values.py` reads PSA's own
-  estimate and recent comp sales off the public cert page of every graded card
-  and shows them in CAD.
+- **Card values** (optional, `PSA_VALUES=1`) - `psa_values.py` reads each graded
+  card's recent sales at its grade from PSA's own sales data (the psacard.com
+  spec page API, on the scanner's session) and shows the latest in CAD.
 - **No frameworks.** Python stdlib web server + SQLite + one scraper. The only
   deps are `curl_cffi` (TLS fingerprint impersonation) and `playwright`
-  (the twice-daily login and the values fetch).
+  (the twice-daily login).
 
 ## Architecture
 
@@ -32,7 +32,7 @@ psa-scan.timer (systemd, hourly)
   └─ run_scan.sh                 for each accounts/<id>/:
        ├─ psa_login.py           real Chromium (xvfb) logs into PSA → fresh cookie → account.env
        ├─ psa_watch.py --once    scrape orders + card images → accounts/<id>/psa.db
-       └─ psa_values.py          login-hour runs, PSA_VALUES=1: cert values + USDCAD → psa.db
+       └─ psa_values.py          PSA_VALUES=1: sales values (new certs every scan, refresh + USDCAD on login hours) → psa.db
 
 psa-backup.timer (systemd, nightly 04:15)
   └─ backup.sh                   accounts/ + global env + units → backups/auto-*.tar.gz

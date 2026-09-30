@@ -163,15 +163,15 @@ PYEOF
     fi
 
     # Card market values (PSA_VALUES=1 in the env enables; remove to disable).
-    # Public cert pages, so failures never block the scan.
+    # PSA's sales API on the scan's cookie (T215), so failures never block the scan.
     if [ "$full" = 1 ] && [ "$rc" = 0 ] && [ "${PSA_VALUES:-0}" = "1" ]; then
-      timeout 420 xvfb-run -a python3 /opt/psa-tracker/psa_values.py \
+      timeout 420 python3 /opt/psa-tracker/psa_values.py \
         || echo "[run_scan] $id: values fetch failed (non-fatal)"
     fi
     # Every other scan: price certs whose grades just landed, so values show the
-    # scan after grades do (T214). Exits before the browser when nothing is new.
+    # scan after grades do (T214). Quiet when nothing is new.
     if [ "$full" != 1 ] && [ "$rc" = 0 ] && [ "${PSA_VALUES:-0}" = "1" ]; then
-      timeout 420 xvfb-run -a python3 /opt/psa-tracker/psa_values.py --new-only \
+      timeout 420 python3 /opt/psa-tracker/psa_values.py --new-only \
         || echo "[run_scan] $id: new values fetch failed (non-fatal)"
     fi
   )

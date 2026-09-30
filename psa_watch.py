@@ -92,7 +92,8 @@ CREATE TABLE IF NOT EXISTS cards (
   back_thumb  TEXT,
   grade       TEXT,
   declared_value REAL,
-  updated_at  TEXT
+  updated_at  TEXT,
+  spec_id     TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cards_sub ON cards(sub_number);
 """
@@ -104,6 +105,7 @@ def db():
     conn = sqlite3.connect(DB_PATH)
     conn.executescript(SCHEMA)
     for stmt in ("ALTER TABLE cards ADD COLUMN declared_value REAL",
+                 "ALTER TABLE cards ADD COLUMN spec_id TEXT",
                  "ALTER TABLE subs ADD COLUMN missing_since TEXT",
                  "ALTER TABLE subs ADD COLUMN acct TEXT",
                  "ALTER TABLE subs ADD COLUMN hold_reason TEXT"):
@@ -250,6 +252,8 @@ def parse_detail(sub_number, body):
             "line_number": sp.get("lineNumber") or 0,
             "front_thumb": front or "", "back_thumb": back or "",
             "grade": grade_str(pc),
+            # psa_values prices by (spec, grade) off PSA's sales endpoint (T215)
+            "spec_id": str(pc.get("specID") or sp.get("specID") or ""),
         })
     # certs known but no image yet (early stages): still record from spec list
     for cid, sp in specs.items():
@@ -259,6 +263,7 @@ def parse_detail(sub_number, body):
                 "cert_no": str(sp.get("certNo") or ""),
                 "name": sp.get("specDescription") or "", "line_number": sp.get("lineNumber") or 0,
                 "front_thumb": "", "back_thumb": "", "grade": "",
+                "spec_id": str(sp.get("specID") or ""),
             })
     cards.sort(key=lambda c: c["line_number"] or 0)
     return cards
@@ -366,7 +371,7 @@ def prelim_cards(sub_number, spec_lines):
                 "sub_number": sub_number, "cert_id": cid,
                 "cert_no": "", "name": l["name"], "line_number": l["line_number"],
                 "front_thumb": l["front"], "back_thumb": l["back"], "grade": "",
-                "declared_value": l.get("dv"),
+                "declared_value": l.get("dv"), "spec_id": str(spec),
             })
     cards.sort(key=lambda c: c["line_number"] or 0)
     return cards
@@ -529,10 +534,11 @@ def upsert_cards(conn, sub_number, cards):
     conn.execute("DELETE FROM cards WHERE sub_number=?", (sub_number,))
     for c in cards:
         conn.execute("""INSERT OR REPLACE INTO cards
-            (cert_id, sub_number, cert_no, name, line_number, front_thumb, back_thumb, grade, declared_value, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?)""",
+            (cert_id, sub_number, cert_no, name, line_number, front_thumb, back_thumb, grade, declared_value, updated_at, spec_id)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (c["cert_id"], c["sub_number"], c["cert_no"], c["name"], c["line_number"],
-             c["front_thumb"], c["back_thumb"], c["grade"], c.get("declared_value"), now))
+             c["front_thumb"], c["back_thumb"], c["grade"], c.get("declared_value"), now,
+             c.get("spec_id") or ""))
     conn.commit()
 
 def refresh_cards(conn, subs, prev=None, full=False):
@@ -552,8 +558,8 @@ def refresh_cards(conn, subs, prev=None, full=False):
         # calls roughly in half once every sub is fully populated.
         if not full and s["status"] == "Shipped" and prev.get(sub) == "Shipped":
             row = conn.execute("""SELECT count(*), sum(front_thumb!=''),
-                sum(declared_value IS NULL), sum(grade='') FROM cards WHERE sub_number=?""",
-                (sub,)).fetchone()
+                sum(declared_value IS NULL), sum(grade=''), sum(spec_id IS NULL)
+                FROM cards WHERE sub_number=?""", (sub,)).fetchone()
             # only skip once cards are fully imaged, valued, AND graded (if grades ready)
             need_grades = s["grades_ready"] and (row[3] or 0)
             if need_grades:
@@ -563,7 +569,9 @@ def refresh_cards(conn, subs, prev=None, full=False):
                     WHERE sub_number=? AND status='Shipped'""", (sub,)).fetchone()[0]
                 if shipped_at and shipped_at < grade_cutoff:
                     need_grades = 0
-            if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0) and not need_grades:
+            # spec_id IS NULL: rows from before the column; one refetch fills it ('' if PSA has none)
+            if row[0] and row[0] == (row[1] or 0) and not (row[2] or 0) and not need_grades \
+                    and not (row[4] or 0):
                 skipped += 1
                 continue
         try:
