@@ -39,6 +39,11 @@ ACCT = os.environ.get("PSA_ACCT_ID", "account")
 BATCH = int(os.environ.get("PSA_VALUES_BATCH", "40"))
 MAX_AGE_DAYS = int(os.environ.get("PSA_VALUES_MAX_AGE", "14"))
 log = psa_common.log(f"psa-values:{ACCT}")
+# Cloudflare's challenge page is not "no data": storing it as such blanked good values
+# and froze them for MAX_AGE_DAYS (T215). A challenged run stores nothing and touches
+# this marker; --new-only runs sit out BLOCK_HOURS after it, full runs always try.
+BLOCKED = os.path.join(os.path.dirname(DB_PATH) or ".", ".values_blocked")
+BLOCK_HOURS = 6
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
 
@@ -166,6 +171,9 @@ def main():
         fetch_fx(conn)
     if "--fx-only" in sys.argv:
         return 0
+    if new_only and os.path.exists(BLOCKED) \
+            and time.time() - os.path.getmtime(BLOCKED) < BLOCK_HOURS * 3600:
+        return 0
     todo = pick_groups(conn, new_only)
     if limit is not None:
         todo = todo[:limit]
@@ -190,6 +198,17 @@ def main():
                     page.goto(f"https://www.psacard.com/cert/{cert}/psa",
                               wait_until="domcontentloaded", timeout=45000)
                     page.wait_for_timeout(3200)
+                    for _ in range(12):  # an interstitial can clear itself
+                        if "just a moment" not in (page.title() or "").lower():
+                            break
+                        page.wait_for_timeout(1000)
+                    else:
+                        with open(BLOCKED, "w") as f:
+                            f.write(datetime.now(timezone.utc).isoformat(timespec="seconds") + "\n")
+                        log(f"{cert}: Cloudflare challenge on the cert page - stopping, nothing stored")
+                        return 1
+                    if os.path.exists(BLOCKED):
+                        os.remove(BLOCKED)
                     est, sales = parse_cert_text(page.inner_text("body"))
                     if est is None and not sales:      # slow render? one more beat
                         page.wait_for_timeout(2500)
