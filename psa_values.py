@@ -20,7 +20,10 @@ app / run_scan.sh) fully reverts the feature.
 Also refreshes the USDCAD rate into fx_rates each run (keyless public FX API);
 app.py converts the stored USD values to CAD at render time.
 
-Usage: psa_values.py [--all | --fx-only]
+Usage: psa_values.py [--all | --fx-only | --new-only]
+       --new-only: only never-fetched certs, no FX; exits before any browser when
+       there are none, so run_scan.sh calls it every scan (values land the scan after
+       grades do, not at the next login hour).
 Env:   PSA_DB              account database (same as psa_watch.py)
        PSA_VALUES_BATCH    max cert pages per run (default 40; --all = no cap)
        PSA_VALUES_MAX_AGE  refresh values older than this many days (default 14)
@@ -113,7 +116,7 @@ def parse_cert_text(text):
     return est, sales
 
 
-def pick_groups(conn):
+def pick_groups(conn, new_only=False):
     """Unique (name, grade) groups of graded certs needing a fetch: groups with
     any un-valued cert first, then stale ones (oldest first). A cert number plus
     a grade is the whole precondition - psa_watch fills both at grades-ready,
@@ -132,7 +135,7 @@ def pick_groups(conn):
         stamps = [have.get(c) for c in certs]
         if any(s is None for s in stamps):
             todo.append((0, "", key, certs))          # never fetched
-        elif min(stamps) < cutoff:
+        elif not new_only and min(stamps) < cutoff:
             todo.append((1, min(stamps), key, certs))  # stale
     todo.sort()
     return [(key, certs) for _, _, key, certs in todo]
@@ -158,14 +161,17 @@ def main():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA busy_timeout=10000")
     conn.executescript(SCHEMA)
-    fetch_fx(conn)
+    new_only = "--new-only" in sys.argv
+    if not new_only:
+        fetch_fx(conn)
     if "--fx-only" in sys.argv:
         return 0
-    todo = pick_groups(conn)
+    todo = pick_groups(conn, new_only)
     if limit is not None:
         todo = todo[:limit]
     if not todo:
-        log("nothing to fetch (all values fresh)")
+        if not new_only:  # new-only runs every scan: stay quiet
+            log("nothing to fetch (all values fresh)")
         return 0
     log(f"fetching {len(todo)} cert pages ({sum(len(c) for _, c in todo)} cards)")
     done = hard_fails = 0

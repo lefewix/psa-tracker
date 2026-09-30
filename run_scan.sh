@@ -168,6 +168,12 @@ PYEOF
       timeout 420 xvfb-run -a python3 /opt/psa-tracker/psa_values.py \
         || echo "[run_scan] $id: values fetch failed (non-fatal)"
     fi
+    # Every other scan: price certs whose grades just landed, so values show the
+    # scan after grades do (T214). Exits before the browser when nothing is new.
+    if [ "$full" != 1 ] && [ "$rc" = 0 ] && [ "${PSA_VALUES:-0}" = "1" ]; then
+      timeout 420 xvfb-run -a python3 /opt/psa-tracker/psa_values.py --new-only \
+        || echo "[run_scan] $id: new values fetch failed (non-fatal)"
+    fi
   )
 done
 [ "$found" = 1 ] || echo "[run_scan] no accounts found in $ACCTS - run add_account.sh"

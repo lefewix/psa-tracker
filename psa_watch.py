@@ -433,47 +433,87 @@ def _names_match(a, b):
         return True  # no name to compare - fall back to line-number trust
     return len(ta & tb) / min(len(ta), len(tb)) >= 0.5
 
+def _copy_idx(cid):
+    """spec:<sub>:<specId>[:<n>] -> n (0 for the base key)."""
+    parts = str(cid).split(":")
+    return int(parts[3]) if len(parts) > 3 and parts[3].isdigit() else 0
+
+def pair_prelims(sub_number, old_rows, new_cards):
+    """[(old_cid, old_name, cert_card)] for prelim -> cert carryover.
+
+    Prelim cards carry the FORM line number (a quantity-3 line is three cards on
+    one line), cert cards are numbered one per card, so the numbers drift apart
+    after the first qty>1 line (T213). A form line PSA had no specId for yields no
+    prelim at all, so the counts can differ too. Both lists are the same cards in
+    submission order. When the counts agree once each missing form line number
+    counts as one card, pair by that exact position (identical cards stay on the
+    right slab). Otherwise align by name (longest common subsequence under
+    _names_match), which keeps order and skips the extra card on either side.
+    Either way a pair whose names disagree is dropped."""
+    olds = sorted(((cid, ln or 0, nm) for cid, ln, nm in old_rows if str(cid).startswith("spec:")),
+                  key=lambda o: (o[1], _copy_idx(o[0])))
+    targets = sorted((c for c in new_cards if not str(c["cert_id"]).startswith("spec:")),
+                     key=lambda c: (c["line_number"] or 0, str(c["cert_id"])))
+    n, m = len(olds), len(targets)
+    if not n or not m:
+        return []
+    present = {o[1] for o in olds}
+    gaps = [ln for ln in range(1, max(present) + 1) if ln not in present]
+    if n + len(gaps) == m:
+        pairs = []
+        for i, o in enumerate(olds):
+            c = targets[i + sum(1 for g in gaps if g < o[1])]
+            if _names_match(o[2], c.get("name") or ""):
+                pairs.append((o[0], o[2], c))
+        if len(pairs) < n:
+            log(f"sub {sub_number}: {n - len(pairs)} of {n} prelim(s) renamed by PSA, owner left blank")
+        return pairs
+    eq = [[_names_match(o[2], c.get("name") or "") for c in targets] for o in olds]
+    L = [[0] * (m + 1) for _ in range(n + 1)]
+    for i in range(n - 1, -1, -1):
+        for j in range(m - 1, -1, -1):
+            L[i][j] = L[i + 1][j + 1] + 1 if eq[i][j] else max(L[i + 1][j], L[i][j + 1])
+    pairs, i, j = [], 0, 0
+    while i < n and j < m:
+        if eq[i][j] and L[i][j] == L[i + 1][j + 1] + 1:
+            pairs.append((olds[i][0], olds[i][2], targets[j]))
+            i += 1; j += 1
+        elif L[i + 1][j] >= L[i][j + 1]:
+            i += 1
+        else:
+            j += 1
+    if len(pairs) < n:
+        log(f"sub {sub_number}: {n - len(pairs)} of {n} prelim(s) found no cert with a matching name")
+    return pairs
+
 def carryover_owners(sub_number, old_rows, new_cards):
     """When prelim (spec:) cards are replaced by real cert cards, move owner tags
-    across by line number - but only on an unambiguous 1:1 line match whose card
-    names agree. Anything doubtful is left blank (and logged): a blank owner gets
-    noticed and fixed, a wrong owner doesn't. old_rows: (cert_id, line_number, name)."""
-    old_by_line = {}
-    for cid, ln, nm in old_rows:
-        if str(cid).startswith("spec:"):
-            old_by_line.setdefault(ln, []).append((cid, nm))
-    targets = [c for c in new_cards if not str(c["cert_id"]).startswith("spec:")]
-    if not old_by_line or not targets:
-        return
-    tgt_by_line = {}
-    for c in targets:
-        tgt_by_line.setdefault(c["line_number"], []).append(c)
+    across on the name-aligned pairs from pair_prelims, never over a tag already
+    on the cert. Anything doubtful is left blank (and logged): a blank
+    owner gets noticed and fixed, a wrong owner doesn't. old_rows: (cert_id,
+    line_number, name). Returns the number of tags moved."""
+    pairs = pair_prelims(sub_number, old_rows, new_cards)
+    if not pairs:
+        return 0
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     oc = sqlite3.connect(OWN_DB)
     oc.execute("CREATE TABLE IF NOT EXISTS owners (cert_id TEXT PRIMARY KEY, owner TEXT, updated_at TEXT)")
     moved = 0
-    for c in targets:
-        olds = old_by_line.get(c["line_number"], [])
-        # only carry when the line maps 1:1 and the names agree - a wrong owner
-        # is worse than a blank one
-        if len(olds) != 1 or len(tgt_by_line[c["line_number"]]) != 1:
-            if olds:
-                log(f"sub {sub_number}: line {c['line_number']} ambiguous, owner left blank on cert {c['cert_id']}")
-            continue
-        old_cid, old_name = olds[0]
-        if not _names_match(old_name, c.get("name") or ""):
-            log(f"sub {sub_number}: name mismatch line {c['line_number']} "
-                f"({old_name!r} vs {c.get('name')!r}), owner left blank on cert {c['cert_id']}")
-            continue
+    for old_cid, old_name, c in pairs:
         row = oc.execute("SELECT owner FROM owners WHERE cert_id=?", (old_cid,)).fetchone()
-        if row and row[0]:
-            oc.execute("INSERT OR REPLACE INTO owners(cert_id, owner, updated_at) VALUES (?,?,?)",
-                       (c["cert_id"], row[0], now))
-            oc.execute("DELETE FROM owners WHERE cert_id=?", (old_cid,))
-            moved += 1
+        if not (row and row[0]):
+            continue
+        have = oc.execute("SELECT owner FROM owners WHERE cert_id=?", (c["cert_id"],)).fetchone()
+        if have and have[0]:
+            continue  # someone tagged the cert by hand: theirs wins
+        oc.execute("INSERT OR REPLACE INTO owners(cert_id, owner, updated_at) VALUES (?,?,?)",
+                   (c["cert_id"], row[0], now))
+        oc.execute("DELETE FROM owners WHERE cert_id=?", (old_cid,))
+        moved += 1
     oc.commit(); oc.close()
     if moved:
         log(f"sub {sub_number}: carried over {moved} owner tag(s) prelim -> cert")
+    return moved
 
 def upsert_cards(conn, sub_number, cards):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
