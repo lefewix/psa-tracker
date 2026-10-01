@@ -490,6 +490,12 @@ def main():
         if css and (b"html.navw body::after" not in css or b".busy{" not in css
                     or b".view:active,.numlink:active{opacity:.6}" not in css):
             fails.append("GET /app.css: the nav bar or busy pulse is gone (T198)")
+        # Service sorts priciest tier first and heads each tier (T151)
+        if js and (b"r=(parseFloat(q)||0)-(parseFloat(p)||0)" not in js
+                   or b"h.className='tierhd'" not in js):
+            fails.append("GET /app.js: Service no longer sorts by fee with tier headers (T151)")
+        if css and b".tierhd{" not in css:
+            fails.append("GET /app.css: the tier header style is gone (T151)")
         # search drops stale answers and shows skeleton rows while waiting (T199)
         if js and (b"if(my===seq){clearTimeout(sk);render(d);}" not in js
                    or b"pvrow skrow" not in js):
@@ -746,6 +752,10 @@ def main():
             fails.append("POST /login: the session cookie is not 180 days")
         if cookie:
             body = check("GET /", "/", (200,), cookie, must_have="14900001")
+            if ((body or b"").count(b'class="f fsort') != 3
+                    or b'data-sort="svc" aria-pressed="false">Service<' not in (body or b"")
+                    or b'data-svc="Regular" data-price="109.0"' not in (body or b"")):
+                fails.append("GET /: not three sort pills, or Service rows lack the tier price (T151)")
             # strip scans decode off the main thread as well as load lazily (T181)
             imgs = re.findall(rb'<img [^>]*src="/img[^>]*>', body or b"")
             if not imgs or any(b'loading="lazy"' not in i or b'decoding="async"' not in i
@@ -1138,7 +1148,7 @@ def main():
             row = row.group(0) if row else b""
             for want in (b'<div class="filters" role="group" aria-label="Sort submissions">',
                          b'data-sort="sub" aria-pressed="true">Newest<',
-                         b'data-sort="svc" aria-pressed="false">Order type<',
+                         b'data-sort="svc" aria-pressed="false">Service<',
                          b'data-sort="eta" aria-pressed="false">Return<'):
                 if want not in row:
                     fails.append("GET /cards?owner=Twosub: the sort capsule is missing "
@@ -1148,6 +1158,9 @@ def main():
             grp = re.findall(rb'<div class="card grp[^>]*>', tbody)
             if len(grp) != 2:
                 fails.append(f"GET /cards?owner=Twosub: {len(grp)} groups, want 2")
+            # Service sorts by tier fee, so every group carries its price (T151)
+            if row.count(b'class="f fsort') != 3 or not all(b'data-price="109.0"' in g for g in grp):
+                fails.append("GET /cards?owner=Twosub: not three pills or a group lacks its tier price")
             for want in (b'data-sub="14900002"', b'data-sub="14900001"',
                          b'data-svc="Regular"',
                          b'data-eta="%s"' % ETA_SOON.isoformat().encode(),

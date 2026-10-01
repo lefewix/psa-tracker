@@ -1191,6 +1191,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    out-weigh 14/400. */
 .num{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
+.tierhd{font-size:14px;font-weight:650;color:var(--m1);margin:22px 4px 8px}
+.tierhd:first-child{margin-top:4px}
+#list.archview .tierhd{display:none}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
@@ -2544,7 +2547,7 @@ def strip_html(s, fronts):
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
-def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
+def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
@@ -2582,6 +2585,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     archattr = ' data-arch="1" style="display:none"' if archived else ''
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
+                f' data-price="{"" if price is None else price}"'
                 f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
     led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
     foot_h = (f'<div class="foot"><span class="est">{foot}</span>{act}</div>'
@@ -3278,20 +3282,23 @@ SORT_JS = """<script>
   if(!list||!btns.length)return;
   // clicking the active pill again reverses it; only the sub pill flips its word
   // (Newest/Oldest) - the others keep their plain label in both directions
-  var BASE={sub:'Newest',svc:'Order type',eta:'Return'};
+  var BASE={sub:'Newest',svc:'Service',eta:'Return'};
   var REV={sub:'Oldest'};
   // re-clicking the active pill reverses the list but two of the three pills
   // keep the same label, so the flip is invisible to a screen reader. Say it.
   var SAID={sub:['Sorted newest first','Sorted oldest first'],
-            svc:['Sorted by order type, A to Z','Sorted by order type, Z to A'],
+            svc:['Sorted by service, priciest first','Sorted by service, cheapest first'],
             eta:['Sorted by return date, soonest first','Sorted by return date, latest first']};
   function subDesc(a,b){return parseInt(b.dataset.sub||'0',10)-parseInt(a.dataset.sub||'0',10);}
   function cmp(a,b,m,d){
     var r=0;
     if(m==='sub'){r=subDesc(a,b);return d?-r:r;}
     if(m==='svc'){
+      var p=a.dataset.price,q=b.dataset.price;
+      if(p&&!q)return -1; if(!p&&q)return 1;   // unpriced tier: always last
+      r=(parseFloat(q)||0)-(parseFloat(p)||0); if(r)return d?-r:r;
       var x=(a.dataset.svc||'').toLowerCase(),y=(b.dataset.svc||'').toLowerCase();
-      r=x<y?-1:x>y?1:0; if(r)return d?-r:r;
+      r=x<y?-1:x>y?1:0; if(r)return r;
     }else{
       var x=a.dataset.eta||'',y=b.dataset.eta||'';
       if(x&&!y)return -1; if(!x&&y)return 1;   // no return date: always last
@@ -3300,12 +3307,21 @@ SORT_JS = """<script>
     return subDesc(a,b);  // ties: newest sub first, both directions
   }
   function apply(m,d){
+    [].slice.call(list.querySelectorAll('.tierhd')).forEach(function(h){h.remove()});
     var cards=[].slice.call(list.children).filter(function(c){return c.classList.contains('card')});
     var act=cards.filter(function(c){return c.dataset.arch!=='1'});
     var arc=cards.filter(function(c){return c.dataset.arch==='1'});
     var by=function(a,b){return cmp(a,b,m,d)};
     act.sort(by); arc.sort(subDesc);  // archive always newest first (T203)
     act.concat(arc).forEach(function(c){list.appendChild(c)});
+    // under Service each tier gets a one-line header, so the grouping shows
+    if(m==='svc')act.forEach(function(c,i){
+      if(i&&act[i-1].dataset.svc===c.dataset.svc)return;
+      var h=document.createElement('div');
+      h.className='tierhd'; h.textContent=c.dataset.svc||'Unknown service';
+      if(list.getAttribute('role')==='list')h.setAttribute('role','listitem');
+      list.insertBefore(h,c);
+    });
     btns.forEach(function(b){
       var on=b.dataset.sort===m;
       b.classList.toggle('on',on);
@@ -3536,7 +3552,8 @@ def dash_page(a, subs):
         # fetches them from /?arch=1 the first time it is switched on.
         fronts = sub_fronts(a)   # ONE query for every row's filmstrip
         body = "".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
-                                 fronts=fronts.get(s["sub_number"])) for s in active)
+                                 fronts=fronts.get(s["sub_number"]),
+                                 price=service_price(a, s["service"])) for s in active)
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
@@ -3575,7 +3592,7 @@ def dash_page(a, subs):
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
-                  '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>',
+                  '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Service</button>',
                   '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>']
     # role=group, not navigation: three sort toggles are not a navigation
     # landmark. Styled and queried by CLASS everywhere, so the role carries no
@@ -3803,7 +3820,9 @@ def people_page(a, owner):
         # not care that these children are submission groups. No data-arch: the
         # archived groups live in #archgrid, which SORT_JS never touches.
         eta = html.escape(s["est_end"] or s["est_start"] or "") if s else ""
-        sortattr = f' data-sub="{html.escape(str(n))}" data-svc="{svc}" data-eta="{eta}"'
+        p = service_price(a, s["service"]) if s else None
+        sortattr = (f' data-sub="{html.escape(str(n))}" data-svc="{svc}"'
+                    f' data-price="{"" if p is None else p}" data-eta="{eta}"')
         return (f'<div class="card grp{" arch" if n in arch else ""}"{sortattr}>'
                 f'<div class="top"><div><a class="numlink" href="/sub/{html.escape(str(n))}">'
                 # h2, not div: this IS the group's heading. Zero visual delta -
@@ -3835,7 +3854,7 @@ def people_page(a, owner):
     # submission groups in #list and the choice is the same psa_sort the
     # dashboard stores. Only when there are active groups to reorder.
     pills = ('<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>'
-             '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Order type</button>'
+             '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Service</button>'
              '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>'
              ) if act_cards else ""
     filters = (f'<div class="filters" role="group" aria-label="Sort submissions">'

@@ -797,9 +797,10 @@ content — a panel, a sheet, an image, a row — it is not.
   the other. The row wraps at the same 10px gap, so on a phone the pair drops to a second line
   and the capsule keeps its full width instead of shrinking into a scroller. The person page
   runs the same row over its submission groups, sharing the dashboard's `psa_sort` choice.
-- **Sort pills:** Newest, Order type, Return. Three, always the same three — a "Grades ready"
+- **Sort pills:** Newest, Service, Return. Three, always the same three — a "Grades ready"
   fourth pill shipped briefly and was removed with the rest of the grades promotion
-  (2026-08-02 owner ruling).
+  (2026-08-02 owner ruling). Service sorts by tier fee, priciest first (unpriced last), and
+  heads each tier with a `.tierhd` line at 14/650 `--m1`; other sorts drop the headers (T151).
 - **State:** inactive is muted 500-weight on transparent; active takes the `--segon` fill,
   accent-as-text, 600 weight, and the Segment Lift shadow. The Archived pill is the exception
   in both directions: pressed it takes `--ac-fill` with a `#fff` label (see the Opt-In Fill
