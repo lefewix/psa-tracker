@@ -1717,11 +1717,14 @@ button:disabled{opacity:.5;cursor:default}
 # favicon: accent-colored card-fan mark (three cards, opacity steps for depth),
 # inline SVG so it needs no asset file - matches the logo.svg fan language
 _FAV_FILL = ACCENT.replace("#", "%23")
+_FAN = ("<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.5' transform='rotate(-18 32 56)'/>"
+        "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.75'/>"
+        "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' transform='rotate(18 32 56)'/></svg>")
 FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
-           f"<rect width='64' height='64' rx='14' fill='{_FAV_FILL}'/>"
-           "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.5' transform='rotate(-18 32 56)'/>"
-           "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' opacity='0.75'/>"
-           "<rect x='21' y='12' width='22' height='32' rx='4' fill='white' transform='rotate(18 32 56)'/></svg>")
+           f"<rect width='64' height='64' rx='14' fill='{_FAV_FILL}'/>" + _FAN)
+# Maskable install icon: full-bleed accent, the fan padded inside the 80% safe circle.
+MASK_SVG = ("<svg xmlns='http://www.w3.org/2000/svg' viewBox='-12 -14 88 88'>"
+            f"<rect x='-12' y='-14' width='88' height='88' fill='{ACCENT}'/>" + _FAN)
 
 # Safari + iOS ignore SVG favicons entirely and fall back to a domain-letter
 # tile ("F" for example.com). When pre-rendered PNGs sit next to the app
@@ -1736,11 +1739,15 @@ if os.path.exists(TOUCH_PNG):
     _ICONS += f'\n<link rel="apple-touch-icon" href="/apple-touch-icon.png?v={int(os.path.getmtime(TOUCH_PNG))}">'
 
 # Home-screen install: with no manifest Chrome falls back to the 64px favicon.
-# Five keys is everything it needs, and the icon is the 180px touch PNG.
+# The 180px touch PNG plus a maskable SVG for Android's icon mask; the splash
+# ground is the store theme's bg (a manifest cannot follow the system scheme).
 MANIFEST = json.dumps({"name": SITE_TITLE, "short_name": SITE_TITLE, "start_url": "/",
                        "display": "standalone",
-                       "icons": [{"src": "/apple-touch-icon.png", "sizes": "180x180",
-                                  "type": "image/png"}] if os.path.exists(TOUCH_PNG) else []})
+                       "background_color": (_DARK if THEME == "dark" else _LIGHT)["bg"],
+                       "icons": ([{"src": "/apple-touch-icon.png", "sizes": "180x180",
+                                   "type": "image/png"}] if os.path.exists(TOUCH_PNG) else [])
+                       + [{"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml",
+                           "purpose": "maskable"}]})
 
 # theme-color paints the browser and installed-app chrome, so it has to follow
 # the ground token of the theme actually rendered. With no stored choice the
@@ -4406,6 +4413,8 @@ class H(BaseHTTPRequestHandler):
             return self.serve_asset(TOUCH_PNG, "image/png")
         if path == "/manifest.json":
             return self.send(200, MANIFEST, "application/manifest+json")
+        if path == "/icon.svg":
+            return self.send(200, MASK_SVG, "image/svg+xml")
         if path == "/api/hub.json":  # LAN summary for the hub (the server), key-gated
             return self.serve_hub_summary(parsed.query)
         m = re.fullmatch(r"/api/shot/(\d{1,20})\.png", path)  # card PNG for the hub

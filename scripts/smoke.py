@@ -622,8 +622,14 @@ def main():
             man = json.loads(mbody)
             if man.get("display") != "standalone" or man.get("start_url") != "/":
                 fails.append("GET /manifest.json: not an installable standalone app")
-            if [i["src"] for i in man.get("icons", [])] != ["/apple-touch-icon.png"]:
-                fails.append("GET /manifest.json: the install icon is not the 180px PNG")
+            if [i["src"] for i in man.get("icons", [])] != ["/apple-touch-icon.png", "/icon.svg"]:
+                fails.append("GET /manifest.json: the install icons are not the 180px PNG + svg")
+            # T184: a maskable icon that serves, and the light ground on the splash
+            if not any("maskable" in i.get("purpose", "") for i in man.get("icons", [])):
+                fails.append("GET /manifest.json: no maskable icon")
+            if man.get("background_color") != "#f2f2f7":
+                fails.append("GET /manifest.json: background_color is not the light bg")
+            check("GET /icon.svg", "/icon.svg", (200,), must_have="<svg")
         check("GET / (manifest link)", "/", (200,), must_have='rel="manifest"')
         check("GET / (theme-color)", "/", (200,), must_have='name="theme-color"')
         check("GET /api/hub.json (no key)", "/api/hub.json", (404,))
