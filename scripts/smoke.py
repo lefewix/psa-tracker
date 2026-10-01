@@ -1219,8 +1219,15 @@ def main():
             # --- an open lightbox locks the page: the drag must not chain to
             # the dashboard 900px behind the scrim, and close must give it back (T57)
             if js:
-                if js.count(b"document.body.style.overflow") != 2:
-                    fails.append("GET /app.js: the lightbox does not lock the page")
+                if js.count(b"document.body.style.overflow") != 4:
+                    fails.append("GET /app.js: the lightbox or a sheet does not lock the page")
+                # Back closes the lightbox and the sheets: each open pushes one
+                # entry, popstate closes, and every other close pops it (T127)
+                if (js.count(b"history.pushState({ov:1},'')") != 2
+                        or js.count(b"if(history.state&&history.state.ov)history.back();") != 2
+                        or b"addEventListener('popstate', close);" not in js
+                        or b"addEventListener('popstate',function(){\n    document.querySelectorAll('.smodal.on')" not in js):
+                    fails.append("GET /app.js: Back does not close the lightbox or a sheet (T127)")
             if css and b"cursor:zoom-out;overscroll-behavior:contain" not in css:
                 fails.append("GET /app.css: a drag on the lightbox scrim still chains")
 

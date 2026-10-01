@@ -2787,7 +2787,7 @@ LIGHTBOX_JS = """<script>
   /* a real dialog: role/aria-modal, focus moves in on open and back out on
      close, Tab is held on the close orb (the only tabbable inside), and the
      SCAN ITSELF IS INERT - the reveal must survive being touched. The scrim
-     and the orb close; Escape closes. */
+     and the orb close; Escape and Back close. */
   var lb=document.createElement('div'); lb.className='lb';
   lb.setAttribute('role','dialog'); lb.setAttribute('aria-modal','true');
   lb.setAttribute('aria-label','Enlarged scan'); lb.tabIndex=-1;
@@ -2820,6 +2820,7 @@ LIGHTBOX_JS = """<script>
       opener=a;
       lb.classList.add('open');
       document.body.style.overflow='hidden';  // the page behind must not scroll
+      history.pushState({ov:1},'');  // hardware back closes the scan, not the page
       lb.focus();
     });
   });
@@ -2828,6 +2829,7 @@ LIGHTBOX_JS = """<script>
     want=null;
     lb.classList.remove('open');
     document.body.style.overflow='';
+    if(history.state&&history.state.ov)history.back();
     clearTimeout(clr);
     clr=setTimeout(function(){ if(!lb.classList.contains('open')) im.src=''; },220);
     if(opener&&document.contains(opener))opener.focus();
@@ -2839,6 +2841,7 @@ LIGHTBOX_JS = """<script>
     if(e.key==='Tab'){ e.preventDefault(); x.focus(); }  // one tabbable: hold it
   });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+  addEventListener('popstate', close);
 })();
 </script>""".replace("__XICON__", ICON_X)
 
@@ -3185,7 +3188,8 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
   if(mq.addEventListener)mq.addEventListener('change',settop);
 })();
 /* sheets are dialogs: while one is open, Tab must not walk out the back of it,
-   and closing must hand focus back to whatever opened it. Each sheet's own
+   closing must hand focus back to whatever opened it, the page behind is
+   locked, and Back closes the sheet (T127). Each sheet's own
    open/close code just toggles .on, so this watches that class instead of
    wiring into three different handlers. */
 (function(){
@@ -3217,14 +3221,20 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
         m.dataset.mopen='1';
         // runs as a microtask, before the sheet's own rAF focus call
         opener=document.activeElement;
+        document.body.style.overflow='hidden';
+        history.pushState({ov:1},'');
       }else if(!on&&m.dataset.mopen){
         delete m.dataset.mopen;
+        document.body.style.overflow='';
+        if(history.state&&history.state.ov)history.back();
         if(opener&&opener.focus&&document.contains(opener))opener.focus();
         opener=null;
       }
     });
   });
   sheets.forEach(function(m){mo.observe(m,{attributes:true,attributeFilter:['class']});});
+  addEventListener('popstate',function(){
+    document.querySelectorAll('.smodal.on').forEach(function(m){m.classList.remove('on');});});
 })();
 // (no cursor-spotlight, no glow: this world's motion is the row settle, the
 // stage bar running out, and overlays materializing. Hover lives in CSS alone.)
