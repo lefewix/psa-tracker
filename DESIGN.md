@@ -298,6 +298,10 @@ components:
   status-pill-pending:
     backgroundColor: "transparent"
     textColor: "{colors.muted}"
+  status-pill-late:
+    backgroundColor: "transparent"
+    textColor: "{colors.ink}"
+    fontWeight: 650
   status-pill-hold:
     backgroundColor: "transparent"
     textColor: "{colors.alert}"
@@ -813,8 +817,10 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
   one ("Back Jan 20, 2027").
 - **Shipped (`.pill.shipped`)**, ink with a muted icon: done, and real. The icon stays muted so
   the row's only ink outside the lot number is the fact itself.
-- **Pending (`.pill.pending`)**, muted: "ETA pending", and "Was due Aug 20" once PSA has blown
-  through the date. The class is a semantic hook only — a third, lighter status gray cannot
+- **Late (`.pill.late`)**, ink at 650 with an overdue glyph: "Late · due Aug 20" once PSA has
+  blown through the date (T117). Weight and ink carry it, no new colour, so past due outranks
+  an on-time date without competing with the red hold.
+- **Pending (`.pill.pending`)**, muted: "ETA pending", no date at all. The class is a semantic hook only — a third, lighter status gray cannot
   clear 4.5:1 at 14px on the white sheet, so the clock icon and the label carry the
   difference, not a color step.
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —

@@ -1191,6 +1191,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    at 14px, so pending keeps --m1 and a clock. No red status pill. */
 .pill.shipped{color:var(--txt)}
 .pill.shipped svg{color:var(--m1)}
+/* past due outranks an on-time date by weight and ink, not by a new colour */
+.pill.late{font-weight:650;color:var(--txt)}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
 /* the caption drops to the small rung, so it must drop the value's tracking too - tracking
    inherits, size does not. */
@@ -1856,7 +1858,8 @@ ICON_X = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="c
           'stroke-width="2" stroke-linecap="round" style="vertical-align:middle">'
           '<path d="M6 6l12 12M18 6L6 18"/></svg>')
 ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
-ICON_HOLD = _pic('<path d="M9 5v14M15 5v14"/>')
+ICON_HOLD = _pic('<path d="M12 5v14M18 5v14"/>')
+ICON_LATE = _pic('<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>')
 
 # carrier tracking pages: substring-matched against the sub's carrier field so
 # tracking numbers become one-click instead of copy-paste
@@ -1884,14 +1887,15 @@ def tracking_html(carrier, tracking):
 
 def eta_words(s):
     """One vocabulary for a sub's expected return, everywhere: (label, value,
-    muted). Muted is the two states with nothing to look forward to - no date
-    at all, or a date PSA has already blown through."""
+    state). State is "" for a date to look forward to, "pending" for no date
+    at all, "late" for a date PSA has already blown through. Both non-empty
+    states print the value alone."""
     d = s["est_end"] or s["est_start"]
     if not d:
-        return "PSA ETA", "ETA pending", True
+        return "PSA ETA", "ETA pending", "pending"
     if d[:10] < datetime.now(DISPLAY_TZ).strftime("%Y-%m-%d"):
-        return "PSA ETA", f"Was due {short_date(d)}", True
-    return "Back", short_date(d), False
+        return "PSA ETA", f"Late · due {short_date(d)}", "late"
+    return "Back", short_date(d), ""
 
 def eta_pill(s):
     """Status pill(s) for a sub: the hold, then shipped or the return ETA.
@@ -1903,9 +1907,10 @@ def eta_pill(s):
             if s["on_hold"] else "")
     if s["status"] == "Shipped":
         return hold + f'<span class="pill shipped">{ICON_CHECK}Shipped</span>'
-    label, val, muted = eta_words(s)
-    txt = html.escape(val if muted else f"{label} {val}")
-    return hold + f'<span class="pill{" pending" if muted else ""}">{ICON_CLOCK}{txt}</span>'
+    label, val, state = eta_words(s)
+    txt = html.escape(val if state else f"{label} {val}")
+    icon = ICON_LATE if state == "late" else ICON_CLOCK
+    return hold + f'<span class="pill{" " + state if state else ""}">{icon}{txt}</span>'
 
 # NO grades-landed pill and NO red announcement of grades arriving: shipped
 # briefly on 2026-08-01 (red "N grades landed" pill + a "Grades ready" sort)

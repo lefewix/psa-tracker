@@ -958,7 +958,7 @@ def main():
                 fails.append("GET /sub/14900003: an ungraded tile skips the grade line (T77)")
             # --- one vocabulary for the return date, and a hold keeps it (T65).
             # "Back <date>" everywhere, the year whenever it is not this one,
-            # "Was due <date>" in the muted pill once PSA is late, and a held
+            # "Late · due <date>" in the ink pill once PSA is late, and a held
             # sub prints the hold AND the date on every surface.
             soon, nextyr = eta_text(ETA_SOON), eta_text(ETA_NEXT_YEAR)
             dash = check("GET / (T65 return dates)", "/", (200,), cookie) or b""
@@ -982,14 +982,19 @@ def main():
             if row(b"14900001").startswith(b' hold"'):
                 fails.append("GET /: a live row is marked held, its bar is muted for nothing")
             late = row(b"14900003")
-            if b'class="pill pending"' not in late or b"Was due " + eta_text(ETA_PAST).encode() not in late:
-                fails.append("GET /: a blown ETA does not read as Was due in the muted pill")
+            if (b'class="pill late"' not in late
+                    or "Late · due ".encode() + eta_text(ETA_PAST).encode() not in late):
+                fails.append("GET /: a blown ETA does not read as Late in the late pill (T117)")
+            if b'class="pill late"' in row(b"14900001") or b'class="pill late"' in held:
+                fails.append("GET /: an on-time ETA wears the late pill (T117)")
+            if css and b".pill.late{font-weight:650;color:var(--txt)}" not in css:
+                fails.append("GET /app.css: .pill.late lost its weight and ink (T117)")
 
             # a window inside one year prints that year once, on the end
             for num, want in (("14900001", (ETA_NEXT_YEAR - datetime.timedelta(days=7))
                                .strftime("%b %d") + " to " + nextyr),
                               ("14900002", soon),
-                              ("14900003", "Was due " + eta_text(ETA_PAST))):
+                              ("14900003", "Late · due " + eta_text(ETA_PAST))):
                 dbody = call(url, "/sub/" + num, cookie)[1] or b""
                 badge = re.search(rb'<div class="synced">.*?</div>', dbody, re.S)
                 badge = badge.group(0) if badge else b""
