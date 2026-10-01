@@ -254,6 +254,19 @@ def env_checks(fails):
             fails.append(f"app.py: {name} is back, it is retired styling (T84)")
 
 
+def accent_checks(fails):
+    """A store that sets only PSA_ACCENT gets --ac2 in the same hue, both set
+    keep both, neither keeps the steel blue pair, and no WARNING prints (T182)."""
+    for env, want in (({}, "#5b8def"), ({"PSA_ACCENT": "#2e8b57"}, "#2e8b57"),
+                      ({"PSA_ACCENT": "#2e8b57", "PSA_ACCENT_2": "#ffcc00"}, "#ffcc00")):
+        e = {k: v for k, v in os.environ.items() if not k.startswith("PSA_ACCENT")}
+        e.update(env)
+        out = subprocess.run([sys.executable, "-c", "import app;print(app.THEME_VARS)"],
+                             cwd=ROOT, env=e, capture_output=True, text=True).stdout
+        if f"--ac2:{want};" not in out or "WARNING" in out:
+            fails.append(f"--ac2 with {env or 'no accent env'}: want {want} (T182)")
+
+
 def common_checks(fails):
     """log, notify and env_set live in psa_common.py only, every caller imports
     them, and deploy.sh ships the file beside app.py (T86)."""
@@ -619,6 +632,7 @@ def main():
         setup_instance_checks(fails)
         copy_checks(fails)
         env_checks(fails)
+        accent_checks(fails)
         common_checks(fails)
         tracking_checks(fails)
         comment_checks(fails)

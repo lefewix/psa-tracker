@@ -42,7 +42,7 @@ def _hexcolor(env, default):
 # Per-store branding: one primary accent + one ambient secondary; every other
 # shade is derived in CSS via color-mix, so stores only pick two colors.
 ACCENT = _hexcolor("PSA_ACCENT", "#3a6fd8")
-ACCENT_2 = _hexcolor("PSA_ACCENT_2", "#5b8def")
+ACCENT_2 = _hexcolor("PSA_ACCENT_2", "#5b8def" if ACCENT == "#3a6fd8" else ACCENT)
 # Light is the flagship sheet; a store opts into the dark ground with PSA_THEME=dark.
 THEME = "dark" if os.environ.get("PSA_THEME", "light").strip().lower() == "dark" else "light"
 

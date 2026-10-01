@@ -422,7 +422,8 @@ glass, and a reserved red that appears only on a landed grade or an alert.
 ### Secondary
 - **Ambient Blue** (`--ac2`, env `PSA_ACCENT_2`): the store's second brand color. It never
   appears as ink or as a fill; its whole job is the ambient ground, where it is mixed to
-  6% (light) / 11% (dark) into the wider top-right radial.
+  6% (light) / 11% (dark) into the wider top-right radial. Unset, it follows `PSA_ACCENT`
+  (the default steel blue pair stays `#3a6fd8` / `#5b8def`).
 
 ### Tertiary
 - **Grade Red** (`--grade`): the color of a grade landing. **One place only: the grade line of
