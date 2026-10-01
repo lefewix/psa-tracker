@@ -997,6 +997,22 @@ def main():
             for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo"):
                 if re.search(rb"(?<!\d)1 cards", call(url, label, cookie)[1] or b""):
                     fails.append(f'GET {label}: a single card still reads "1 cards"')
+            # one word per thing: no operator vocabulary on a served page, every
+            # link into a sub reads View cards, Discord pings has one name (T164)
+            for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo",
+                          "/search?q=Umbreon", "/search?q=Charizard"):
+                b = call(url, label, cookie)[1] or b""
+                for bad in (b"Prelim", b"Go to sub", b"Link Discord", b">Enable<"):
+                    if bad in b:
+                        fails.append(f"GET {label}: still says {bad.decode()} (T164)")
+            b = call(url, "/search?q=Umbreon", cookie)[1] or b""
+            if b">Not graded yet</div>" not in b or b'class="sublink" href="/sub/14900002" ' \
+                    b'aria-label="View cards in #14900002">View cards</a>' not in b:
+                fails.append("GET /search?q=Umbreon: tile lacks Not graded yet or View cards (T164)")
+            if (b'aria-label="View cards in #14900001">View cards</a>' not in sbody
+                    or b'id="dopen">Discord pings</button>' not in sbody
+                    or b'id="dlink" data-owner="Solo">Save</button>' not in sbody):
+                fails.append("GET /cards?owner=Solo: group link or Discord pings naming drifted (T164)")
             # --- the person page searches names as well as cards, and carries a
             # Home link Back cannot replace once you have hopped person to person
             # (T103). The Cards half stays pinned to that person either way.

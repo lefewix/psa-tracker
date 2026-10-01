@@ -1019,7 +1019,7 @@ a neutral `--surface` chip with `--txt` and a `--hairh` border for a 9, the same
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
 baseline, cert number in **11px** monospace micro in `--tert` — lookup text, not reading text,
 and measured on the well at 3.24:1 light / 3.91:1 dark, past the 3:1 floor for its kind (the
-`Prelim` label keeps 12px; it is a state, not a number) — card name
+`Not graded yet` label keeps 12px; it is a state, not a number) — card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), **no set line** (the name carries the
 subject; the set is read on the detail header, not scanned in a grid), value at 15/600 in

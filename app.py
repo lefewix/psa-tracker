@@ -625,7 +625,7 @@ def discord_widget(a, owner):
     linking UI. The saved ID is never rendered - only the on/off state."""
     linked = discord_linked(a, owner)
     btn = ('<button type="button" class="f dbtn" id="dopen">'
-           + ("Discord pings: on" if linked else "Link Discord") + "</button>")
+           + ("Discord pings: on" if linked else "Discord pings") + "</button>")
     if linked:
         inner = (f'<div class="srow" style="margin-top:16px"><span class="dstate">Discord pings on</span>'
                  f'<button type="button" class="sbtn sdel f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button></div>'
@@ -636,7 +636,7 @@ def discord_widget(a, owner):
                  f'<input type="password" id="did" placeholder="Discord user ID" '
                  f'aria-label="Discord user ID" '
                  f'autocomplete="off" inputmode="numeric" maxlength="20">'
-                 f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Enable</button></div>'
+                 f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Save</button></div>'
                  f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a submission with '
                  f'your cards updates. Discord: Settings &rarr; Advanced &rarr; Developer Mode, then '
                  f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
@@ -2596,7 +2596,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
     # value (17/650/-.012em/1.3), same as the person page's group heading.
     return f"""<div class="card{' arch' if archived else ''}{' hold' if s['on_hold'] else ''}" role="listitem" data-status="{html.escape(s['status'])}"{archattr}{sortattr}>
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
-<div class="meta">{html.escape(s['service'])} · {ncards} card{"s" if ncards != 1 else ""}</div></div></div><div class="pills">{led}{pill}</div></div>
+<div class="meta">{ncards} card{"s" if ncards != 1 else ""} · {html.escape(s['service'])}</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
 {timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}" aria-label="View cards in #{sub}">View cards</a>', key=sub, ready=s["grades_ready"])}
 {foot_h}</div>"""
@@ -3449,7 +3449,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     grade = f'<div class="gr{gcls}">{gtx}</div>'
     if is_prelim:
         head = ('<div class="cn pre" title="No cert number until PSA grades it">'
-                'Prelim</div>')
+                'Not graded yet</div>')
     else:
         head = f'<div class="cn">{html.escape(c["cert_no"] or c["cert_id"])}</div>'
     if c.get("front_thumb"):
@@ -3463,7 +3463,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
         # the chip carries this card's own status instead
         sub_link = f'<div class="sublink sublink-static">{html.escape(statline)}</div>' if statline else ""
     else:
-        sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Go to sub #{html.escape(str(c["sub_number"]))}</a>'
+        sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}" aria-label="View cards in #{html.escape(str(c["sub_number"]))}">View cards</a>'
                     if show_sub else "")
     svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     # readonly until OWNER_JS unlocks it: one click opens the person's page,
@@ -3810,8 +3810,8 @@ def people_page(a, owner):
         s = subs_by.get(n)
         svc = html.escape(s["service"]) if s else ""
         pill = eta_pill(s) if s else ""
-        link = (f'<a class="view" href="/sub/{html.escape(str(n))}">'
-                f'Go to sub #{html.escape(str(n))}</a>')
+        link = (f'<a class="view" href="/sub/{html.escape(str(n))}" '
+                f'aria-label="View cards in #{html.escape(str(n))}">View cards</a>')
         tl = timeline_html(s["status"], aside=link, key=n) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
