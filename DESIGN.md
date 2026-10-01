@@ -1091,6 +1091,8 @@ standing in for icons, no raster icons.
   and back to a real control when the chip goes away.
 - **Do** put a state-changing control in the `.foot` line of the rows that need it — archiving
   is a dashboard action, not a detail-page pilgrimage.
+  The `.est` text takes the free width (`flex:1 1 0`) so the control stays on the ship date's
+  line, and `.tlink` never wraps, so a narrow foot breaks between fields, never mid number.
 - **Do** validate any env-supplied color against `#[0-9a-fA-F]{6}` before it reaches CSS.
 - **Do** clamp every new accent-derived shade server-side against a named ground and a named
   target (4.5:1 for text, 3:1 for bars and focus rings) rather than trusting a tuned share.

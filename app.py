@@ -1225,9 +1225,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* 18px, not 9: .view and .archbtn each hang 12px past their line and at 9px overlapped on the
    stage bar. 10 + 4 + 18 = 32 clears both. */
 .foot{padding:0;border:0;margin-top:18px;display:flex;justify-content:space-between;
- align-items:center;gap:12px;flex-wrap:wrap}
+ align-items:baseline;gap:12px;flex-wrap:wrap}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.est{font-size:14px;font-weight:400;color:var(--m1)}
+.est{font-size:14px;font-weight:400;color:var(--m1);flex:1 1 0}
 /* bare 14px text actions: pad the hit box to ~43px, cancel it with an equal negative margin,
    so the resting layout is byte-identical. */
 .view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
@@ -1533,7 +1533,7 @@ button:disabled{opacity:.5;cursor:default}
 .card.tlcard{padding:16px;margin:14px 0}
 .archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
- transition:color .15s,background-color .15s}
+ white-space:nowrap;transition:color .15s,background-color .15s}
 /* a 22px line, so it takes the sort pills' invisible hit pseudo: 22 + 11 each way = 44.
    Vertical only, so it never reaches the pills across it. */
 .numlink{text-decoration:none;color:inherit;display:inline-block;position:relative}

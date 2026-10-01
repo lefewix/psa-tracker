@@ -496,6 +496,12 @@ def main():
                 fails.append("GET /app.css: archived cards no longer read as past")
             if b".card.arch{opacity" in css or b"archview .card.arch" in css:
                 fails.append("GET /app.css: an archived card is washed with opacity again")
+            # a narrow row foot breaks between fields, never between the carrier
+            # and its number, and Archive stays on the ship date's line (T175)
+            if (b"white-space:nowrap" not in css.split(b".tlink{")[1].split(b"}")[0]
+                    or b".est{font-size:14px;font-weight:400;color:var(--m1);flex:1 1 0}" not in css
+                    or b"align-items:baseline" not in css.split(b".foot{")[1].split(b"}")[0]):
+                fails.append("GET /app.css: the row foot wraps mid tracking number again (T175)")
             # a held sub's bar drops to the muted grey, so it stops painting
             # full accent under the red hold pill (T75)
             if b".card.hold .bar i{background:var(--m1)}" not in css:
