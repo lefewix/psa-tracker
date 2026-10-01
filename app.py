@@ -3694,7 +3694,8 @@ def arch_rows(a, subs):
     tot, vcur = sub_value_totals(a)
     fronts = sub_fronts(a)
     return "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur,
-                             fronts=fronts.get(s["sub_number"])) for s in gone)
+                             fronts=fronts.get(s["sub_number"]),
+                             price=service_price(a, s["service"])) for s in gone)
 
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
