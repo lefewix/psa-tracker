@@ -794,6 +794,10 @@ def main():
                 if (b'<nav id="sitectl" aria-label="Site controls"><a id="gearbtn"'
                         not in body):
                     fails.append("GET /: the gear orb is outside the Site controls nav")
+                # --- and that nav comes right after the skip link, before the
+                # toolbar, so the orbs are tab stops 2 and 3, not the last two (T161)
+                if not re.search(rb'<a class="skip"[^>]*>[^<]*</a>\s*<nav id="sitectl"', body):
+                    fails.append("GET /: Site controls nav is not right after the skip link (T161)")
 
                 # --- a touch keyboard gets Search on the search box (T56)
                 if b'enterkeyhint="search"' not in body:

@@ -588,6 +588,8 @@ mid scroll falls through to the card underneath. Reading goes down the page, so 
 the way down (`html.scrolldn`, past 120px, 6px of slop) and return on the way up, and an open
 search preview (`body:has(.preview.on)`) hides them outright since it owns that column.
 `#sitectl:focus-within` out-orders both: a focused orb is always painted (T116).
+On the dashboard the nav is emitted just before the toolbar, so the orbs are tab stops 2 and 3;
+never inside it, the toolbar's backdrop-filter would pin a fixed child to the bar (T161).
 
 Content sits in **raised cards flush with the column**: each submission is a card at
 `padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px

@@ -3579,7 +3579,7 @@ def dash_page(a, subs):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#list">Skip to submissions</a>
-{toolbar}
+{gear_html()}{toolbar}
 {hint}
 {filterrow}
 <div id="list" tabindex="-1"{listrole}>{body}</div>
@@ -3635,7 +3635,7 @@ if(af)af.addEventListener('click',function(){{
   }}
   show();
 }});
-</script>{gear_html()}{APP_JS_TAG}</body></html>"""
+</script>{APP_JS_TAG}</body></html>"""
 
 def arch_rows(a, subs):
     """The dashboard's archived rows as bare HTML, served from /?arch=1 and
