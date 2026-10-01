@@ -1384,9 +1384,14 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
   -webkit-backdrop-filter .2s ease-out,visibility 0s .2s}
 .lb.open{opacity:1;visibility:visible;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
  transition-delay:0s}
-.lb img{max-width:92vw;max-height:92vh;border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
- transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1);cursor:default}
+/* one slab box for the small and the large scan, so the swap never jumps. .wait blurs the
+   small scan until the large one lands. (T200) */
+.lb img{width:min(92vw,calc(92vh*380/635));aspect-ratio:380/635;object-fit:contain;
+ border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
+ transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1),filter .2s ease-out;
+ cursor:default}
 .lb.open img{transform:none}
+.lb.wait img{filter:blur(6px)}
 /* the scan is inert, the scrim and this orb close. Fixed values, not tokens - it always sits
    on the dimmed scrim. */
 .lbx{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
@@ -2784,14 +2789,29 @@ LIGHTBOX_JS = """<script>
   lb.innerHTML='<img alt="">'
     +'<button type="button" class="lbx" aria-label="Close">__XICON__</button>';
   document.body.appendChild(lb);
-  var im=lb.querySelector('img'), x=lb.querySelector('.lbx'), clr=null, opener=null;
+  var im=lb.querySelector('img'), x=lb.querySelector('.lbx'), clr=null, opener=null, want=null;
   links.forEach(function(a){
     a.addEventListener('click', function(e){
       e.preventDefault();
-      var t=a.querySelector('img');
+      var t=a.querySelector('img'), big=a.getAttribute('href');
       im.alt=(t&&t.alt)?t.alt:'Card scan';
       clearTimeout(clr);
-      im.src=a.getAttribute('href');
+      want=big;   // a late load for another open, or after close, is dropped
+      if(t&&t.complete&&t.naturalWidth){
+        /* open on the small scan at once, blurred, and sharpen when the large one lands;
+           a dead large scan leaves the small one sharp. */
+        im.onerror=null;
+        im.src=t.currentSrc||t.src;
+        lb.classList.add('wait');
+        var p=new Image();
+        p.onload=function(){ if(want===big){ im.src=big; lb.classList.remove('wait'); } };
+        p.onerror=function(){ if(want===big) lb.classList.remove('wait'); };
+        p.src=big;
+      }else{
+        lb.classList.remove('wait');
+        im.onerror=function(){ if(want===big) close(); };  // never a broken icon on the scrim
+        im.src=big;
+      }
       opener=a;
       lb.classList.add('open');
       document.body.style.overflow='hidden';  // the page behind must not scroll
@@ -2800,6 +2820,7 @@ LIGHTBOX_JS = """<script>
   });
   function close(){
     if(!lb.classList.contains('open'))return;
+    want=null;
     lb.classList.remove('open');
     document.body.style.overflow='';
     clearTimeout(clr);

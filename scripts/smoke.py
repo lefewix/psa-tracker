@@ -472,6 +472,15 @@ def main():
             fails.append("GET /app.js: search renders stale answers or looks empty (T199)")
         if css and b".sk{display:block;background:var(--sk);border-radius:6px;animation:pulse" not in css:
             fails.append("GET /app.css: the skeleton pulse is gone (T199)")
+        # the lightbox opens blurred on the small scan and sharpens; a dead large
+        # scan keeps the small one, a dead cold open closes (T200)
+        if js and (b"im.src=t.currentSrc||t.src;" not in js
+                   or b"p.onload=function(){ if(want===big){ im.src=big; lb.classList.remove('wait'); } };" not in js
+                   or b"im.onerror=function(){ if(want===big) close(); };" not in js):
+            fails.append("GET /app.js: the lightbox opens on an empty scrim again (T200)")
+        if css and (b".lb.wait img{filter:blur(6px)}" not in css
+                    or b".lb img{width:min(92vw,calc(92vh*380/635));aspect-ratio:380/635;object-fit:contain;" not in css):
+            fails.append("GET /app.css: the lightbox lost its blur or slab box (T200)")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button
