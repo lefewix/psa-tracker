@@ -73,7 +73,9 @@ def build_fixture(base):
             ("14900002", "Arrived", 1, "", "", 0, 1, ETA_SOON, ETA_SOON),
             # a step the stage map does not know (T19), and an ETA PSA has
             # already blown through (T65)
-            ("14900003", "ReceivedHold", 1, "", "", 0, 0, ETA_PAST, ETA_PAST)]
+            ("14900003", "ReceivedHold", 1, "", "", 0, 0, ETA_PAST, ETA_PAST),
+            # shipped with an ISO date, not PSA's mm/dd/yy (T183)
+            ("14900004", "Shipped", 1, "2026-09-06", "", 1, 0, ETA_PAST, ETA_PAST)]
     for num, status, cnt, shipped, tracking, ready, hold, est1, est2 in subs:
         c.execute("INSERT INTO subs (sub_number, order_number, service, status, "
                   "card_count, destination, arrived, est_start, est_end, shipped, "
@@ -736,7 +738,7 @@ def main():
                 # and draws no bar: one bar per sub the stage map knows (T19)
                 if b"Status unknown" not in body:
                     fails.append("GET /: the unmapped status does not read as unknown")
-                if body.count(b'<div class="bar">') != 2:
+                if body.count(b'<div class="bar">') != 3:
                     fails.append("GET /: the unmapped status still draws a stage bar")
 
                 # --- grades landing is the stage word itself on the dashboard
@@ -1006,6 +1008,11 @@ def main():
                 fails.append("GET /sub/14900001: the redundant grades ready note is back")
             if b"Completing" in body:
                 fails.append("GET /sub/14900001: the header rung still says Completing")
+            # an ISO ship date reads like every other date, never raw (T183)
+            body = check("GET /sub/14900004", "/sub/14900004", (200,), cookie,
+                         must_have="Sep 06")
+            if b"2026-09-06" in body:
+                fails.append("GET /sub/14900004: the ISO ship date prints raw (T183)")
             body = check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
             if b'class="cn pre" title="No cert number until PSA grades it"' not in body:
                 fails.append("GET /sub/14900002: the Prelim slot is unexplained again")
@@ -1285,10 +1292,12 @@ def main():
             if dash:
                 if b'id="list" tabindex="-1" role="list"' not in dash:
                     fails.append("GET /: #list carries no list role")
-                if dash.count(b'role="listitem"') != 3:
+                if dash.count(b'role="listitem"') != 4:
                     fails.append("GET /: the submission rows are not list items")
-                if dash.count(b'<h2 class="num">') != 3:
+                if dash.count(b'<h2 class="num">') != 4:
                     fails.append("GET /: a submission row has no heading")
+                if b"Shipped Sep 06" not in dash or b"2026-09-06" in dash:
+                    fails.append("GET /: the ISO ship date prints raw (T183)")
 
             # --- an open lightbox locks the page: the drag must not chain to
             # the dashboard 900px behind the scrim, and close must give it back (T57)

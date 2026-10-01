@@ -297,11 +297,17 @@ def short_date(iso):
     return d.strftime("%b %d") + year
 
 def fmt_mdy(mdy):
-    """PSA's '07/21/26' -> 'Jul 21' (their arrived/shipped date format)."""
+    """PSA's '07/21/26' -> 'Jul 21' (their arrived/shipped date format). An ISO
+    date goes through short_date; anything else is a middle dot, never raw."""
     try:
         return datetime.strptime(mdy, "%m/%d/%y").strftime("%b %d")
     except (ValueError, TypeError):
-        return mdy
+        pass
+    try:
+        datetime.fromisoformat(mdy[:10])
+    except (ValueError, TypeError):
+        return "·"
+    return short_date(mdy)
 
 # PSA is inconsistent about card-name casing: some specDescriptions arrive ALL
 # CAPS, most arrive mixed. Tame the shouty ones at render time; leave mixed-case
