@@ -2548,7 +2548,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
     # in-flight sub archived by mistake had no way back from the dashboard
     if s["status"] == "Shipped" or archived:
         act = (f'<span class="footacts"><button class="archbtn" data-sub="{sub}" '
-               f'data-on="{0 if archived else 1}">'
+               f'data-on="{0 if archived else 1}" aria-label="{"Unarchive" if archived else "Archive"} submission #{sub}">'
                f'{"Unarchive" if archived else "Archive"}</button></span>')
     archattr = ' data-arch="1" style="display:none"' if archived else ''
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
@@ -2565,7 +2565,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None):
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
 <div class="meta">{html.escape(s['service'])} · {ncards} card{"s" if ncards != 1 else ""}</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
-{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}">View cards</a>', key=sub, ready=s["grades_ready"])}
+{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}" aria-label="View cards in #{sub}">View cards</a>', key=sub, ready=s["grades_ready"])}
 {foot_h}</div>"""
 
 def search_box(value="", owner="", ph=None):
@@ -2712,7 +2712,7 @@ ARCH_JS = """<script>
     row.dataset.arch=on?'1':'0';
     row.classList.toggle('arch',on);
     b.dataset.on=on?'0':'1';
-    b.textContent=on?'Unarchive':'Archive';
+    b.textContent=on?'Unarchive':'Archive'; b.setAttribute('aria-label',b.textContent+' submission #'+b.dataset.sub);
     count(on?1:-1);
   }
   /* our own b.disabled=true drops keyboard focus to body, so hand it back:
@@ -3700,10 +3700,10 @@ def detail_page(a, sub):
     else:
         body = '<div class="empty">No cards assigned yet. PSA lists them during Research &amp; ID.</div>'
     if archived:
-        act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0">Unarchive</button>'
+        act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0" aria-label="Unarchive submission #{html.escape(num)}">Unarchive</button>'
         tag = ' · <span style="color:var(--m1)">Archived</span>'
     else:
-        act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1">Archive</button>'
+        act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1" aria-label="Archive submission #{html.escape(num)}">Archive</button>'
         tag = ""
     nc = sub['card_count']
     # the header rung and the stage line say the same word, so a grades-ready

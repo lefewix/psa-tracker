@@ -772,6 +772,23 @@ def main():
                     fails.append(f"GET /: first View cards is {len(stops) + 2} Tabs in "
                                  "via the skip link, want 5 or fewer")
 
+                # --- row controls carry the sub number in their name, so no
+                # two links or buttons announce the same thing (T159)
+                names = []
+                for tag, txt in re.findall(
+                        rb'<((?:a [^>]*href|button)[^>]*)>(.*?)</(?:a|button)>', body, re.S):
+                    if b'tabindex="-1"' in tag:
+                        continue
+                    lab = re.search(rb'aria-label="([^"]*)"', tag)
+                    names.append(lab.group(1) if lab else
+                                 re.sub(rb'<[^>]*>|\s+', b' ', txt).strip())
+                dup = sorted({n for n in names if names.count(n) > 1})
+                if dup:
+                    fails.append(f"GET /: links or buttons share a name: {dup} (T159)")
+                if ("b.setAttribute('aria-label',b.textContent" not in
+                        open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()):
+                    fails.append("GET /: archive flip leaves the old aria-label (T159)")
+
                 # --- the corner orbs sit inside one landmark, not loose on the
                 # body: the gear ships the nav, the theme orb joins it (T60)
                 if (b'<nav id="sitectl" aria-label="Site controls"><a id="gearbtn"'
