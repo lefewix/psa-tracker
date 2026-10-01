@@ -1174,6 +1174,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both widths.
    inline-block, NOT inline-flex, or the count reads "Archived· 18". */
 .fsolo{font-size:12px;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
+.archs{display:none}
 /* pressed it must read as one solid lozenge: the hairline goes transparent, not to 0, so the
    height match is untouched. Rims go, shadow stays. */
 .f.farch.fsolo.on{border-color:transparent;box-shadow:0 10px 26px var(--shc)}
@@ -1639,9 +1640,12 @@ button:disabled{opacity:.5;cursor:default}
  .filters.sr{--cuer:var(--shc3)}
  /* the capsule hugs its pills - no flex:1, or empty glass track past the last pill reads as
     broken; the slack belongs between the controls. min-width:0 lets it scroll at 360px,
-    where the count leaves Archived and pill pad goes 14 -> 11. */
+    where pill pad goes 14 -> 11. Archived keeps its count and pays in characters: "Arch."
+    and 2px less side pad. */
  .filterrow .filters{min-width:0}
- .archn{display:none}
+ .archl{display:none}
+ .archs{display:inline}
+ .f.farch.fsolo{padding-left:12px;padding-right:12px}
  .filterrow .filters .f{padding:5px 11px 7px}
  /* the wells cost 20px of track to their padding, so the phone track grows to match: at
     375 the sheet is 347, a card's inside 319, and 2 x 152 + 12 = 316 still holds two
@@ -3587,11 +3591,12 @@ def dash_page(a, subs):
     # .rowend box and in no capsule - .fsolo makes the button carry the glass
     # (see .filterrow). The id and classes are unchanged, so the toggle script
     # doesn't care (it only flips classes and aria-pressed, never textContent -
-    # so .archn is safe). The count lives in its own span so the 640px block can
-    # drop it and give the sort pills the room; aria-label keeps the full phrase.
+    # so .archn is safe). The count lives in its own span for the script; the
+    # 640px block swaps the label for "Arch." and never drops the count.
     archpill = (f'<button type="button" class="f farch fsolo" '
                f'id="archtoggle" aria-pressed="false" aria-label="Archived · {len(gone)}">'
-               f'Archived<span class="archn"> · {len(gone)}</span></button>') if gone else ""
+               f'<span class="archl">Archived</span><span class="archs">Arch.</span>'
+               f'<span class="archn"> · {len(gone)}</span></button>') if gone else ""
     rowend = (f'<div class="rowend">{needlink}{archpill}</div>'
               if (needlink or archpill) else "")
     filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'

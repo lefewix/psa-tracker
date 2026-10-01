@@ -910,6 +910,12 @@ def main():
             arch("14900003", "1")
             check("GET / (one card untagged)", "/", (200,), cookie,
                   must_have="1 needs an owner")
+            # the Archived count survives every width: the phone pays in
+            # characters ("Arch."), never by hiding the number (T146)
+            check("GET / (Archived count)", "/", (200,), cookie,
+                  must_have='<span class="archs">Arch.</span><span class="archn"> · 2</span>')
+            if css and re.search(rb"\.archn\{display:none", css):
+                fails.append("GET /app.css: a rule hides the Archived count again")
             check("GET /cards (one card untagged)", "/cards", (200,), cookie,
                   must_have="1 card awaiting an owner")
             arch("14900001", "0")

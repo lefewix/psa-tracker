@@ -791,6 +791,8 @@ content — a panel, a sheet, an image, a row — it is not.
   archived disclosure on all three list pages, and the dashboard's "N need owners" worklist
   link ("1 needs an owner" when a single card is untagged), which navigates away and so never
   sits inside the sort capsule.
+  Under 640px the Archived label shortens to "Arch." and its side pad drops 14 -> 12px; the
+  count always stays.
 - **Filter row (`.filterrow`):** sort capsule at one end, the solo pills paired in `.rowend` at
   the other. The row wraps at the same 10px gap, so on a phone the pair drops to a second line
   and the capsule keeps its full width instead of shrinking into a scroller. The person page
