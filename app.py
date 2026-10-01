@@ -2662,7 +2662,7 @@ SEARCH_JS = """<script>
       h+='<div class="pvsec" role="presentation">Cards</div>';
       data.cards.forEach(function(c){
         var img=c.img?'<img class="pvimg" src="'+c.img+'" alt="">':'';
-        var sub=esc(c.cert?('#'+c.cert):('sub #'+c.sub))+(c.owner?(' · '+esc(c.owner)):'');
+        var sub=esc(c.cert?('Cert '+c.cert):('Submission #'+c.sub))+(c.owner?(' · '+esc(c.owner)):'');
         h+='<a class="pvrow" role="option" aria-selected="false" id="pvo'+(n++)+'" href="/sub/'+encodeURIComponent(c.sub)+'">'+img+'<span>'+esc(c.name||'Card')+'<small>'+sub+'</small></span></a>';
       });
     }
@@ -4057,8 +4057,15 @@ def search_page(a, q, owner="", customer=False):
                       service=(subs_by.get(c["sub_number"]) or {}).get("service", ""),
                       customer=customer,
                       statline=cust_statline(subs_by.get(c["sub_number"]))) for c in res) + "</div>"
-    elif ql:
+    elif ql and customer:
         grid = f'<div class="empty">No cards match “{html.escape(q)}”.</div>'
+    elif ql:
+        names = sorted({v for v in owners.values() if v}, key=str.lower)
+        ppl = " · ".join(f'<a class="view" href="/cards?owner={urllib.parse.quote(n)}">'
+                         f'{html.escape(n)}</a>' for n in names)
+        grid = (f'<div class="empty">No cards match “{html.escape(q)}”. Try a card name, '
+                f"a cert number, or an owner's name."
+                + (f"<br>{ppl}" if ppl else "") + "</div>")
     else:
         grid = '<div class="empty">Type a card name or number to search.</div>'
     count = f"{total} match" + ("es" if total != 1 else "") if ql else "All cards"

@@ -496,6 +496,9 @@ def main():
             fails.append("GET /app.js: Service no longer sorts by fee with tier headers (T151)")
         if css and b".tierhd{" not in css:
             fails.append("GET /app.css: the tier header style is gone (T151)")
+        # each suggestion line says what its number is (T154)
+        if js and b"'Cert '+c.cert" not in js:
+            fails.append("GET /app.js: suggestion lines are unlabelled (T154)")
         # search drops stale answers and shows skeleton rows while waiting (T199)
         if js and (b"if(my===seq){clearTimeout(sk);render(d);}" not in js
                    or b"pvrow skrow" not in js):
@@ -1015,6 +1018,13 @@ def main():
             if b'<a class="view" href="/">Home</a>' not in \
                     (call(url, "/cards?owner=Solo", cookie)[1] or b""):
                 fails.append("GET /cards?owner=Solo: no Home link beside Back (T103)")
+            # a no-result search names the next move and links every owner (T154)
+            body = check("GET /search (no result)", "/search?q=zzzznothinghere",
+                         (200,), cookie) or b""
+            if (b"Try a card name, a cert number, or an owner's name." not in body
+                    or b'href="/cards?owner=Duo"' not in body
+                    or b'href="/cards?owner=Solo"' not in body):
+                fails.append("GET /search?q=zzzznothinghere: no next action or owner links (T154)")
             call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
             body = check("GET /search", "/search?q=Charizard", (200,), cookie) or b""
