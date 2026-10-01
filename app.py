@@ -1939,7 +1939,7 @@ GATE_JS = """<script>
 })();
 </script>"""
 
-def gate_page(error=""):
+def gate_page(error="", out=False):
     # only advertise email login where it can actually work (email owner tags)
     email_on = email_login_on()
     ph = "Password or email" if email_on else "Password"
@@ -1949,6 +1949,7 @@ def gate_page(error=""):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(SITE_TITLE)}</h1><div class="sub">{html.escape(SITE_TAGLINE)}</div>
+{'<div class="setupnote" role="status">You’re signed out.</div>' if out else ""}
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="{ph}" aria-label="{ph}"
  autofocus autocomplete="current-password" autocapitalize="none" autocorrect="off"
@@ -1956,7 +1957,8 @@ def gate_page(error=""):
 <button type="submit" class="fillbtn">Enter</button></form>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 <div class="setupnote">Ask the store for the password.</div>
-</div></div></main>{GATE_JS if email_on else ""}{THEME_JS}</body></html>"""
+</div></div></main>{GATE_JS if email_on else ""}{THEME_JS}
+{"<script>history.replaceState(null,'','/')</script>" if out else ""}</body></html>"""
 
 def not_found_page(msg="There’s no page at this address.", title="Not found", retry=None):
     """Branded 404 so a bad link doesn't drop out of the design."""
@@ -4426,10 +4428,10 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, settings_gate())
         got = self.authed()
         if not got:
-            return self.send(200, gate_page())
+            return self.send(200, gate_page(out=path == "/" and parsed.query == "out"))
         acct, cust = got
         if path == "/logout":
-            return self.send(302, "", extra=[("Location", "/"),
+            return self.send(302, "", extra=[("Location", "/?out"),
                 ("Set-Cookie", "psa_session=; Path=/; Max-Age=0"),
                 ("Set-Cookie", "psa_settings=; Path=/; Max-Age=0")])
         if cust:

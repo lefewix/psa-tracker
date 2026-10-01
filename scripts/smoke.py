@@ -1115,6 +1115,15 @@ def main():
             if not any(h.startswith("psa_settings=;")
                        for h in (lhdrs.get_all("Set-Cookie") or [])):
                 fails.append("GET /logout: the settings cookie is left alive")
+            # sign out lands on a gate that says so, once (T167)
+            if lhdrs.get("Location") != "/?out":
+                fails.append(f"GET /logout: Location {lhdrs.get('Location')!r}, want '/?out'")
+            out = check("GET /?out (signed out)", "/?out", (200,),
+                        must_have="You’re signed out.")
+            if b"history.replaceState" not in out:
+                fails.append("GET /?out: reload would repeat the signed-out line")
+            if b"signed out" in check("GET / (plain gate)", "/", (200,)):
+                fails.append("GET /: plain gate shows the signed-out line")
 
             # --- rotating the site password revokes outstanding cookies (T6)
             def site_pw(value):

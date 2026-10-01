@@ -859,6 +859,8 @@ same gate box, titled "Something went wrong", never an empty dashboard.
 **The gate keeps a standing line** under the error rung, a `.setupnote` reading "Ask the store
 for the password.", so a visitor who cannot get in is told who to ask before they guess. Lockout
 copy names the wait ("paused for 15 minutes"), never "a few minutes".
+Sign-out lands on `/?out`, where a `.setupnote` above the field reads "You’re signed out."; the
+page then rewrites its URL to `/`, so a reload shows the plain gate.
 
 ### Filmstrip (signature)
 Every dashboard row carries its own contact sheet: up to eight card fronts (`STRIP_MAX = 8`)
