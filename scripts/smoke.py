@@ -709,6 +709,11 @@ def main():
             fails.append("POST /login: the session cookie is not 180 days")
         if cookie:
             body = check("GET /", "/", (200,), cookie, must_have="14900001")
+            # strip scans decode off the main thread as well as load lazily (T181)
+            imgs = re.findall(rb'<img [^>]*src="/img[^>]*>', body or b"")
+            if not imgs or any(b'loading="lazy"' not in i or b'decoding="async"' not in i
+                               for i in imgs):
+                fails.append("GET /: a strip scan lacks lazy loading or async decoding")
 
             # --- the need-owners link is a row control, not a fourth sort pill:
             # it sits outside the sort capsule so it cannot spill it (T15)
@@ -989,6 +994,10 @@ def main():
             grid = re.findall(rb'<a [^>]*href="/img[^>]*>', body)
             if not grid or any(b'tabindex="-1"' in a for a in grid):
                 fails.append("GET /sub/14900001: grid tiles are not tab stops")
+            imgs = re.findall(rb'<img [^>]*src="/img[^>]*>', body)
+            if not imgs or any(b'loading="lazy"' not in i or b'decoding="async"' not in i
+                               for i in imgs):
+                fails.append("GET /sub/14900001: a tile scan lacks lazy loading or async decoding")
             # --- the detail page says the same word on the same rung, and the
             # old lowercase note under the ETA badge is gone (T114)
             if "<b>Grades ready</b> · stage 7 of 8".encode() not in body:

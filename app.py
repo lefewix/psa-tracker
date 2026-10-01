@@ -2514,7 +2514,7 @@ def strip_html(s, fronts):
         alt = html.escape(split_name(smart_title(nm))[0] or "Card scan")
         # anchor href = the large scan, exactly like a .grid tile: LIGHTBOX_JS
         # reads the href, so strip tiles open the same zoom overlay
-        tiles.append(f'<a href="{big}" tabindex="-1"><img loading="lazy" src="{src}" alt="{alt}"></a>')
+        tiles.append(f'<a href="{big}" tabindex="-1"><img loading="lazy" decoding="async" src="{src}" alt="{alt}"></a>')
     if more:
         # "+5" alone is not a name: say what the five are and where they live
         sn = html.escape(s["sub_number"])
@@ -3418,7 +3418,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
-        img = f'<a href="{big}"><img loading="lazy" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
+        img = f'<a href="{big}"><img loading="lazy" decoding="async" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
     else:
         img = '<div class="ph">No image yet</div>'
     if customer:
