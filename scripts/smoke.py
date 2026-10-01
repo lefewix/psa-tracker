@@ -917,8 +917,12 @@ def main():
                 fails.append("GET /cards?owner=Solo: no Home link beside Back (T103)")
             call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
-            check("GET /search", "/search?q=Charizard", (200,), cookie)
-            check("GET /search (empty q)", "/search?q=", (200,), cookie)
+            body = check("GET /search", "/search?q=Charizard", (200,), cookie) or b""
+            if not re.search(rb"<title>Search: Charizard - \d+ match(es)?</title>", body):
+                fails.append("GET /search?q=Charizard: title does not name the query (T156)")
+            body = check("GET /search (empty q)", "/search?q=", (200,), cookie) or b""
+            if b"<title>Search</title>" not in body:
+                fails.append("GET /search?q=: title is not plain Search (T156)")
             # a grade token filters on the grade; a bare 10 stays a text match (T155)
             for q in ("PSA+10", "gem+mint", "10"):
                 body = check(f"GET /search?q={q}", "/search?q=" + q, (200,), cookie) or b""

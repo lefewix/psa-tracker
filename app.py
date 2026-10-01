@@ -4012,6 +4012,7 @@ def search_page(a, q, owner="", customer=False):
     else:
         grid = '<div class="empty">Type a card name or number to search.</div>'
     count = f"{total} match" + ("es" if total != 1 else "") if ql else "All cards"
+    title = f"Search: {html.escape(q.strip())} - {count}" if ql else "Search"
     if total > len(res):
         count += f" · showing the first {len(res)}, narrow the search"
     if customer:
@@ -4024,7 +4025,7 @@ def search_page(a, q, owner="", customer=False):
     else:
         back = '<a class="view" id="backlk" href="/">← Back</a>'
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Search</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 {back}
