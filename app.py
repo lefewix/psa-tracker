@@ -1958,20 +1958,24 @@ def gate_page(error=""):
 <div class="setupnote">Ask the store for the password.</div>
 </div></div></main>{GATE_JS if email_on else ""}{THEME_JS}</body></html>"""
 
-def not_found_page(msg="There’s no page at this address.", title="Not found"):
+def not_found_page(msg="There’s no page at this address.", title="Not found", retry=None):
     """Branded 404 so a bad link doesn't drop out of the design."""
+    again = (f'<a class="fillbtn" style="display:block;text-decoration:none;font-size:15px;font-weight:600" '
+             f'href="{html.escape(retry)}">Try again</a>' if retry else "")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(title)}</h1><div class="sub">{html.escape(msg)}</div>
-<a class="view" style="display:inline-block;margin-top:10px" href="/">&larr; Back to the dashboard</a>
+{again}<a class="view" style="display:inline-block;margin-top:10px" href="/">&larr; Back to the dashboard</a>
 </div></div></main>{THEME_JS}</body></html>"""
 
-def error_page():
+def error_page(path="/"):
     """Branded 500. A read that failed is a failure, not an empty account."""
+    if path[:1] != "/" or path[1:2] in ("/", "\\"):
+        path = "/"  # //host would make Try again an off-site link
     return not_found_page("The tracker couldn’t read your submissions just now. "
-                          "Try again in a minute.", "Something went wrong")
+                          "Try again in a minute.", "Something went wrong", path)
 
 # ---------- settings ----------
 # /settings edits per-account PSA credentials (WRITE-ONLY - existing values are
@@ -4365,7 +4369,7 @@ class H(BaseHTTPRequestHandler):
                 self.close_connection = True
                 return
             try:
-                self.send(500, error_page())
+                self.send(500, error_page(self.path))
             except Exception:
                 self.close_connection = True
 

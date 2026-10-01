@@ -1106,7 +1106,8 @@ def main():
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": ""})
 
             check("GET /sub/nope (missing)", "/sub/99999999", (404,), cookie)
-            check("GET /nope (unknown path)", "/nope", (404,), cookie)
+            if b"Try again" in check("GET /nope (unknown path)", "/nope", (404,), cookie):
+                fails.append("GET /nope: 404 offers Try again, want Back only")
             check("GET /logout", "/logout", (302,), cookie)
 
             # --- sign out drops the settings cookie too (T6)
@@ -1408,7 +1409,9 @@ def main():
                 f.write(os.urandom(40960))
             check("GET / (db corrupt)", "/", (500,), cookie,
                   must_have="Something went wrong")
-            check("GET /sub/14900001 (db corrupt)", "/sub/14900001", (500,), cookie)
+            # the 500 retries the route that failed, the dashboard is secondary (T166)
+            check("GET /sub/14900001 (db corrupt)", "/sub/14900001", (500,), cookie,
+                  must_have='href="/sub/14900001">Try again</a><a class="view"')
     finally:
         if proc and proc.poll() is None:
             proc.send_signal(signal.SIGTERM)
