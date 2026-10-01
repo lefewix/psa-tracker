@@ -2203,7 +2203,7 @@ def settings_page(msg="", err="", only=""):
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
-<div class="sub">Changes apply from the next hourly sync.</div></div></div>
+<div class="sub">Changes apply at the next sync, within about 20 minutes.</div></div></div>
 {note}
 <div class="card sblock" style="margin-top:22px">
 <h2 class="stitle">PSA accounts</h2>
@@ -2421,8 +2421,8 @@ def first_sync_note(a):
         return ""
     if scan_active():
         return "First sync with PSA is running. Reload in a minute or two."
-    return ('Waiting for the first PSA sync (runs within the hour, or start it now with '
-            '<span class="mono">systemctl start psa-scan</span>). Wrong PSA login? '
+    return ('Waiting for the first PSA sync. Changes apply at the next sync, within about 20 minutes. Start it now with '
+            '<span class="mono">systemctl start psa-scan</span>. Wrong PSA login? '
             '<a href="/setup">Re-enter it</a>.')
 
 def setup_page(error="", label="", psa_email=""):
@@ -2443,8 +2443,8 @@ def setup_page(error="", label="", psa_email=""):
  aria-label="PSA account password" autocomplete="new-password"{desc}>
 <button type="submit" class="fillbtn">Connect PSA</button></form>
 <div class="setupnote">The site password is what visitors type to enter. Your PSA login is stored
-only on this server (chmod 600) and used by the scanner to sign in on your behalf. The first
-sync runs within the hour.</div>
+only on this server (chmod 600) and used by the scanner to sign in on your behalf.
+Changes apply at the next sync, within about 20 minutes.</div>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
@@ -3067,7 +3067,7 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
    it lands with its row instead of after it.
    It runs ONLY for a sub whose stage actually CHANGED since this browser last
    saw it (psa_stage remembers sub -> stage index). Replaying it on every
-   render - including the silent hourly reload - spent the product's one
+   render - including the silent top-of-hour reload - spent the product's one
    earned motion on "a page loaded" instead of "your cards moved", and a
    celebration that fires 40x a week for a thing that happens twice a month is
    ambient, not earned. First sight of a sub never animates: no baseline, no
@@ -3083,7 +3083,7 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
   var stagger=0;
   /* A bar's stage is recorded as SEEN only once it has actually been on screen
      with the tab visible. Committing every bar at render burned the signal
-     twice over: an hourly reload of a hidden tab played the run-out to an
+     twice over: a top-of-hour reload of a hidden tab played the run-out to an
      empty room and marked everything current, and a sub thirty rows down could
      advance, never be scrolled to, and never animate again - with nothing else
      on the row to say it moved. The served width is always the truth, so a bar
@@ -3476,7 +3476,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
 def scan_stale_hours(a):
     """Hours since this account's last successful scan, or None when unknown.
     run_scan.sh rewrites accounts/<id>/.last_ok after every scan that returned 0,
-    hourly, so its mtime is the fact. No marker (a box that has not scanned
+    so its mtime is the fact. No marker (a box that has not scanned
     since) says nothing."""
     try:
         seen = os.stat(os.path.join(ACCOUNTS_DIR, a["id"], ".last_ok")).st_mtime
@@ -4638,7 +4638,7 @@ class H(BaseHTTPRequestHandler):
                     env_set(account_env_path(acct_id),
                             {"PSA_LOGIN_PW": value, "PSA_COOKIE": "", "UNLINKED": ""})
                     return self.see(flash(
-                        msg="PSA password saved. The next hourly sync signs in fresh with it."))
+                        msg="PSA password saved. The next sync signs in fresh with it."))
                 if action == "site_pw":
                     if accts[acct_id].get("feeder"):
                         return self.see(flash(err="This account scans into the shared dashboard; the site password covers it."))

@@ -18,6 +18,7 @@ SITE_PW = "smoke-site-pw"
 SET_PW = "smoke-settings-pw"
 SET_HASH = hashlib.sha256(SET_PW.encode()).hexdigest()
 HUB_KEY = "smoke-hub-key"
+CADENCE = "Changes apply at the next sync, within about 20 minutes."
 MAX_FAILS = 8  # app.py's login budget: a hard per-IP pause, site-wide a delay
 NOW = "2026-01-01T00:00:00+00:00"
 # ETA dates are relative to the run: one still to come, one next year (the year
@@ -232,10 +233,12 @@ def copy_checks(fails):
             fails.append(f"app.py: {phrase!r} calls the sync something else")
     for phrase in ("1am", "1pm"):
         if phrase in src:
-            fails.append(f"app.py: {phrase!r} is back, the scan timer is hourly (T68)")
-    if src.count("within the hour") < 2:
-        fails.append("app.py: the setup note and the first sync note must both say "
-                     "within the hour (T68)")
+            fails.append(f"app.py: {phrase!r} is back, the scan timer is not a clock (T68)")
+    if "hourly" in src.lower():
+        fails.append("app.py: 'hourly' is back, scans run every 9 to 22 minutes (T163)")
+    if src.count(CADENCE) < 3:
+        fails.append("app.py: settings, setup and the first sync note must all say "
+                     f"{CADENCE!r} (T163)")
 
 
 def env_checks(fails):
@@ -390,6 +393,12 @@ def setup_instance_checks(fails):
                 code, body, _ = call(url, "/setup", cookie)
                 if code != 200 or b'action="/setup"' not in body:
                     fails.append(f"GET /setup (owner session): got {code}, the retry form is gone")
+                if CADENCE.encode() not in body:
+                    fails.append("GET /setup: the setup note lost the sync cadence (T163)")
+                code, body, _ = call(url, "/", cookie)
+                if code != 200 or CADENCE.encode() not in body:
+                    fails.append(f"GET / (never synced): got {code}, the first sync note "
+                                 "lost the sync cadence (T163)")
             proc.send_signal(signal.SIGTERM)
             proc.wait(5)
             proc = None
@@ -668,6 +677,8 @@ def main():
         else:
             body = check("GET /settings (settings session)", "/settings", (200,),
                          scookie, must_have="PSA accounts")
+            if body and CADENCE.encode() not in body:
+                fails.append("GET /settings: the subtitle lost the sync cadence (T163)")
             if body and b'data-acct="second"' not in body:
                 fails.append("GET /settings (settings session): the other account "
                              "is missing, the settings password holds them all")
