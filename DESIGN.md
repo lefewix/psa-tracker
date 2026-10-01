@@ -708,7 +708,8 @@ are always wrong. Separation inside a card is proximity and gray level.
 `--glasssolid` via `background-color` only (never the shorthand, which would wipe the capsule's
 track layer), the reduced-transparency branch drops overlay scrims to an opaque 72% black, and
 the ambient ground is killed under reduced transparency, `prefers-contrast: more`, and
-`@supports not (color-mix)`.
+`@supports not (color-mix)`. Under `forced-colors: active` the stage bar keeps a CanvasText
+outline on a Canvas track and a Highlight fill (`forced-color-adjust: none`).
 
 **The Named-Reduce Rule.** `prefers-reduced-motion: reduce` is a scoped, enumerated block, not
 a global transition kill. It removes *travel* — the row settle, the bar run-out, the shimmer,

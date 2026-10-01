@@ -496,6 +496,10 @@ def main():
         if css and (b".lb.wait img{filter:blur(6px)}" not in css
                     or b".lb img{width:min(92vw,calc(92vh*380/635));aspect-ratio:380/635;object-fit:contain;" not in css):
             fails.append("GET /app.css: the lightbox lost its blur or slab box (T200)")
+        # High Contrast keeps the stage bar's track and fill (T185)
+        if css and (b"@media(forced-colors:active){" not in css
+                    or b".bar i{background:Highlight;forced-color-adjust:none}" not in css):
+            fails.append("GET /app.css: the stage bar vanishes under forced colors (T185)")
 
         # --- the pencil hides on the INPUT's focus, not the row's: :focus-within
         # also matched the pencil's own focus, so a tap removed the button

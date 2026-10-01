@@ -1692,6 +1692,10 @@ button:disabled{opacity:.5;cursor:default}
   transition:opacity .12s ease-out,visibility 0s}
  .lb img,.lb.open img,.smodal .card,.smodal.on .card{transform:none;transition:none}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
+/* High Contrast drops backgrounds, which would erase the stage bar's track and fill. */
+@media(forced-colors:active){
+ .bar{border:1px solid CanvasText;background:Canvas}
+ .bar i{background:Highlight;forced-color-adjust:none}}
 /* ---- glass fallbacks ----------------------------------------------------- */
 /* background-COLOR, never the shorthand, which would wipe the segtrack layer and the scroll
    cue. */
