@@ -1787,8 +1787,8 @@ THEME_JS = f"""<script>
     d.dataset.theme=cur;
     render();
   }});
-  /* both orbs live in one landmark. GEAR_HTML ships the nav on pages that have
-     a gear; where it is suppressed (personal mode, the gate) this makes it. */
+  /* both orbs live in one landmark. gear_html() ships the nav (empty in personal
+     mode); on the gate, setup and 404 this makes it. */
   var nav=document.getElementById('sitectl');
   if(!nav){{
     nav=document.createElement('nav');nav.id='sitectl';
@@ -2293,8 +2293,10 @@ GEAR_HTML = ('<nav id="sitectl" aria-label="Site controls">'
 SETTINGS_GEAR = os.environ.get("PSA_SETTINGS_GEAR", "1") not in ("0", "false", "no")
 
 def gear_html(customer=False):
-    """Settings gear beside the theme toggle - store-mode admin sessions only."""
-    return "" if (customer or not SETTINGS_GEAR) else GEAR_HTML
+    """Site controls nav; the gear in it only for store-mode admin sessions."""
+    if customer:
+        return ""
+    return GEAR_HTML if SETTINGS_GEAR else '<nav id="sitectl" aria-label="Site controls"></nav>'
 
 # ---------- first-run setup ----------
 # A fresh instance (accounts/ empty) serves a one-time setup form instead of the
