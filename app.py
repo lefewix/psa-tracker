@@ -1858,7 +1858,7 @@ ICON_X = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="c
           'stroke-width="2" stroke-linecap="round" style="vertical-align:middle">'
           '<path d="M6 6l12 12M18 6L6 18"/></svg>')
 ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
-ICON_HOLD = _pic('<path d="M12 5v14M18 5v14"/>')
+ICON_HOLD = _pic('<path d="M15 5v14M21 5v14"/>')
 ICON_LATE = _pic('<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>')
 
 # carrier tracking pages: substring-matched against the sub's carrier field so
