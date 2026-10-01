@@ -757,6 +757,21 @@ def main():
                       not in chip.group(0)):
                     fails.append("GET /: the overflow chip is named only by its count")
 
+                # --- the filmstrip is a preview: its tiles and chip are out of
+                # the tab order, so "View cards" is a few Tabs in (T158)
+                for st in strips:
+                    for a in re.findall(rb'<a [^>]*>', st):
+                        if b'tabindex="-1"' not in a:
+                            fails.append("GET /: a filmstrip link is a tab stop again")
+                            break
+                head = body.split(b'id="list"')[-1].split(b'class="view"')[0]
+                stops = [t for t in re.findall(
+                    rb'<(?:a [^>]*href|button|input(?![^>]*type="hidden")|select|textarea)[^>]*>',
+                    head) if b'tabindex="-1"' not in t]
+                if len(stops) > 3:
+                    fails.append(f"GET /: first View cards is {len(stops) + 2} Tabs in "
+                                 "via the skip link, want 5 or fewer")
+
                 # --- the corner orbs sit inside one landmark, not loose on the
                 # body: the gear ships the nav, the theme orb joins it (T60)
                 if (b'<nav id="sitectl" aria-label="Site controls"><a id="gearbtn"'
@@ -943,6 +958,10 @@ def main():
                          must_have="Charizard")
             if b'<div class="cn">99000001</div>' not in body:
                 fails.append("GET /sub/14900001: a graded tile lost its cert number")
+            # detail grid tiles stay keyboard reachable (T158)
+            grid = re.findall(rb'<a [^>]*href="/img[^>]*>', body)
+            if not grid or any(b'tabindex="-1"' in a for a in grid):
+                fails.append("GET /sub/14900001: grid tiles are not tab stops")
             # --- the detail page says the same word on the same rung, and the
             # old lowercase note under the ETA badge is gone (T114)
             if "<b>Grades ready</b> · stage 7 of 8".encode() not in body:

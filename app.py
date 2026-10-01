@@ -1045,7 +1045,7 @@ body{background:transparent;min-height:100vh;color:var(--txt);
 /* screen-reader-only live region (announcements: saves, failures, counts) */
 .vh{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;
  clip-path:inset(50%);white-space:nowrap}
-/* skip link: first tab stop, visible only on focus - a row's filmstrip is up to 8 links. */
+/* skip link: first tab stop, visible only on focus. */
 .skip{position:fixed;left:-9999px;top:14px;z-index:100;padding:10px 16px;border-radius:999px;
  background:var(--glasssolid);color:var(--ac-pale);font-size:13px;font-weight:500;
  text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
@@ -2501,16 +2501,16 @@ def strip_html(s, fronts):
         # size; /small/ is the 380x636 scan and belongs on the grid, not here
         src = "/img?u=" + urllib.parse.quote(u)
         big = "/img?u=" + urllib.parse.quote(img_url(u, "large"))
-        # every tile is a focusable link, so it needs a NAME: the card's
-        # subject (same trim the grid tiles use), or a plain fallback
+        # tiles stay out of the tab order ("View cards" is the keyboard route)
+        # but still need a NAME for pointer and screen-reader users
         alt = html.escape(split_name(smart_title(nm))[0] or "Card scan")
         # anchor href = the large scan, exactly like a .grid tile: LIGHTBOX_JS
         # reads the href, so strip tiles open the same zoom overlay
-        tiles.append(f'<a href="{big}"><img loading="lazy" src="{src}" alt="{alt}"></a>')
+        tiles.append(f'<a href="{big}" tabindex="-1"><img loading="lazy" src="{src}" alt="{alt}"></a>')
     if more:
         # "+5" alone is not a name: say what the five are and where they live
         sn = html.escape(s["sub_number"])
-        tiles.append(f'<a class="morechip" href="/sub/{sn}" '
+        tiles.append(f'<a class="morechip" href="/sub/{sn}" tabindex="-1" '
                      f'aria-label="{more} more cards in submission #{sn}">'
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'

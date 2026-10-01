@@ -864,6 +864,8 @@ in line order, 84×117px at 6px radius with a hairline and a quiet-fill ground, 
 same radius, quiet placeholder ground, muted 14px/600 numeral — linking into the detail page,
 so the strip is always one fixed-width run and never wraps. A sub with no imaged cards falls
 back to its own cover thumb; with neither, the band is absent entirely rather than reserved.
+Strip tiles and the chip carry `tabindex="-1"`: the strip is a preview, "View cards" is the
+keyboard route (T158). Detail and person grid tiles stay tabbable.
 
 It **scrolls at every width**, not only on phones: eight tiles measure 742px, so any sheet
 narrower than ~782px — iPad portrait included — would otherwise push the whole page sideways.
