@@ -919,6 +919,11 @@ def main():
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
             check("GET /search", "/search?q=Charizard", (200,), cookie)
             check("GET /search (empty q)", "/search?q=", (200,), cookie)
+            # a grade token filters on the grade; a bare 10 stays a text match (T155)
+            for q in ("PSA+10", "gem+mint", "10"):
+                body = check(f"GET /search?q={q}", "/search?q=" + q, (200,), cookie) or b""
+                if b"Charizard" not in body or b"Pikachu" in body or b"1 match<" not in body:
+                    fails.append(f"GET /search?q={q}: not just the one PSA 10 card (T155)")
             for q in ("%", "_", "\\"):
                 body = check(f"GET /suggest?q={q!r}", "/suggest?q=" +
                              urllib.parse.quote(q), (200,), cookie)

@@ -3973,20 +3973,28 @@ def customer_page(a, email):
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{APP_JS_TAG}</body></html>"""
 
+GRADE_Q = re.compile(r"\b(?:psa|grade)\s*:?\s*(\d+(?:\.5)?)\b|\bgem[\s-]*(?:mint|mt)(?:\s*10)?\b")
+
 def search_page(a, q, owner="", customer=False):
     ql = (q or "").strip().lower()
     owners = owners_map(a)
     want = (owner or "").strip().lower()
     res = []
+    # "psa 10", "grade:9", "gem mint" filter on the grade; a bare 10 stays a text match
+    gm = GRADE_Q.search(ql)
+    gwant = (gm.group(1) or "10") if gm else None
+    tq = " ".join(GRADE_Q.sub(" ", ql).split()) if gm else ql
     if ql:
         for c in load_all_cards(a):
             if want and owners.get(str(c["cert_id"]), "").lower() != want:
+                continue
+            if gwant and (c.get("grade") or "").lower().split()[:1] != [gwant]:
                 continue
             hay = " ".join((
                 c.get("name") or "", str(c.get("cert_no") or ""),
                 str(c.get("cert_id") or ""), owners.get(str(c["cert_id"]), ""),
             )).lower()
-            if ql in hay:
+            if tq in hay:
                 res.append(c)
     total = len(res)
     res = res[:60]  # a broad query matches most of the collection - don't build
