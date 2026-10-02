@@ -1168,8 +1168,31 @@ def main():
                     fails.append(f"GET /sub/{num}: the ETA badge does not say {want!r}")
                 if re.search(rb"\d{4}-\d{2}-\d{2}", badge):
                     fails.append(f"GET /sub/{num}: the ETA badge still prints an ISO date")
-            if b'class="holdb">On hold' not in (call(url, "/sub/14900002", cookie)[1] or b""):
+            hsub = call(url, "/sub/14900002", cookie)[1] or b""
+            if b'class="holdb">On hold' not in hsub:
                 fails.append("GET /sub/14900002: the detail badge dropped the hold")
+            # a hold reads Paused with a muted bar and one sentence on the detail
+            # and person pages, never on the dashboard; a blown date says PSA
+            # has not re-estimated, and a held late sub still reads Paused (T147)
+            hnote = b"PSA paused this submission. Nothing is needed from you"
+            lnote = b"PSA has not issued a new estimate."
+            if (b"PSA ETA</span><b>Paused</b>" not in hsub or b'class="card tlcard hold"' not in hsub
+                    or hsub.count(hnote) != 1 or b"Was " + soon.encode() not in hsub):
+                fails.append("GET /sub/14900002: the hold does not read Paused with a muted bar and one note (T147)")
+            if hnote in dash or lnote in dash:
+                fails.append("GET /: the hold or late note leaked onto the dashboard (T147)")
+            if lnote not in (call(url, "/sub/14900003", cookie)[1] or b""):
+                fails.append("GET /sub/14900003: a past-due sub does not say PSA has not re-estimated (T147)")
+            db = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
+            db.execute("UPDATE subs SET on_hold = 1 WHERE sub_number = '14900003'")
+            db.commit()
+            hl = call(url, "/sub/14900003", cookie)[1] or b""
+            db.execute("UPDATE subs SET on_hold = 0 WHERE sub_number = '14900003'")
+            db.commit()
+            db.close()
+            if (b"<b>Paused</b>" not in hl or "Late ·".encode() in hl or hnote not in hl
+                    or lnote not in hl or b"Was due " + eta_text(ETA_PAST).encode() not in hl):
+                fails.append("GET /sub/14900003: a held late sub does not read Paused (T147)")
 
             # the person page runs the same pill, so a held sub reads the same there
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": "Etaperson"})
@@ -1177,6 +1200,8 @@ def main():
                           (200,), cookie) or b""
             if b'class="pill hold"' not in pbody or b"Back " + soon.encode() not in pbody:
                 fails.append("GET /cards?owner=Etaperson: the held sub loses its return date")
+            if pbody.count(hnote) != 1:
+                fails.append("GET /cards?owner=Etaperson: the held sub carries no hold note (T147)")
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": ""})
 
             # --- retagging off the page's person drops the tile and the header

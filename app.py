@@ -3764,6 +3764,17 @@ def arch_rows(a, subs):
                              fronts=fronts.get(s["sub_number"]),
                              price=service_price(a, s["service"])) for s in gone)
 
+def status_note(s):
+    """The one muted sentence the detail and person pages carry for a held or
+    past-due sub (T147). The dashboard pill stands alone."""
+    if s["status"] == "Shipped":
+        return ""
+    note = ("PSA paused this submission. Nothing is needed from you; it moves "
+            "again when PSA releases it." if s["on_hold"] else "")
+    if eta_words(s)[2] == "late":
+        note += " PSA has not issued a new estimate."
+    return note.strip()
+
 def eta_badge(s, extra=""):
     """Top-right ETA badge for the sub detail page: expected return window, or
     ship date + tracking once shipped. `extra` = additional lbl2/b lines
@@ -3784,10 +3795,16 @@ def eta_badge(s, extra=""):
     # news as its own stage word now (T114)
     eta = f'{label}<b>{html.escape(val)}</b>'
     if s["on_hold"]:
-        # the hold leads and the date stays: the one page you click THROUGH for
-        # an explanation used to drop the return window entirely
+        # the hold leads, the ETA reads Paused (late or not) and the date it
+        # had demotes to a note under it (T147)
+        d = s["est_end"] or s["est_start"]
+        was = "" if not d else (f"Was due {short_date(d)}" if muted == "late" else f"Was {val}")
         eta = (f'Status<b class="holdb">{hold_label(s.get("hold_reason"))}</b>'
-               f'<span class="lbl2">{label}</span><b>{html.escape(val)}</b>')
+               f'<span class="lbl2">PSA ETA</span><b>Paused</b>'
+               + (f'<span class="estnote">{html.escape(was)}</span>' if was else ""))
+    note = status_note(s)
+    if note:
+        eta += f'<span class="estnote">{html.escape(note)}</span>'
     return f'<div class="synced">{eta}{extra}</div>'
 
 def detail_page(a, sub):
@@ -3847,7 +3864,7 @@ def detail_page(a, sub):
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}{tag}</div>{ping}</div>
 {eta_badge(sub, vextra)}</div>
-<div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
+<div class="card tlcard{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
 {body}{owner_datalist(owners) if cards else ""}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""
@@ -3897,6 +3914,8 @@ def people_page(a, owner):
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
+        note = status_note(s) if s else ""
+        note = f'<div class="meta">{html.escape(note)}</div>' if note else ""
         # data-sub/svc/eta feed the sort pills, same attributes card_html writes
         # on a dashboard row: SORT_JS reorders #list's .card children and does
         # not care that these children are submission groups. No data-arch: the
@@ -3911,7 +3930,7 @@ def people_page(a, owner):
                 # the global reset zeroes h2 margins and .num supplies every
                 # type value (17/650/-.012em/1.3), so nothing is inherited.
                 f'<h2 class="num">#{html.escape(str(n))}</h2></a>'
-                f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
+                f'<div class="meta">{svc} · {cnt}</div>{note}</div><div class="pills">{pill}</div></div>'
                 f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div></div>')
     def grouped(cs):
         gs = {}

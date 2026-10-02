@@ -834,18 +834,22 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
   clear 4.5:1 at 14px on the white sheet, so the clock icon and the label carry the
   difference, not a color step.
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
-  see the Reserved Red Rule for the grades pill that was tried here and removed. The pill stands
-  alone: no explaining sentence on any surface (the owner, 2026-09-09 · the pill is enough). The
-  detail page states the same alarm at the value rung, replacing its ETA figure with a red
-  "On hold" (`.synced b.holdb`); a held sub rendering a normal ETA badge is a bug.
+  see the Reserved Red Rule for the grades pill that was tried here and removed. The dashboard
+  pill stands alone; the detail and person pages carry one muted sentence (`status_note`)
+  saying PSA paused it and nothing is needed from the owner, plus "PSA has not issued a new
+  estimate." for a past-due date (T147, narrowing the 2026-09-09 ruling). The detail page
+  states the alarm at the value rung, a red "On hold" (`.synced b.holdb`) above an ETA that
+  reads "Paused" (late or not) with the old date demoted to an `.estnote`, and its stage bar
+  mutes like the dashboard row's; a held sub rendering a normal ETA badge is a bug.
 Grades-ready is still not a pill and not a row footer line (the owner, 2026-08-08). Since T114
 (2026-09-16) it is not an `.estnote` under the detail badge either: `timeline_html` prints
 "Grades ready" as the stage word in place of "Completing" on the dashboard row and the detail
 page, and that is the whole treatment.
 
 **The Hold Rule.** A hold never hides the return date: the dashboard row prints the hold pill
-beside the return pill, and the detail badge leads with "On hold" above a "Back" line (T65).
-The pill stands alone; the explanatory sentence was retired on 2026-09-09.
+beside the return pill, and the detail badge leads with "On hold" above "Paused" and a muted
+"Was <date>" note (T65, T147). The dashboard pill stands alone; the detail and person pages
+carry one muted sentence.
 
 Archived rows carry no status pill at all: every archived sub is finished, the foot already
 says so, and the extra pill made the column taller than the header and knocked the filmstrip
