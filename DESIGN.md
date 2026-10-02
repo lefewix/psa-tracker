@@ -864,7 +864,10 @@ The row is a **submission card**: `--surface` ground, 16px radius, `--hair2` edg
 10px` cast shadow, `18px 16px` padding, 14px gap to the next card. Its only state is a hover
 tint (`color-mix` of 4% ink over the surface) on pointer devices. Archived rows keep the full surface and carry
 `grayscale(.55)` alone, in every view, lifting to full color on hover: an opacity wash fades the
-card's own white and takes the ink under 4.5:1. The only true containers are detached surfaces —
+card's own white and takes the ink under 4.5:1. Archived card tiles (`.gc.arch`, on the sub page,
+the person page and search alike) take the same whole-tile `grayscale(.55)`, so chip and value
+read past with the scan; only the scan also dims to .5. Hover, or editing the owner tag, lifts
+the grey. The only true containers are detached surfaces —
 the search preview panel (14px, 6px padding, solid `--surface`) and the modal sheet
 (`min(460px, 94vw)`, 14px, `24px 24px 26px`).
 

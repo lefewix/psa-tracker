@@ -1554,12 +1554,13 @@ button:disabled{opacity:.5;cursor:default}
 /* no wash on an archived card: the .5 dim put its text at 2.0 to 3.4 on white (1.4.3). "Past"
    is grayscale alone; the ink keeps its 4.5. */
 .card.arch{filter:grayscale(.55)}
-/* an archived tile dims its scan, not its data - tiles render inline in search, so .5 put real
-   content near 1.9:1 (1.4.3). The no-scan placeholder is a label. */
-.gc.arch a[href^="/img"]{opacity:.5;filter:grayscale(.6);
- transition:opacity .18s,filter .18s}
+/* an archived tile greys whole, like the row, so chip and value read past with the scan. Only
+   the scan dims - .5 on the tile put real content near 1.9:1 (1.4.3). The no-scan placeholder
+   is a label. Editing the owner tag lifts the grey so its focus accent stays true. (T141) */
+.gc.arch{filter:grayscale(.55);transition:filter .18s}
+.gc.arch:has(.own:focus){filter:none}
+.gc.arch a[href^="/img"]{opacity:.5;transition:opacity .18s}
 .card.tlcard{padding:16px;margin:14px 0}
-.archdim img{filter:grayscale(.7);opacity:.85;transition:filter .18s,opacity .18s}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
  white-space:nowrap;transition:color .15s,background-color .15s}
 /* a 22px line, so it takes the sort pills' invisible hit pseudo: 22 + 11 each way = 44.
@@ -1591,7 +1592,8 @@ button:disabled{opacity:.5;cursor:default}
 .card.grp:hover,.card.tlcard:hover{background:var(--surface)}
 .card.arch:hover{filter:none}
 .card.arch:has(.undo):hover{filter:grayscale(.55)}
-.gc.arch:hover a[href^="/img"]{opacity:.78;filter:grayscale(.3)}
+.gc.arch:hover{filter:none}
+.gc.arch:hover a[href^="/img"]{opacity:.78}
 .f:hover{color:var(--fhov)}
 .f.on:hover{color:var(--ac-pale)}
 /* after .f.on:hover and at 4 classes so the pressed Archived pill keeps its fill text colour. */
@@ -3854,11 +3856,8 @@ def detail_page(a, sub):
         vextra = (f'<span class="lbl2">Est. value</span><b>${vtotal:,.0f}{"+" if vmiss else ""} {vcur}</b>'
                   f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     if cards:
-        # archived treatment on the sub's OWN page greys the scans only (.archdim);
-        # the header already says Archived, so cert numbers/names/values stay legible
-        gcls = "grid archdim" if archived else "grid"
-        body = (f'<div class="{gcls}">'
-                + "".join(card_tile(c, owners,
+        body = ('<div class="grid">'
+                + "".join(card_tile(c, owners, archived=archived,
                                     value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cards)
                 + "</div>")
     elif json.loads(sub["cert_ids"] or "[]"):

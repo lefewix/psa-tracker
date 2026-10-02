@@ -555,6 +555,11 @@ def main():
                 fails.append("GET /app.css: a held card still paints an accent stage bar")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
+            # an archived tile greys whole, chip and value with the scan, and
+            # lifts to colour on hover (T141)
+            if (b".gc.arch{filter:grayscale(.55)" not in css or b".gc.arch:hover{filter:none}" not in css
+                    or b"filter" in css.split(b'.gc.arch a[href^="/img"]{')[1].split(b"}")[0]):
+                fails.append("GET /app.css: an archived tile greys its scan only (T141)")
             # an ungraded tile reserves the grade line box, so graded and
             # ungraded neighbours in one grid row keep the same baseline (T77)
             if b"min-height:21px" not in css.split(b".gc .gr{")[-1].split(b"}")[0]:
@@ -975,6 +980,9 @@ def main():
                           must_have='</div><div class="sub">Archived</div>') or b""
             if b'<span style="color:var(--m1)">Archived' in sbody:
                 fails.append("GET /sub/14900003: Archived still trails the subtitle (T145)")
+            # the sub's own page wears the same whole-tile grey as search (T141)
+            if b'<div class="gc arch">' not in sbody or b"archdim" in sbody:
+                fails.append("GET /sub/14900003: archived tiles grey the scan only (T141)")
             check("GET /cards (one card untagged)", "/cards", (200,), cookie,
                   must_have="1 card awaiting an owner")
             arch("14900001", "0")
