@@ -836,7 +836,8 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
   see the Reserved Red Rule for the grades pill that was tried here and removed. The dashboard
   pill stands alone; the detail and person pages carry one muted sentence (`status_note`)
-  saying PSA paused it and nothing is needed from the owner, plus "PSA has not issued a new
+  saying PSA paused it (a code in `HOLD_LABELS`, e.g. a financial hold, names the submitter as
+  the one who clears it; card owners are never asked to act), plus "PSA has not issued a new
   estimate." for a past-due date (T147, narrowing the 2026-09-09 ruling). The detail page
   states the alarm at the value rung, a red "On hold" (`.synced b.holdb`) above an ETA that
   reads "Paused" (late or not) with the old date demoted to an `.estnote`, and its stage bar

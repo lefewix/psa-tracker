@@ -17,7 +17,7 @@ import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from zoneinfo import ZoneInfo
-from psa_common import env_set, hold_label
+from psa_common import HOLD_LABELS, env_set, hold_label
 
 SECRET = os.environ.get("PSA_SECRET", "").encode()
 BIND = os.environ.get("PSA_BIND", "0.0.0.0")
@@ -3769,8 +3769,13 @@ def status_note(s):
     past-due sub (T147). The dashboard pill stands alone."""
     if s["status"] == "Shipped":
         return ""
-    note = ("PSA paused this submission. Nothing is needed from you; it moves "
-            "again when PSA releases it." if s["on_hold"] else "")
+    # a known code (HOLD.DCC, financial) waits on the account holder, never
+    # on the card owners reading this; an unknown one promises nothing
+    code = s.get("hold_reason") or ""
+    note = "" if not s["on_hold"] else (
+        f"PSA paused this submission until the submitter clears a "
+        f"{hold_label(code).lower()} with them." if code in HOLD_LABELS
+        else "PSA paused this submission. It moves again once PSA lifts the hold.")
     if eta_words(s)[2] == "late":
         note += " PSA has not issued a new estimate."
     return note.strip()

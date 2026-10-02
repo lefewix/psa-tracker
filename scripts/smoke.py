@@ -1173,8 +1173,11 @@ def main():
                 fails.append("GET /sub/14900002: the detail badge dropped the hold")
             # a hold reads Paused with a muted bar and one sentence on the detail
             # and person pages, never on the dashboard; a blown date says PSA
-            # has not re-estimated, and a held late sub still reads Paused (T147)
-            hnote = b"PSA paused this submission. Nothing is needed from you"
+            # has not re-estimated, and a held late sub still reads Paused (T147).
+            # An unknown hold code promises nothing; a financial one (HOLD.DCC)
+            # names the submitter, never the card owners
+            hnote = b"PSA paused this submission. It moves again once PSA lifts the hold."
+            fnote = b"PSA paused this submission until the submitter clears a financial hold with them."
             lnote = b"PSA has not issued a new estimate."
             if (b"PSA ETA</span><b>Paused</b>" not in hsub or b'class="card tlcard hold"' not in hsub
                     or hsub.count(hnote) != 1 or b"Was " + soon.encode() not in hsub):
@@ -1184,15 +1187,15 @@ def main():
             if lnote not in (call(url, "/sub/14900003", cookie)[1] or b""):
                 fails.append("GET /sub/14900003: a past-due sub does not say PSA has not re-estimated (T147)")
             db = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
-            db.execute("UPDATE subs SET on_hold = 1 WHERE sub_number = '14900003'")
+            db.execute("UPDATE subs SET on_hold = 1, hold_reason = 'HOLD.DCC' WHERE sub_number = '14900003'")
             db.commit()
             hl = call(url, "/sub/14900003", cookie)[1] or b""
-            db.execute("UPDATE subs SET on_hold = 0 WHERE sub_number = '14900003'")
+            db.execute("UPDATE subs SET on_hold = 0, hold_reason = NULL WHERE sub_number = '14900003'")
             db.commit()
             db.close()
-            if (b"<b>Paused</b>" not in hl or "Late ·".encode() in hl or hnote not in hl
-                    or lnote not in hl or b"Was due " + eta_text(ETA_PAST).encode() not in hl):
-                fails.append("GET /sub/14900003: a held late sub does not read Paused (T147)")
+            if (b"<b>Paused</b>" not in hl or "Late ·".encode() in hl or hl.count(fnote) != 1
+                    or hnote in hl or b"Nothing is needed" in hl or lnote not in hl or b"Was due " + eta_text(ETA_PAST).encode() not in hl):
+                fails.append("GET /sub/14900003: a held late financial-hold sub does not read Paused with the submitter note (T147)")
 
             # the person page runs the same pill, so a held sub reads the same there
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": "Etaperson"})
