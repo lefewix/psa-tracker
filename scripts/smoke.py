@@ -1193,6 +1193,14 @@ def main():
                 fails.append("GET /app.js: a retag off the person page leaves the list stale (T168)")
             if js and b"if(had&&nx&&document.activeElement===document.body)nx.focus()" not in js:
                 fails.append("GET /app.js: a retagged tile leaving drops focus to the body (T168)")
+            # Enter and Escape hand focus back to the tag, and the chip sits in
+            # the row in the pencil's place so a save never moves the grid (T136)
+            if js and (b"if(e.key==='Enter'){ i.blur(); refocus(); }" not in js
+                       or b"i.value=prev; i.blur(); refocus(); }" not in js
+                       or b"row.appendChild(u);" not in js):
+                fails.append("GET /app.js: an owner save drops focus or moves the grid (T136)")
+            if css and b".ownrow:has(.undo) .ownedit{display:none}" not in css:
+                fails.append("GET /app.css: the owner chip no longer takes the pencil's place (T136)")
             call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
 

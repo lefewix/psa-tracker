@@ -997,6 +997,9 @@ since a tap navigates instantly; it hides on `.own:focus` so the underline runs 
 while editing, never on the row's `:focus-within`, which swallowed its own tap. With a mouse
 the pencil shows on the tile's hover or focus, sits at half opacity at rest on a filled tag so
 the control is findable, and hides while the field is editable (T134).
+The "Saved · Undo" or retry chip sits inside the row in the pencil's place, on the tag's
+baseline, so a save never changes the tile's height; Enter and Escape hand keyboard focus
+back to the tag, not the body (T136).
 Every tag shares one page-level `<datalist id="owners">` of the names in use, so typing
 offers existing people; the picker arrow is hidden in Chrome and Safari (T135).
 

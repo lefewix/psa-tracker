@@ -1397,6 +1397,10 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  transition:color .15s,background-color .15s}
 .undo.uerr{color:var(--err)}
 .footacts .undo{margin:-12px -6px}
+/* the owner chip sits in the row in the pencil's place, so saving never moves the grid (T136) */
+.ownrow .undo{margin:-12px -6px -12px 6px;white-space:nowrap}
+.ownrow:has(.undo){align-items:baseline}
+.ownrow:has(.undo) .ownedit{display:none}
 /* ---- lightbox ------------------------------------------------------------ */
 /* overscroll-behavior:contain stops a scrim drag chaining to the dashboard; LIGHTBOX_JS pins
    body overflow. */
@@ -2917,7 +2921,7 @@ document.querySelectorAll('.own').forEach(function(i){
   function go(){
     if(_mine(i.value))return;
     var ae=document.activeElement;   // mid-edit here or on another tag: wait
-    if(ae===i||(ae&&ae.classList.contains('own')&&!ae.readOnly)){ leave=setTimeout(go,1000); return; }
+    if(ae&&ae.classList.contains('own')&&!ae.readOnly){ leave=setTimeout(go,1000); return; }
     var t=i.closest('.gc'), had=t.contains(ae);
     t.style.transition='opacity .2s ease-out'; t.style.opacity='0';
     setTimeout(function(){
@@ -2934,13 +2938,13 @@ document.querySelectorAll('.own').forEach(function(i){
     },200);
   }
   function chip(cls,label,onclick,ttl){
-    var s=row.nextElementSibling;          // one chip at a time
-    if(s&&s.classList.contains('undo')) s.remove();
+    var s=row.querySelector('.undo');      // one chip at a time
+    if(s) s.remove();
     var u=document.createElement('button');
     u.type='button'; u.className=cls; u.textContent=label;
-    row.insertAdjacentElement('afterend', u);
-    var t=ttl?setTimeout(function(){u.remove()},ttl):null;
-    u.addEventListener('click', function(){ if(t)clearTimeout(t); u.remove(); onclick(); });
+    row.appendChild(u);                    // inside the row: the tile keeps its height
+    var t=ttl?setTimeout(function(){ var f=document.activeElement===u; u.remove(); if(f)refocus(); },ttl):null;
+    u.addEventListener('click', function(){ if(t)clearTimeout(t); u.remove(); onclick(); refocus(); });
     return u;
   }
   function fail(val,old){
@@ -2950,6 +2954,9 @@ document.querySelectorAll('.own').forEach(function(i){
        flash alone was invisible to a screen reader and easy to miss at speed */
     chip('undo uerr','Couldn’t save \\u00b7 Retry',function(){ save(val,old); });
   }
+  // a blur or a removed chip leaves focus on body: hand it back to the tag.
+  // Not on touch, where focusing the 14px readonly field zooms the page.
+  function refocus(){ if(!coarse&&document.activeElement===document.body)i.focus(); }
   function relabel(v){
     // the name lives in the label now, so a rename has to move it there too
     i.title = v?('Owner: '+v+'. Click or press Enter to open their cards, '
@@ -3026,8 +3033,8 @@ document.querySelectorAll('.own').forEach(function(i){
       }
       return;
     }
-    if(e.key==='Enter') i.blur();
-    else if(e.key==='Escape'){ i.value=prev; i.blur(); }  // revert before saving
+    if(e.key==='Enter'){ i.blur(); refocus(); }
+    else if(e.key==='Escape'){ i.value=prev; i.blur(); refocus(); }  // revert before saving
   });
 });
 </script>"""
