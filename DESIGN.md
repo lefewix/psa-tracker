@@ -994,7 +994,9 @@ so ("Click or press Enter to open their cards, click again or type to rename"). 
 page is a no-op. Tooltip and accessible name are the **same one sentence**, never two different
 sets of instructions. Under `pointer:coarse` a pencil sits beside the field as the edit affordance,
 since a tap navigates instantly; it hides on `.own:focus` so the underline runs full width
-while editing, never on the row's `:focus-within`, which swallowed its own tap.
+while editing, never on the row's `:focus-within`, which swallowed its own tap. With a mouse
+the pencil shows on the tile's hover or focus, sits at half opacity at rest on a filled tag so
+the control is findable, and hides while the field is editable (T134).
 
 ### Scan Tile (signature)
 Each tile is an **inset well**: `--surface3` under a 1px `--hair`, 12px radius, 10px padding,

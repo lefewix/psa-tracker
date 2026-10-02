@@ -523,10 +523,16 @@ def main():
         # also matched the pencil's own focus, so a tap removed the button
         # before its click and a filled tag could not be edited on a phone (T16)
         if css:
-            if b":focus-within .ownedit" in css:
+            if b":focus-within .ownedit{display:none}" in css:
                 fails.append("GET /app.css: the pencil still hides on the row's focus")
             if b".own:focus + .ownedit{display:none}" not in css:
                 fails.append("GET /app.css: the pencil no longer hides while the tag is edited")
+            # on a mouse the pencil shows on tile hover or focus, faint at rest
+            # on a filled tag, so a click is not the only way in (T134)
+            if (b"@media not all and (pointer:coarse){\n .gc:hover .ownedit,.gc:focus-within .ownedit{display:flex}" not in css
+                    or b".own:not(:placeholder-shown) + .ownedit{display:flex;opacity:.5}" not in css
+                    or b".own:not([readonly]) + .ownedit{display:none}" not in css):
+                fails.append("GET /app.css: desktop has no visible way to edit an owner tag (T134)")
             # archived cards carry grayscale only, in every view: an opacity wash
             # fades the card's own surface and takes the text under 4.5:1 (T51)
             if b".card.arch{filter:grayscale(" not in css:

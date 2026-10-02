@@ -1366,10 +1366,18 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
  padding:11px 0 10px;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
 /* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
-.ownedit{display:none;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
+.ownedit{display:none;align-items:center;justify-content:center;width:40px;margin-right:-6px;
+ align-self:stretch;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
+/* mouse: a click visits, so the pencil shows on the tile's hover or focus; a filled tag keeps
+   it faint at rest so the control is findable. Hidden while editing. (T134) */
+@media not all and (pointer:coarse){
+ .gc:hover .ownedit,.gc:focus-within .ownedit{display:flex}
+ .own:not(:placeholder-shown) + .ownedit{display:flex;opacity:.5}
+ .gc:hover .ownedit,.gc:focus-within .ownedit{opacity:1}
+ .ownedit:hover{color:var(--txt)}
+ .own:not([readonly]) + .ownedit{display:none}}
 @media(pointer:coarse){
- .ownedit{display:flex;align-items:center;justify-content:center;width:40px;
-  margin-right:-6px;align-self:stretch}
+ .ownedit{display:flex}
  .ownedit:active{color:var(--txt)}
  /* the input's focus hides it, not the row's: :focus-within matched the pencil's own focus,
     so the tap did nothing. */
