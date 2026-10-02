@@ -1193,9 +1193,22 @@ def main():
                     or bob.count(b'id="dopen"') != 1 or b"#discord" in bob
                     or (js and b"if(location.hash==='#discord')" not in js)):
                 fails.append("GET /sub/14900001, /cards?owner=Bob: not one way into Discord pings (T137)")
-            call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "Cara"})
-            if b"#discord" in (call(url, "/sub/14900001", cookie)[1] or b""):
-                fails.append("GET /sub/14900001: a mixed sub links one owner's Discord pings (T137)")
+            # a mixed sub names each owner without pings, sorted, escaped; none
+            # once everyone is on (T137)
+            call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "al & co"})
+            al = '<a class="tlink" href="/cards?owner=al%20%26%20co#discord">al &amp; co</a>'
+            bo = '<a class="tlink" href="/cards?owner=Bob#discord">Bob</a>'
+            for linked, want in (((), f"move: {al} · {bo}</div>"), (("Bob",), f"move: {al}</div>"),
+                                 (("Bob", "al & co"), None)):
+                for o in linked:
+                    call(url, "/discord", cookie, {"owner": o, "id": "123456789012345678"})
+                sb = call(url, "/sub/14900001", cookie)[1] or b""
+                ok = (want.encode() in sb and sb.count(b"#discord") == want.count("#discord")
+                      if want else b"#discord" not in sb)
+                if not ok:
+                    fails.append(f"GET /sub/14900001: mixed sub pings line wrong with {linked} on (T137)")
+            for o in ("Bob", "al & co"):
+                call(url, "/discord", cookie, {"owner": o, "id": ""})
             check("GET /cards?owner=Bob (retagged)", "/cards?owner=Bob", (200,), cookie,
                   must_have="1 card with")
             if js and (b"function _recount(" not in js or b"leave=setTimeout(go,6000)" not in js

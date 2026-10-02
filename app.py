@@ -3825,17 +3825,20 @@ def detail_page(a, sub):
     # sub does not read "Completing" above a line that says "Grades ready" (T114)
     stage_word = ("Grades ready" if sub["grades_ready"] and stage_index(sub["status"]) == 6
                   else sub["status"])
-    # one owner on the sub: their Discord pings, opened on their page (T137). A
-    # mixed sub has no one person to send, and each tag opens its owner's page.
+    # Discord pings, opened on the owner's page (T137): one owner gets one link,
+    # a mixed sub names each owner who has not turned pings on yet
     who = {owners.get(str(c["cert_id"]), "").lower(): owners.get(str(c["cert_id"]), "")
            for c in cards}
     who.pop("", None)
+    todo = sorted((o for o in who.values() if not discord_linked(a, o)), key=str.lower)
+    href = lambda o: f'/cards?owner={html.escape(urllib.parse.quote(o))}#discord'
     ping = ""
-    if len(who) == 1:
-        o = next(iter(who.values()))
-        if not discord_linked(a, o):
-            ping = (f'<a class="f dbtn" href="/cards?owner={html.escape(urllib.parse.quote(o))}'
-                    f'#discord">Get pinged when your cards move</a>')
+    if len(who) == 1 and todo:
+        ping = f'<a class="f dbtn" href="{href(todo[0])}">Get pinged when your cards move</a>'
+    elif todo:
+        ping = ('<div class="sub" style="margin-top:6px">Get pinged when your cards move: '
+                + " · ".join(f'<a class="tlink" href="{href(o)}">{html.escape(o)}</a>' for o in todo)
+                + "</div>")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
