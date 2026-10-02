@@ -1161,6 +1161,20 @@ def main():
                 fails.append("GET /cards?owner=Etaperson: the held sub loses its return date")
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": ""})
 
+            # --- retagging off the page's person drops the tile and the header
+            # count in place; the reload agrees (T168)
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": "Bob"})
+            call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "Bob"})
+            check("GET /cards?owner=Bob", "/cards?owner=Bob", (200,), cookie,
+                  must_have="2 cards with")
+            call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "Cara"})
+            check("GET /cards?owner=Bob (retagged)", "/cards?owner=Bob", (200,), cookie,
+                  must_have="1 card with")
+            if js and (b"function _recount(" not in js or b"leave=setTimeout(go,6000)" not in js):
+                fails.append("GET /app.js: a retag off the person page leaves the list stale (T168)")
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
+            call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
+
             # --- the person page carries the dashboard's three sort pills, so
             # a person with two active subs can reorder their submission groups
             # by soonest return. SORT_JS needs #list plus data-sub/svc/eta on

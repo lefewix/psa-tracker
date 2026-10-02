@@ -2886,8 +2886,37 @@ OWNER_JS = """
 var coarse=window.matchMedia&&matchMedia('(pointer:coarse)').matches;
 function _say(msg){ var l=document.getElementById('live');
   if(l){ l.textContent=''; setTimeout(function(){ l.textContent=msg; },30); } }
+/* person page (or the unassigned worklist): a tag that no longer matches the
+   page drops out of the counts at once and the tile leaves when its undo
+   window closes, the same beat as archiving a row */
+var _pg=location.pathname==='/cards'
+  ?(new URLSearchParams(location.search).get('owner')||'').trim().toLowerCase():null;
+if(_pg==='unassigned')_pg='';
+function _mine(v){ return (v||'').trim().toLowerCase()===_pg; }
+function _recount(){
+  function n(el){ var k=0; el.querySelectorAll('.own').forEach(function(o){ if(_mine(o.value))k++; }); return k; }
+  function put(el,re,k){ if(el)el.textContent=el.textContent.replace(re,k+' card'+(k===1?'':'s')); }
+  var l=document.getElementById('list'), ag=document.getElementById('archgrid'),
+      af=document.getElementById('archtoggle');
+  if(l)put(document.querySelector('.hrow h1+.sub'),/^\\d+ cards?/,n(l));
+  document.querySelectorAll('.card.grp').forEach(function(g){ put(g.querySelector('.meta'),/\\d+ cards?$/,n(g)); });
+  if(ag&&af)af.textContent=af.textContent.replace(/\\d+$/,n(ag));
+}
 document.querySelectorAll('.own').forEach(function(i){
-  var prev=i.value, nav=null, row=i.parentNode;
+  var prev=i.value, nav=null, row=i.parentNode, leave=null;
+  function go(){
+    if(_mine(i.value))return;
+    if(document.activeElement===i){ leave=setTimeout(go,1000); return; }  // mid-edit: wait
+    var t=i.closest('.gc'); t.style.transition='opacity .2s ease-out'; t.style.opacity='0';
+    setTimeout(function(){
+      var g=t.closest('.card.grp'), box=g&&g.parentNode;
+      t.remove();
+      if(g&&!g.querySelector('.gc'))g.remove();
+      // the last group out changes the page itself: empty state, no Archived pill
+      if(box&&!box.querySelector('.card.grp')){ location.reload(); return; }
+      _recount();
+    },200);
+  }
   function chip(cls,label,onclick,ttl){
     var s=row.nextElementSibling;          // one chip at a time
     if(s&&s.classList.contains('undo')) s.remove();
@@ -2917,10 +2946,14 @@ document.querySelectorAll('.own').forEach(function(i){
       prev=val; relabel(val);
       i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},1600);
       _say('Owner saved');
+      clearTimeout(leave);
+      if(_pg!==null){ _recount(); if(!_mine(val))leave=setTimeout(go,6000); }
       chip('undo','Saved \\u00b7 Undo',function(){
+        clearTimeout(leave);
         post(old, function(ok2){
           if(!ok2){ fail(old,val); return; }
           i.value=old; prev=old; relabel(old);
+          if(_pg!==null)_recount();
           i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);
           _say('Owner restored');
         });
