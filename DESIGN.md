@@ -502,6 +502,8 @@ grades-ready is no longer a lowercase detail note, it is the stage word itself. 
 reads "Grades ready" instead of "Completing" on the dashboard row and the detail page. Still no
 pill, no badge, no colour, no sort control.
 Red is never a heading color, a hover state, an emphasis device, or an event announcement.
+The PSA outage banner (`.hint.warn`, T128) is that alert: a 9% `--holdtx` tint and a 45% border
+on the hint card, so it never reads as the 👋 tip. It says the cause in one plain sentence and links settings.
 
 **The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
 `color-mix`, so a white-label swap re-tints it for free. Never hardcode an ambient hue, never

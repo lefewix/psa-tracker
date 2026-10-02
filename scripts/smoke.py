@@ -899,6 +899,18 @@ def main():
             body = check("GET / (scans two days stale)", "/", (200,), cookie)
             if b"Not connecting to PSA" not in body:
                 fails.append("GET /: two days without a scan and the dashboard says nothing")
+            # the cause is one plain sentence and a settings link, never the raw line (T128)
+            errf = os.path.join(base, "accounts", "demo", ".last_error")
+            raw = "login failed: Descope flow error E062108 at sign-in"
+            with open(errf, "w", encoding="utf-8") as f:
+                f.write(raw + "\n")
+            body = check("GET / (stale with a Descope error)", "/", (200,), cookie)
+            os.remove(errf)
+            if (b"Descope" in body or b"E062108" in body
+                    or b'<div class="hint warn" role="status">' not in body
+                    or b"Signing in to PSA failed" not in body
+                    or b'<a class="tlink" href="/settings">settings</a>' not in body):
+                fails.append("GET /: the PSA outage banner leaks its raw cause or links no fix (T128)")
             # the toolbar says the same thing in one dot and one word (T104)
             # one grammar, the clock time in the title (T162)
             # phones read the short form so the toolbar stays one row; screen

@@ -1287,6 +1287,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
  color:var(--m1);background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 4px 14px var(--shc3)}
+.hint.warn{color:var(--txt);background:color-mix(in srgb,var(--holdtx) 9%,var(--surface));
+ border-color:color-mix(in srgb,var(--holdtx) 45%,transparent);box-shadow:none}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
  color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
@@ -3614,6 +3616,22 @@ def scan_error(a):
     except OSError:
         return ""
 
+def scan_fix(why):
+    """scan_error's line as one plain sentence linking settings, keyed like
+    run_scan.sh's Discord alert so the site and the ping agree. The raw line
+    carries exception text and never renders."""
+    s = '<a class="tlink" href="/settings">settings</a>'
+    if why.startswith("cookie expired"):
+        return ("PSA signed the tracker out; the next login hour retries, and if it keeps "
+                f"failing, save the PSA password again in {s}.")
+    if "SMS code" in why:
+        return f"PSA wants a verification code, so send one from {s}."
+    if why.startswith("PSA unreachable") or "Cloudflare" in why:
+        return f"PSA is down or blocking the tracker, so nothing in {s} needs changing yet."
+    if why.startswith("login failed"):
+        return f"Signing in to PSA failed; if it keeps failing, save the PSA password again in {s}."
+    return f"The scanner hit an error, so check the account in {s}."
+
 def sync_dot(stale, has_subs):
     """One dot and one phrase for the toolbar, from scan_stale_hours: the last
     scan that worked, not the newest submission change. Scans run every 9 to 22
@@ -3692,11 +3710,9 @@ def dash_page(a, subs):
         if stale is not None and stale >= 6:
             # "why" is the scripts' own line, not free text, but it carries an
             # exception string, so it is escaped like anything else (T105)
-            why = scan_error(a)
-            hint = ('<div class="hint" role="status">Not connecting to PSA since '
-                    f'{int(stale)} hours ago'
-                    + (f': {html.escape(why)}.' if why else '.')
-                    + ' These statuses may be behind.</div>') + hint
+            hint = ('<div class="hint warn" role="status"><span>Not connecting to PSA since '
+                    f'{int(stale)} hours ago, so these statuses may be behind. '
+                    f'{scan_fix(scan_error(a))}</span></div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
         pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',

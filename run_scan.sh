@@ -154,7 +154,7 @@ PYEOF
         case "$cause" in
           "cookie expired"*) todo="the next login hour retries; if it keeps failing save the PSA password again in Settings" ;;
           *"SMS code"*)      todo="Settings, Verification code, Send code" ;;
-          "PSA unreachable"*) todo="PSA is down or blocking; nothing to do yet" ;;
+          "PSA unreachable"*|*Cloudflare*) todo="PSA is down or blocking; nothing to do yet" ;;
           "login failed"*)   todo="check login_debug/ on the server" ;;
           *)                 todo="check journalctl -u psa-scan on the server" ;;
         esac
