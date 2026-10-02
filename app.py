@@ -1082,8 +1082,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* the customer's sign-out is the icon in the freshness block, not the top-left "back" slot. */
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
-/* sync state: one dot and one word, never a stamp. The dot is 6px of non-text, so
-   --ok's 3:1 check covers it; the phrase rides in the .vh span. */
+/* sync state: one dot and one phrase (T162), the clock time in its title. The dot
+   is 6px of non-text, so --ok's 3:1 check covers it. */
 .sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
  font-weight:500;color:var(--m1);line-height:1.5;white-space:nowrap}
 .sync i{width:6px;height:6px;border-radius:50%;background:var(--m1);flex-shrink:0}
@@ -3582,23 +3582,27 @@ def scan_error(a):
     except OSError:
         return ""
 
-def sync_dot(stale):
-    """One dot and one word for the toolbar, from scan_stale_hours: the last scan
-    that worked, not the newest submission change. Stale is the T24 banner's own
-    6 hours, so the dot and the banner can never disagree."""
+def sync_dot(stale, has_subs):
+    """One dot and one phrase for the toolbar, from scan_stale_hours: the last
+    scan that worked, not the newest submission change. Scans run every 9 to 22
+    minutes (T101), so an hour without one is two missed scans: Not updating.
+    The T24 banner waits 6 hours before it speaks; the dot only turns amber."""
     if stale is None:
-        return '<div class="sync"><i aria-hidden="true"></i>No sync yet</div>'
-    if stale < .75:                       # scans run every 9 to 22 minutes (T101)
-        cls, word = " live", "Live"
-    elif stale < 6:
-        mins = int(stale * 60)
-        cls, word = "", f"{mins} min ago" if mins < 90 else f"{int(stale)} h ago"
+        word = "Last update unknown" if has_subs else "No sync yet"
+        return f'<div class="sync"><i aria-hidden="true"></i>{word}</div>'
+    seen = datetime.fromtimestamp(time.time() - stale * 3600, timezone.utc)
+    mins = int(stale * 60)
+    if mins < 2:
+        cls, word = " live", "Updated just now"
+    elif mins < 60:
+        cls, word = " live", f"Updated {mins} min ago"
     else:
-        cls, word = " stale", "Stale"
-    when = fmt_local(datetime.fromtimestamp(time.time() - stale * 3600,
-                                            timezone.utc).isoformat())
-    return (f'<div class="sync{cls}"><i aria-hidden="true"></i>{word}'
-            f'<span class="vh">Last sync {html.escape(when)}</span></div>')
+        loc = seen.astimezone(DISPLAY_TZ)
+        since = (loc.strftime("%I:%M %p").lstrip("0") if stale < 20
+                 else loc.strftime("%b %d"))
+        cls, word = " stale", f"Not updating since {since}"
+    return (f'<div class="sync{cls}" title="Last sync {html.escape(fmt_local(seen.isoformat()))}">'
+            f'<i aria-hidden="true"></i>{html.escape(word)}</div>')
 
 def dash_page(a, subs):
     arch = archived_set(a)
@@ -3634,7 +3638,7 @@ def dash_page(a, subs):
     toolbar = (f'<header class="toolbar"><div class="tbtop">'
                f'<div class="brand">{logo_tag()}<div><h1>{html.escape(SITE_TITLE)}</h1>'
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
-               f'<div class="tbend">{sync_dot(stale)}'
+               f'<div class="tbend">{sync_dot(stale, bool(subs))}'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
                f'</div></div>{search_box()}</header>')
     hint = (f'<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'

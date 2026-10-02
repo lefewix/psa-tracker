@@ -399,6 +399,8 @@ def setup_instance_checks(fails):
                 if code != 200 or CADENCE.encode() not in body:
                     fails.append(f"GET / (never synced): got {code}, the first sync note "
                                  "lost the sync cadence (T163)")
+                if b">No sync yet<" not in body:
+                    fails.append("GET / (never synced): an empty account lost No sync yet (T162)")
             proc.send_signal(signal.SIGTERM)
             proc.wait(5)
             proc = None
@@ -763,6 +765,9 @@ def main():
             fails.append("POST /login: the session cookie is not 180 days")
         if cookie:
             body = check("GET /", "/", (200,), cookie, must_have="14900001")
+            # no .last_ok yet over a full dashboard is unknown, not never (T162)
+            if b"No sync yet" in (body or b"") or b">Last update unknown<" not in (body or b""):
+                fails.append("GET /: a full dashboard with no .last_ok says No sync yet (T162)")
             if ((body or b"").count(b'class="f fsort') != 3
                     or b'data-sort="svc" aria-pressed="false">Service<' not in (body or b"")
                     or b'data-svc="Regular" data-price="109.0"' not in (body or b"")):
@@ -884,14 +889,21 @@ def main():
             if b"Not connecting to PSA" not in body:
                 fails.append("GET /: two days without a scan and the dashboard says nothing")
             # the toolbar says the same thing in one dot and one word (T104)
-            if b'<div class="sync stale">' not in body or b">Stale<" not in body:
-                fails.append("GET /: a stale scan does not read as a stale sync dot")
-            last_ok(0)
-            body = check("GET / (scans current)", "/", (200,), cookie)
-            if b"Not connecting to PSA" in body:
-                fails.append("GET /: a fresh scan still reads as a broken PSA link")
-            if b'<div class="sync live">' not in body or b">Live<" not in body:
-                fails.append("GET /: a fresh scan does not read as a live sync dot")
+            # one grammar, the clock time in the title (T162)
+            dot = re.compile(rb'<div class="sync( \w+)?" title="Last sync [A-Z][a-z]{2} \d\d, '
+                             rb'\d{1,2}:\d\d [AP]M [^"]*"><i aria-hidden="true"></i>([^<]*)</div>')
+            for ago, cls, want in ((2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d\d"),
+                                   (90 * 60, b" stale", rb"Not updating since \d{1,2}:\d\d [AP]M"),
+                                   (48 * 60, b" live", rb"Updated 48 min ago"),
+                                   (0, b" live", rb"Updated just now")):
+                last_ok(ago)
+                body = check(f"GET / (last scan {ago}s ago)", "/", (200,), cookie)
+                m = dot.search(body)
+                if not m or m.group(1) != cls or not re.fullmatch(want, m.group(2)):
+                    fails.append(f"GET /: a scan {ago}s old reads "
+                                 f"{m and m.group(0)!r}, want {want!r} (T162)")
+                if (b"Not connecting to PSA" in body) != (ago >= 6 * 3600):
+                    fails.append(f"GET /: the PSA link banner is wrong {ago}s after a scan")
             if b"Last synced" in body:
                 fails.append("GET /: the toolbar still prints a last synced stamp")
 
