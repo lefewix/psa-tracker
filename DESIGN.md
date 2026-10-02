@@ -531,8 +531,9 @@ on Segoe and Roboto.
   weight. The toolbar states sync in chrome instead of a figure: `.sync`, one 6px dot
   (`--ok` under an hour, `--holdtx` an hour or more, `--m1` unknown) and one phrase at
   12.5/500 in one grammar, "Updated just now", "Updated 48 min ago", "Not updating since
-  9:16 PM", the exact time in its title. No marker reads "Last update unknown" over
-  submissions, "No sync yet" only on an empty account (T162).
+  9:16 PM", the exact time in its title and a `.vh` span. Phones show the short form ("48 min
+  ago", "Not updating") so the toolbar stays one row, under 360 the dot alone. No marker
+  reads "Last update unknown" over submissions, "No sync yet" only on an empty account (T162).
 - **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
 - **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
   pills, links, owner tags, card names, empty states. The stage name sits here too, at body

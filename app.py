@@ -1082,13 +1082,14 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* the customer's sign-out is the icon in the freshness block, not the top-left "back" slot. */
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
-/* sync state: one dot and one phrase (T162), the clock time in its title. The dot
-   is 6px of non-text, so --ok's 3:1 check covers it. */
+/* sync state: one dot and one phrase (T162), the clock time in its title and .vh span,
+   .ss the phone form. The dot is 6px of non-text, so --ok's 3:1 check covers it. */
 .sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
  font-weight:500;color:var(--m1);line-height:1.5;white-space:nowrap}
 .sync i{width:6px;height:6px;border-radius:50%;background:var(--m1);flex-shrink:0}
 .sync.live i{background:var(--ok)}
 .sync.stale i{background:var(--holdtx)}
+.sync .ss{display:none}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
  transition:color .15s,background-color .15s}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
@@ -1633,6 +1634,9 @@ button:disabled{opacity:.5;cursor:default}
     .tbend to a second line at 347px. .gbox h1 stays untouched. */
  h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
+ /* the short sync phrase keeps the toolbar one row (T162); under 360 only the dot shows */
+ .sync .sl{display:none}
+ .sync .ss{display:inline}
  /* page-header summaries take the full sheet width instead of clipping right */
  .hrow{flex-wrap:wrap}
  .hrow>.synced{flex:1 0 100%;text-align:left;margin-top:12px;font-size:12px}
@@ -1687,7 +1691,8 @@ button:disabled{opacity:.5;cursor:default}
    hidden so the -8px pseudo cannot open a phantom scroll. */
 @media(max-width:359px){
  .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
- .filters::-webkit-scrollbar{display:none}}
+ .filters::-webkit-scrollbar{display:none}
+ .sync .ss{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}}
 /* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
    this covers iPad portrait. */
 @media(pointer:coarse) and (min-width:641px){
@@ -3586,23 +3591,29 @@ def sync_dot(stale, has_subs):
     """One dot and one phrase for the toolbar, from scan_stale_hours: the last
     scan that worked, not the newest submission change. Scans run every 9 to 22
     minutes (T101), so an hour without one is two missed scans: Not updating.
-    The T24 banner waits 6 hours before it speaks; the dot only turns amber."""
+    The T24 banner waits 6 hours before it speaks; the dot only turns amber.
+    Phones get the short form so the toolbar stays one row."""
+    title = vh = ""
     if stale is None:
-        word = "Last update unknown" if has_subs else "No sync yet"
-        return f'<div class="sync"><i aria-hidden="true"></i>{word}</div>'
-    seen = datetime.fromtimestamp(time.time() - stale * 3600, timezone.utc)
-    mins = int(stale * 60)
-    if mins < 2:
-        cls, word = " live", "Updated just now"
-    elif mins < 60:
-        cls, word = " live", f"Updated {mins} min ago"
+        cls = ""
+        word, short = (("Last update unknown", "Sync unknown") if has_subs
+                       else ("No sync yet", "No sync yet"))
     else:
-        loc = seen.astimezone(DISPLAY_TZ)
-        since = (loc.strftime("%I:%M %p").lstrip("0") if stale < 20
-                 else loc.strftime("%b %d"))
-        cls, word = " stale", f"Not updating since {since}"
-    return (f'<div class="sync{cls}" title="Last sync {html.escape(fmt_local(seen.isoformat()))}">'
-            f'<i aria-hidden="true"></i>{html.escape(word)}</div>')
+        seen = datetime.fromtimestamp(time.time() - stale * 3600, timezone.utc)
+        when = html.escape(fmt_local(seen.isoformat()))
+        title, vh = f' title="Last sync {when}"', f'<span class="vh">Last sync {when}</span>'
+        mins = int(stale * 60)
+        if mins < 2:
+            cls, word, short = " live", "Updated just now", "Just now"
+        elif mins < 60:
+            cls, word, short = " live", f"Updated {mins} min ago", f"{mins} min ago"
+        else:
+            loc = seen.astimezone(DISPLAY_TZ)
+            since = (loc.strftime("%I:%M %p").lstrip("0") if stale < 20
+                     else loc.strftime("%b %d"))
+            cls, word, short = " stale", f"Not updating since {since}", "Not updating"
+    return (f'<div class="sync{cls}"{title}><i aria-hidden="true"></i>'
+            f'<span class="sl">{word}</span><span class="ss">{short}</span>{vh}</div>')
 
 def dash_page(a, subs):
     arch = archived_set(a)

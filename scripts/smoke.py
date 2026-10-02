@@ -570,6 +570,11 @@ def main():
                 fails.append("GET /app.css: the header figure is off the 17/650 data rung")
             if b".synced b{display:block;font-size:13px" not in css:
                 fails.append("GET /app.css: the toolbar freshness stamp left 13px")
+            # phones swap to the short sync phrase, under 360 the dot alone (T162)
+            if (b".sync .ss{display:none}" not in css
+                    or b" .sync .sl{display:none}\n .sync .ss{display:inline}" not in css
+                    or b" .sync .ss{position:absolute;width:1px" not in css):
+                fails.append("GET /app.css: the phone toolbar lost the short sync phrase (T162)")
             # under 640 the header note goes full width and left aligned, so its
             # right-align margin must be cleared or it floats mid column (T79)
             if b".hrow>.synced .estnote{margin-left:0}" not in css:
@@ -766,7 +771,8 @@ def main():
         if cookie:
             body = check("GET /", "/", (200,), cookie, must_have="14900001")
             # no .last_ok yet over a full dashboard is unknown, not never (T162)
-            if b"No sync yet" in (body or b"") or b">Last update unknown<" not in (body or b""):
+            if (b"No sync yet" in (body or b"") or b">Last update unknown<" not in (body or b"")
+                    or b">Sync unknown<" not in (body or b"")):
                 fails.append("GET /: a full dashboard with no .last_ok says No sync yet (T162)")
             if ((body or b"").count(b'class="f fsort') != 3
                     or b'data-sort="svc" aria-pressed="false">Service<' not in (body or b"")
@@ -890,16 +896,22 @@ def main():
                 fails.append("GET /: two days without a scan and the dashboard says nothing")
             # the toolbar says the same thing in one dot and one word (T104)
             # one grammar, the clock time in the title (T162)
-            dot = re.compile(rb'<div class="sync( \w+)?" title="Last sync [A-Z][a-z]{2} \d\d, '
-                             rb'\d{1,2}:\d\d [AP]M [^"]*"><i aria-hidden="true"></i>([^<]*)</div>')
-            for ago, cls, want in ((2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d\d"),
-                                   (90 * 60, b" stale", rb"Not updating since \d{1,2}:\d\d [AP]M"),
-                                   (48 * 60, b" live", rb"Updated 48 min ago"),
-                                   (0, b" live", rb"Updated just now")):
+            # phones read the short form so the toolbar stays one row; screen
+            # readers get the clock time in the .vh span
+            dot = re.compile(rb'<div class="sync( \w+)?" title="(Last sync [A-Z][a-z]{2} \d\d, '
+                             rb'\d{1,2}:\d\d [AP]M [^"]*)"><i aria-hidden="true"></i>'
+                             rb'<span class="sl">([^<]*)</span><span class="ss">([^<]*)</span>'
+                             rb'<span class="vh">([^<]*)</span></div>')
+            for ago, cls, want, short in (
+                    (2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d\d", b"Not updating"),
+                    (90 * 60, b" stale", rb"Not updating since \d{1,2}:\d\d [AP]M", b"Not updating"),
+                    (48 * 60, b" live", rb"Updated 48 min ago", b"48 min ago"),
+                    (0, b" live", rb"Updated just now", b"Just now")):
                 last_ok(ago)
                 body = check(f"GET / (last scan {ago}s ago)", "/", (200,), cookie)
                 m = dot.search(body)
-                if not m or m.group(1) != cls or not re.fullmatch(want, m.group(2)):
+                if (not m or m.group(1) != cls or not re.fullmatch(want, m.group(3))
+                        or m.group(4) != short or m.group(5) != m.group(2)):
                     fails.append(f"GET /: a scan {ago}s old reads "
                                  f"{m and m.group(0)!r}, want {want!r} (T162)")
                 if (b"Not connecting to PSA" in body) != (ago >= 6 * 3600):
