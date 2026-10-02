@@ -2906,15 +2906,21 @@ document.querySelectorAll('.own').forEach(function(i){
   var prev=i.value, nav=null, row=i.parentNode, leave=null;
   function go(){
     if(_mine(i.value))return;
-    if(document.activeElement===i){ leave=setTimeout(go,1000); return; }  // mid-edit: wait
-    var t=i.closest('.gc'); t.style.transition='opacity .2s ease-out'; t.style.opacity='0';
+    var ae=document.activeElement;   // mid-edit here or on another tag: wait
+    if(ae===i||(ae&&ae.classList.contains('own')&&!ae.readOnly)){ leave=setTimeout(go,1000); return; }
+    var t=i.closest('.gc'), had=t.contains(ae);
+    t.style.transition='opacity .2s ease-out'; t.style.opacity='0';
     setTimeout(function(){
-      var g=t.closest('.card.grp'), box=g&&g.parentNode;
+      var g=t.closest('.card.grp'), box=g&&g.parentNode,
+          all=[].slice.call((t.closest('#list,#archgrid')||document).querySelectorAll('.own')),
+          k=all.indexOf(i), nx=all[k+1]||all[k-1];
       t.remove();
       if(g&&!g.querySelector('.gc'))g.remove();
       // the last group out changes the page itself: empty state, no Archived pill
       if(box&&!box.querySelector('.card.grp')){ location.reload(); return; }
       _recount();
+      // focus was in the tile (the Undo chip): hand it to the neighbouring tag
+      if(had&&nx&&document.activeElement===document.body)nx.focus();
     },200);
   }
   function chip(cls,label,onclick,ttl){
@@ -2953,7 +2959,7 @@ document.querySelectorAll('.own').forEach(function(i){
         post(old, function(ok2){
           if(!ok2){ fail(old,val); return; }
           i.value=old; prev=old; relabel(old);
-          if(_pg!==null)_recount();
+          if(_pg!==null){ _recount(); if(!_mine(old))leave=setTimeout(go,900); }
           i.classList.add('saved'); setTimeout(function(){i.classList.remove('saved')},900);
           _say('Owner restored');
         });

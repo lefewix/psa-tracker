@@ -1170,8 +1170,11 @@ def main():
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "Cara"})
             check("GET /cards?owner=Bob (retagged)", "/cards?owner=Bob", (200,), cookie,
                   must_have="1 card with")
-            if js and (b"function _recount(" not in js or b"leave=setTimeout(go,6000)" not in js):
+            if js and (b"function _recount(" not in js or b"leave=setTimeout(go,6000)" not in js
+                       or b"if(!_mine(old))leave=setTimeout(go," not in js):
                 fails.append("GET /app.js: a retag off the person page leaves the list stale (T168)")
+            if js and b"if(had&&nx&&document.activeElement===document.body)nx.focus()" not in js:
+                fails.append("GET /app.js: a retagged tile leaving drops focus to the body (T168)")
             call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": ""})
 
