@@ -1403,6 +1403,11 @@ def main():
                        or b"f.insertBefore(u,b); b.hidden=true;" not in js
                        or js.count(b"b.hidden=false;") != 2):
                 fails.append("GET /app.js: archiving leaves two undo words on the row (T133)")
+            # a failed archive's label timer dies on the next click, and the
+            # failure text builds from the action, not the last label (T216)
+            if js and (b"clearTimeout(b._ft);" not in js
+                       or b"label=on?'Archive':'Unarchive'" not in js):
+                fails.append("GET /app.js: a stale failure timer outlives a retry (T216)")
             if css and b".card.arch:has(.undo):hover{filter:grayscale(.55)}" not in css:
                 fails.append("GET /app.css: an archived row un-greys under the cursor (T133)")
             if b'title="Archived submissions are hidden from the list. Nothing is deleted."' not in body:

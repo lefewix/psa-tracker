@@ -2778,16 +2778,17 @@ ARCH_JS = """<script>
   document.addEventListener('click',function(e){
     var b=e.target.closest?e.target.closest('.archbtn'):null;
     if(b){
-      var label=b.textContent, on=b.dataset.on==='1', sub=b.dataset.sub;
+      var on=b.dataset.on==='1', label=on?'Archive':'Unarchive', sub=b.dataset.sub;
       var row=b.closest?b.closest('.card[data-sub]'):null;
       var foc=document.activeElement===b;
+      clearTimeout(b._ft);
       b.disabled=true;                 // button:disabled dims it - in-flight state
       post(sub,on,function(ok){
         b.disabled=false;
         if(!ok){
           b.textContent="Couldn’t "+label.toLowerCase()+" \\u00b7 retry";
           say("Couldn’t "+label.toLowerCase()+" submission "+sub);
-          setTimeout(function(){b.textContent=label;},6000);
+          b._ft=setTimeout(function(){b.textContent=label;},6000);
           back(b,foc);
           return;
         }
