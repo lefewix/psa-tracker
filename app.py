@@ -1384,6 +1384,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  .own:focus + .ownedit{display:none}}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
+.own::-webkit-calendar-picker-indicator{display:none!important}
 /* pointer focus keeps the underline; keyboard focus gets the ring - 1px is not a visible
    indicator (2.4.11). focus-visible after :focus so it wins. */
 .own:focus{border-bottom-color:var(--ring);outline:none}
@@ -3526,7 +3527,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
                  f'<div class="ownrow"><input class="own" data-cert="{cid}" value="{owner}" readonly'
                  + (f' title="{ownlbl}" aria-label="{ownlbl}"'
                     if owner else ' aria-label="Add owner name"')
-                 + ' enterkeyhint="done" placeholder="+ owner name">'
+                 + ' list="owners" enterkeyhint="done" placeholder="+ owner name">'
                    '<button type="button" class="ownedit" aria-label="Edit owner tag">'
                    '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">'
                    '<path d="M11.1 2.2a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3L6.4 12.3l-3.1.8.8-3.1z" '
@@ -3542,6 +3543,11 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
             f'{val}{svc}{sub_link}'
             f'{own_input}'
             f'</div>')
+
+def owner_datalist(owners):
+    names = sorted(set(owners.values()), key=str.lower)
+    return ('<datalist id="owners">'
+            + "".join(f'<option value="{html.escape(n)}">' for n in names) + '</datalist>')
 
 def scan_stale_hours(a):
     """Hours since this account's last successful scan, or None when unknown.
@@ -3818,7 +3824,7 @@ def detail_page(a, sub):
 <div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}{tag}</div></div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
-{body}
+{body}{owner_datalist(owners) if cards else ""}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""
 
@@ -3968,7 +3974,7 @@ def people_page(a, owner):
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {filterrow}
 {grid}
-{archsec}
+{archsec}{owner_datalist(owners)}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""
 
@@ -4140,7 +4146,7 @@ def search_page(a, q, owner="", customer=False):
 <h1 style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
-{grid}
+{grid}{"" if customer else owner_datalist(owners)}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html(customer)}{APP_JS_TAG}</body></html>"""
 

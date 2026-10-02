@@ -997,6 +997,8 @@ since a tap navigates instantly; it hides on `.own:focus` so the underline runs 
 while editing, never on the row's `:focus-within`, which swallowed its own tap. With a mouse
 the pencil shows on the tile's hover or focus, sits at half opacity at rest on a filled tag so
 the control is findable, and hides while the field is editable (T134).
+Every tag shares one page-level `<datalist id="owners">` of the names in use, so typing
+offers existing people; the browser's picker arrow is hidden (T135).
 
 ### Scan Tile (signature)
 Each tile is an **inset well**: `--surface3` under a 1px `--hair`, 12px radius, 10px padding,

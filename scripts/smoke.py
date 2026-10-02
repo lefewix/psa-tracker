@@ -1042,6 +1042,14 @@ def main():
             if b'<a class="view" href="/">Home</a>' not in \
                     (call(url, "/cards?owner=Solo", cookie)[1] or b""):
                 fails.append("GET /cards?owner=Solo: no Home link beside Back (T103)")
+            # every owner field offers the names in use from one datalist (T135)
+            for p in ("/sub/14900003", "/cards?owner=Solo", "/search?q=Charizard"):
+                b = call(url, p, cookie)[1] or b""
+                if (b.count(b"<datalist") != 1 or b'<option value="Duo">' not in b
+                        or b'<option value="Solo">' not in b
+                        or b'class="own"' not in b
+                        or b.count(b'class="own"') != b.count(b'list="owners"')):
+                    fails.append(f"GET {p}: owner fields lack the one names datalist (T135)")
             # a no-result search names the next move and links every owner (T154)
             body = check("GET /search (no result)", "/search?q=zzzznothinghere",
                          (200,), cookie) or b""
