@@ -269,6 +269,7 @@ components:
     textColor: "{colors.ink}"
     rounded: "{rounded.xl}"
     padding: "7px 8px"
+    margin: "0 -9px"
   preview-panel:
     backgroundColor: "{colors.glass-solid}"
     textColor: "{colors.ink}"
@@ -612,7 +613,9 @@ fade on whichever edge still has tiles past it (`.sl` / `.sr`, set by the same F
 filter capsule uses); a strip that fits is never faded.
 
 The toolbar is sticky at `top: 10px` (`z-index: 20`), preceded by a 1px sentinel that drives
-its scroll-edge elevation; the filter capsule floats below it. Scan grids are
+its scroll-edge elevation; the filter capsule floats below it. The compact search bar on
+/cards and /search bleeds 9px each side (padding plus border) so its field lines up with the
+h1 and the groups; the glass hangs into the gutter. Scan grids are
 `repeat(auto-fill, minmax(152px, 1fr))` with an 18px gutter, tightening to
 `minmax(136px, 1fr)` and a 14px gutter under 640px. Scan tiles hold a fixed `1.72 / 2.4`
 aspect ratio — a card's proportions — so the grid never reflows as images load.

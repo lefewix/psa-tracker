@@ -480,6 +480,11 @@ def main():
                     or b'.strip a[href^="/img"].ldg::after' not in css
                     or b".gc:nth-child" in css):
                 fails.append("GET /app.css: the calm loading ground or sweep is gone (T197)")
+            # the compact bar bleeds its 8px padding + 1px border, so the field sits
+            # on the h1's edge; the dashboard header keeps its own inset (T143)
+            if (b".toolbar.tbq{padding:7px 8px;border-radius:14px;margin-inline:-9px}" not in css
+                    or b"margin:16px 0 4px;padding:12px 14px;" not in css):
+                fails.append("GET /app.css: the search field is off the page margin (T143)")
         # taps and submits show they are working: a guarded nav bar, one POST per
         # form, a busy submitter, all cleared on back/forward restore (T198)
         gate = check("GET / (gate nav bar)", "/", (200,), must_have="window.psaNav=function")

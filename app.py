@@ -1112,7 +1112,8 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  transition:box-shadow .25s ease-out}
 .toolbar.raised{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),
  0 10px 26px var(--shc)}
-.toolbar.tbq{padding:7px 8px;border-radius:14px}
+/* bleeds by padding + border so the field, not the glass, sits on the page margin (T143) */
+.toolbar.tbq{padding:7px 8px;border-radius:14px;margin-inline:-9px}
 .tbsentinel{height:1px;pointer-events:none}
 .tbtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .tbend{display:flex;gap:12px;align-items:center}
