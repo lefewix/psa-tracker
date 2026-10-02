@@ -1402,6 +1402,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .footacts .undo{margin:-12px -6px}
 /* the owner chip sits in the row in the pencil's place, so saving never moves the grid (T136) */
 .ownrow .undo{margin:-12px -6px -12px 6px;white-space:nowrap}
+/* touch: ARCH_JS lifts the archive chip into body, a 44px detached chip in the thumb zone on
+   the orbs' baseline, clear of them (T144) */
+body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;
+ margin:0;min-height:44px;padding:0 18px;border-radius:999px;font-size:13px;white-space:nowrap;
+ background:var(--glasssolid);border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
 .ownrow:has(.undo){align-items:baseline}
 .ownrow:has(.undo) .ownedit{display:none}
 /* ---- lightbox ------------------------------------------------------------ */
@@ -2769,8 +2774,11 @@ ARCH_JS = """<script>
     row.style.display=((row.dataset.arch==='1')===viewing)?'':'none';
   }
   function flip(row,b,on){
-    row.dataset.arch=on?'1':'0';
-    row.classList.toggle('arch',on);
+    if(row){row.dataset.arch=on?'1':'0'; row.classList.toggle('arch',on);}
+    else{   // the detail page: its state line and tiles carry the archived look
+      var g=document.getElementById('archtag'); if(g)g.hidden=!on;
+      document.querySelectorAll('.gc').forEach(function(c){c.classList.toggle('arch',on);});
+    }
     b.dataset.on=on?'0':'1';
     b.textContent=on?'Unarchive':'Archive'; b.setAttribute('aria-label',b.textContent+' submission #'+b.dataset.sub);
     count(on?1:-1);
@@ -2803,10 +2811,9 @@ ARCH_JS = """<script>
           back(b,foc);
           return;
         }
-        /* the detail page's whole header reflects archived state, and the very
-           first archive has no Archived pill to move the row into - both keep
-           the reload */
-        if(!row||!document.getElementById('archtoggle')){location.reload();return;}
+        /* the very first archive has no Archived pill to move the row into,
+           so it keeps the reload */
+        if(row&&!document.getElementById('archtoggle')){location.reload();return;}
         flip(row,b,on);
         say('Submission '+sub+(on?' archived':' unarchived'));
         var f=b.parentNode, old=f.querySelector('.undo');
@@ -2815,12 +2822,22 @@ ARCH_JS = """<script>
         u.type='button'; u.className='undo';
         u.textContent=(on?'Archived':'Unarchived')+' \\u00b7 Undo';
         f.insertBefore(u,b); b.hidden=true;
+        /* a phone pins it to the thumb zone; in body, because the archived
+           row's filter would pin it to the row instead */
+        if(matchMedia('(pointer:coarse)').matches)document.body.appendChild(u);
         /* when the window closes the row leaves the view, taking the button
            with it, so the Archived pill it went behind takes the focus */
-        var t=setTimeout(function(){var uf=document.activeElement===u;
-          u.remove(); b.hidden=false; place(row);
-          back(row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
-        },6000);
+        function go(){var uf=document.activeElement===u;
+          u.remove(); b.hidden=false; if(row)place(row);
+          back(row&&row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
+        }
+        /* 10s, held while hovered or keyboard focused (2.2.1). Not on a
+           pointer's focus: a tap focuses on Android and would pin it for good */
+        var t, hov=false, fcs=false;
+        function arm(){clearTimeout(t); if(u.isConnected&&!hov&&!fcs)t=setTimeout(go,10000);}
+        u.onmouseenter=function(){hov=true;arm();}; u.onmouseleave=function(){hov=false;arm();};
+        u.onfocus=function(){fcs=u.matches(':focus-visible');arm();}; u.onblur=function(){fcs=false;arm();};
+        arm();
         u.addEventListener('click',function(){
           var uf=document.activeElement===u;
           clearTimeout(t); u.remove(); b.hidden=false; b.disabled=true;
@@ -2831,8 +2848,8 @@ ARCH_JS = """<script>
             else say("Couldn’t undo that");
             /* focus last: a failed undo leaves the row archived, so place()
                hides it and the button with it */
-            place(row);
-            back(row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
+            if(row)place(row);
+            back(row&&row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
           });
         });
         back(u,foc);   // the offer is keyboard reachable, not stranded
@@ -3866,10 +3883,10 @@ def detail_page(a, sub):
         body = '<div class="empty">No cards assigned yet. PSA lists them during Research &amp; ID.</div>'
     if archived:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0" aria-label="Unarchive submission #{html.escape(num)}">Unarchive</button>'
-        tag = '<div class="sub">Archived</div>'
+        tag = '<div class="sub" id="archtag">Archived</div>'
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1" aria-label="Archive submission #{html.escape(num)}">Archive</button>'
-        tag = ""
+        tag = '<div class="sub" id="archtag" hidden>Archived</div>'  # ARCH_JS flips it in place
     nc = sub['card_count']
     # the header rung and the stage line say the same word, so a grades-ready
     # sub does not read "Completing" above a line that says "Grades ready" (T114)

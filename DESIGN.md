@@ -773,6 +773,9 @@ content — a panel, a sheet, an image, a row — it is not.
   the colour deepen and nothing else — no painted fill (the hit box hangs over the stage bar
   and read as a stray sub-panel inside a card), no underline (tried and disliked; both owner
   calls 2026-08-08).
+- **Archive undo chip:** "Archived · Undo" holds 10s, paused while hovered or keyboard focused. On
+  touch it leaves the row for the thumb zone: fixed bottom-left on the orbs' baseline, 44px,
+  13px, a solid detached capsule (`--glasssolid`, hairline, `0 10px 26px` cast) (T144).
 - **Stage-line pill (`.stage .view`):** the exception — the row's one link sits at the far
   end of the stage line as a visible quiet capsule (App Store's row action; a bar-row
   placement was tried and reverted same day, 2026-08-08). `--surface3` fill, `--ac-hot`

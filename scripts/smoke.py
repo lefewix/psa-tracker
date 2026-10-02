@@ -977,7 +977,7 @@ def main():
             if js and b"getElementById('archhd')" not in js:
                 fails.append("GET /app.js: archiving leaves the Archived line's count (T145)")
             sbody = check("GET /sub/14900003 (Archived line)", "/sub/14900003", (200,), cookie,
-                          must_have='</div><div class="sub">Archived</div>') or b""
+                          must_have='</div><div class="sub" id="archtag">Archived</div>') or b""
             if b'<span style="color:var(--m1)">Archived' in sbody:
                 fails.append("GET /sub/14900003: Archived still trails the subtitle (T145)")
             # the sub's own page wears the same whole-tile grey as search (T141)
@@ -1507,6 +1507,19 @@ def main():
                 fails.append("GET /app.js: a stale failure timer outlives a retry (T216)")
             if css and b".card.arch:has(.undo):hover{filter:grayscale(.55)}" not in css:
                 fails.append("GET /app.css: an archived row un-greys under the cursor (T133)")
+            # the archive chip lasts 10s, holds while hovered or focused, pins to
+            # the thumb zone at 44px on touch, and the detail page flips in place (T144)
+            if js and (b"t=setTimeout(go,10000)" not in js
+                       or b"u.onmouseenter=function(){hov=true;arm();}" not in js
+                       or b"u.onfocus=function(){fcs=u.matches(':focus-visible');arm();}" not in js
+                       or b"if(matchMedia('(pointer:coarse)').matches)document.body.appendChild(u);" not in js
+                       or b"if(row&&!document.getElementById('archtoggle')){location.reload();return;}" not in js):
+                fails.append("GET /app.js: the archive Undo chip is brief, unpausable or reloads /sub (T144)")
+            if css and (b"body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px))" not in css
+                        or b"min-height:44px" not in css.split(b"body>.undo{", 1)[-1].split(b"}", 1)[0]):
+                fails.append("GET /app.css: the touch Undo chip is not a 44px thumb-zone chip (T144)")
+            check("GET /sub/14900001 (archtag)", "/sub/14900001", (200,), cookie,
+                  must_have='<div class="sub" id="archtag" hidden>Archived</div>')
             if b'title="Archived submissions are hidden from the list. Nothing is deleted."' not in body:
                 fails.append("GET /: the Archived pill has no helper line (T133)")
 
