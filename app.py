@@ -1114,6 +1114,15 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  0 10px 26px var(--shc)}
 /* bleeds by padding + border so the field, not the glass, sits on the page margin (T143) */
 .toolbar.tbq{padding:7px 8px;border-radius:14px;margin-inline:-9px}
+/* the gap above the stuck bar is ground, not a slice of the row sliding under it (T176).
+   Same layers as body::before, sized to the viewport; over content, under the bar. Only once
+   .raised (stuck), so the links above a resting bar stay whole. 26 = the
+   10px offset plus the corner radius, so the corners don't show the row either. A condensed
+   masthead already covers the top with glass; past 10px the band would seam through it. */
+html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0;height:26px;z-index:19;
+ pointer-events:none;background-color:var(--bg);background-image:var(--amb);
+ background-size:100% 100vh;background-repeat:no-repeat}
+@media(max-width:640px),(max-height:500px){html:has(header.toolbar.raised)::before{height:10px}}
 .tbsentinel{height:1px;pointer-events:none}
 .tbtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .tbend{display:flex;gap:12px;align-items:center}
@@ -1753,9 +1762,9 @@ button:disabled{opacity:.5;cursor:default}
  .filters,.sbar{isolation:isolate}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
   background:rgba(0,0,0,.72)}
- body::before{background:none}}
+ body::before,html:has(.toolbar.raised)::before{background-image:none}}
 @media(prefers-contrast:more){
- body::before{background:none}}
+ body::before,html:has(.toolbar.raised)::before{background-image:none}}
 """
 
 # favicon: accent-colored card-fan mark (three cards, opacity steps for depth),

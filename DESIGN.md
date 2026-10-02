@@ -613,7 +613,10 @@ fade on whichever edge still has tiles past it (`.sl` / `.sr`, set by the same F
 filter capsule uses); a strip that fits is never faded.
 
 The toolbar is sticky at `top: 10px` (`z-index: 20`), preceded by a 1px sentinel that drives
-its scroll-edge elevation; the filter capsule floats below it. The compact search bar on
+its scroll-edge elevation; the filter capsule floats below it. A fixed 26px ground band
+(`html:has(.toolbar.raised)::before`, `z-index: 19`, the ambient layers sized to the viewport) masks
+the gap and the corners above it once the bar is stuck, so no slice of a row shows over the glass; 10px under a
+condensed masthead, whose glass already covers the top. The compact search bar on
 /cards and /search bleeds 9px each side (padding plus border) so its field lines up with the
 h1 and the groups; the glass hangs into the gutter. Scan grids are
 `repeat(auto-fill, minmax(152px, 1fr))` with an 18px gutter, tightening to

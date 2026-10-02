@@ -485,6 +485,12 @@ def main():
             if (b".toolbar.tbq{padding:7px 8px;border-radius:14px;margin-inline:-9px}" not in css
                     or b"margin:16px 0 4px;padding:12px 14px;" not in css):
                 fails.append("GET /app.css: the search field is off the page margin (T143)")
+            # a ground band under the stuck bar hides the row in the gap and corners;
+            # only once raised, so the resting page keeps its top links (T176)
+            if (b"html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0;"
+                    b"height:26px;z-index:19;" not in css
+                    or b"html:has(header.toolbar.raised)::before{height:10px}" not in css):
+                fails.append("GET /app.css: the gap above the stuck toolbar is unmasked (T176)")
         # taps and submits show they are working: a guarded nav bar, one POST per
         # form, a busy submitter, all cleared on back/forward restore (T198)
         gate = check("GET / (gate nav bar)", "/", (200,), must_have="window.psaNav=function")
