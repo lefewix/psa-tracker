@@ -1512,9 +1512,10 @@ def main():
             if js and (b"t=setTimeout(go,10000)" not in js
                        or b"u.onmouseenter=function(){hov=true;arm();}" not in js
                        or b"u.onfocus=function(){fcs=u.matches(':focus-visible');arm();}" not in js
-                       or b"if(matchMedia('(pointer:coarse)').matches)document.body.appendChild(u);" not in js
+                       or b"var o=document.querySelector('body>.undo'); if(o)o._go();" not in js
+                       or b"document.body.appendChild(u);" not in js
                        or b"if(row&&!document.getElementById('archtoggle')){location.reload();return;}" not in js):
-                fails.append("GET /app.js: the archive Undo chip is brief, unpausable or reloads /sub (T144)")
+                fails.append("GET /app.js: the archive Undo chip is brief, unpausable, stacks or reloads /sub (T144)")
             if css and (b"body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px))" not in css
                         or b"min-height:44px" not in css.split(b"body>.undo{", 1)[-1].split(b"}", 1)[0]):
                 fails.append("GET /app.css: the touch Undo chip is not a 44px thumb-zone chip (T144)")

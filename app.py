@@ -2824,11 +2824,16 @@ ARCH_JS = """<script>
         f.insertBefore(u,b); b.hidden=true;
         /* a phone pins it to the thumb zone; in body, because the archived
            row's filter would pin it to the row instead */
-        if(matchMedia('(pointer:coarse)').matches)document.body.appendChild(u);
+        if(matchMedia('(pointer:coarse)').matches){
+          /* one fixed slot: a chip already there closes first, or they stack */
+          var o=document.querySelector('body>.undo'); if(o)o._go();
+          document.body.appendChild(u);
+        }
+        u._go=go;
         /* when the window closes the row leaves the view, taking the button
            with it, so the Archived pill it went behind takes the focus */
         function go(){var uf=document.activeElement===u;
-          u.remove(); b.hidden=false; if(row)place(row);
+          clearTimeout(t); u.remove(); b.hidden=false; if(row)place(row);
           back(row&&row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
         }
         /* 10s, held while hovered or keyboard focused (2.2.1). Not on a
