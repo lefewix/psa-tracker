@@ -533,6 +533,8 @@ def main():
                     or b".own:not(:placeholder-shown) + .ownedit{display:flex;opacity:.5}" not in css
                     or b".own:not([readonly]) + .ownedit{display:none}" not in css):
                 fails.append("GET /app.css: desktop has no visible way to edit an owner tag (T134)")
+            if b"@media(pointer:coarse){\n .ownedit{display:flex}" not in css:
+                fails.append("GET /app.css: touch lost the pencil beside every owner tag (T134)")
             # archived cards carry grayscale only, in every view: an opacity wash
             # fades the card's own surface and takes the text under 4.5:1 (T51)
             if b".card.arch{filter:grayscale(" not in css:
