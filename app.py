@@ -656,6 +656,7 @@ DISCORD_JS = """<script>
     document.getElementById('dclose').addEventListener('click',function(){dm.classList.remove('on');});
     dm.addEventListener('click',function(e){if(e.target===dm)dm.classList.remove('on');});
     document.addEventListener('keydown',function(e){if(e.key==='Escape')dm.classList.remove('on');});
+    if(location.hash==='#discord'){history.replaceState(null,'',location.pathname+location.search);db.click();}
   }
   function post(owner,id,done){
     fetch('/discord',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
@@ -3824,13 +3825,24 @@ def detail_page(a, sub):
     # sub does not read "Completing" above a line that says "Grades ready" (T114)
     stage_word = ("Grades ready" if sub["grades_ready"] and stage_index(sub["status"]) == 6
                   else sub["status"])
+    # one owner on the sub: their Discord pings, opened on their page (T137). A
+    # mixed sub has no one person to send, and each tag opens its owner's page.
+    who = {owners.get(str(c["cert_id"]), "").lower(): owners.get(str(c["cert_id"]), "")
+           for c in cards}
+    who.pop("", None)
+    ping = ""
+    if len(who) == 1:
+        o = next(iter(who.values()))
+        if not discord_linked(a, o):
+            ping = (f'<a class="f dbtn" href="/cards?owner={html.escape(urllib.parse.quote(o))}'
+                    f'#discord">Get pinged when your cards move</a>')
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}{tag}</div></div>
+<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}{tag}</div>{ping}</div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
 {body}{owner_datalist(owners) if cards else ""}

@@ -1183,9 +1183,19 @@ def main():
             # count in place; the reload agrees (T168)
             call(url, "/owner", cookie, {"cert_id": "99000001", "owner": "Bob"})
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "Bob"})
-            check("GET /cards?owner=Bob", "/cards?owner=Bob", (200,), cookie,
-                  must_have="2 cards with")
+            bob = check("GET /cards?owner=Bob", "/cards?owner=Bob", (200,), cookie,
+                        must_have="2 cards with") or b""
+            # one way into Discord pings on a one-owner sub and on the person
+            # page; the sub link lands on the page with the panel open (T137)
+            sb = call(url, "/sub/14900001", cookie)[1] or b""
+            if (sb.count(b"#discord") != 1 or b'class="f dbtn" href="/cards?owner=Bob#discord">'
+                    b"Get pinged when your cards move</a>" not in sb
+                    or bob.count(b'id="dopen"') != 1 or b"#discord" in bob
+                    or (js and b"if(location.hash==='#discord')" not in js)):
+                fails.append("GET /sub/14900001, /cards?owner=Bob: not one way into Discord pings (T137)")
             call(url, "/owner", cookie, {"cert_id": "99000002", "owner": "Cara"})
+            if b"#discord" in (call(url, "/sub/14900001", cookie)[1] or b""):
+                fails.append("GET /sub/14900001: a mixed sub links one owner's Discord pings (T137)")
             check("GET /cards?owner=Bob (retagged)", "/cards?owner=Bob", (200,), cookie,
                   must_have="1 card with")
             if js and (b"function _recount(" not in js or b"leave=setTimeout(go,6000)" not in js
