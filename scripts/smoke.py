@@ -966,7 +966,7 @@ def main():
             dbody = check("GET / (Archived line)", "/", (200,), cookie,
                           must_have='id="archhd" hidden>Archived · 2 submissions</div>') or b""
             for want in (b"hd.hidden=!on", b"' archived submission'", b"say('Showing '",
-                         b"t load archived submissions"):
+                         b"t load archived submissions", b"clearTimeout(l.st)"):
                 if want not in dbody:
                     fails.append(f"GET /: Archived toggle lacks {want.decode()!r} (T145)")
             if js and b"getElementById('archhd')" not in js:

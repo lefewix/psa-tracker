@@ -3728,7 +3728,7 @@ def dash_page(a, subs):
   try{{localStorage.setItem('psa_hint_seen','1');}}catch(e){{}}}});}})();
 var af=document.getElementById('archtoggle');
 function say(m){{var l=document.getElementById('live');
- if(l){{l.textContent='';setTimeout(function(){{l.textContent=m;}},30);}}}}
+ if(l){{l.textContent='';clearTimeout(l.st);l.st=setTimeout(function(){{l.textContent=m;}},30);}}}}
 function unsk(){{var l=document.getElementById('list');clearTimeout(af.skt);
  l.querySelectorAll('.skcard').forEach(function(c){{c.remove();}});l.removeAttribute('aria-busy');}}
 if(af)af.addEventListener('click',function(){{
