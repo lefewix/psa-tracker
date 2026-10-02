@@ -1385,6 +1385,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .own[readonly]{cursor:pointer}
 .own::placeholder{color:var(--m1)}
 .own::-webkit-calendar-picker-indicator{display:none!important}
+.own::-webkit-list-button{display:none!important}
 /* pointer focus keeps the underline; keyboard focus gets the ring - 1px is not a visible
    indicator (2.4.11). focus-visible after :focus so it wins. */
 .own:focus{border-bottom-color:var(--ring);outline:none}

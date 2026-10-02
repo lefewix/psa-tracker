@@ -1050,6 +1050,8 @@ def main():
                         or b'class="own"' not in b
                         or b.count(b'class="own"') != b.count(b'list="owners"')):
                     fails.append(f"GET {p}: owner fields lack the one names datalist (T135)")
+            if css and b".own::-webkit-list-button{display:none" not in css:
+                fails.append("GET /app.css: Safari's datalist arrow shows on the tag (T135)")
             # a no-result search names the next move and links every owner (T154)
             body = check("GET /search (no result)", "/search?q=zzzznothinghere",
                          (200,), cookie) or b""
