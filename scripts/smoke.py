@@ -961,6 +961,20 @@ def main():
                   must_have='<span class="archs">Arch.</span><span class="archn"> · 2</span>')
             if css and re.search(rb"\.archn\{display:none", css):
                 fails.append("GET /app.css: a rule hides the Archived count again")
+            # the archived view says so in ink and in #live, and the sub page
+            # gives Archived its own line (T145)
+            dbody = check("GET / (Archived line)", "/", (200,), cookie,
+                          must_have='id="archhd" hidden>Archived · 2 submissions</div>') or b""
+            for want in (b"hd.hidden=!on", b"' archived submission'", b"say('Showing '",
+                         b"t load archived submissions"):
+                if want not in dbody:
+                    fails.append(f"GET /: Archived toggle lacks {want.decode()!r} (T145)")
+            if js and b"getElementById('archhd')" not in js:
+                fails.append("GET /app.js: archiving leaves the Archived line's count (T145)")
+            sbody = check("GET /sub/14900003 (Archived line)", "/sub/14900003", (200,), cookie,
+                          must_have='</div><div class="sub">Archived</div>') or b""
+            if b'<span style="color:var(--m1)">Archived' in sbody:
+                fails.append("GET /sub/14900003: Archived still trails the subtitle (T145)")
             check("GET /cards (one card untagged)", "/cards", (200,), cookie,
                   must_have="1 card awaiting an owner")
             arch("14900001", "0")

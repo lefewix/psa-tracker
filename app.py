@@ -1196,6 +1196,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .tierhd{font-size:14px;font-weight:650;color:var(--m1);margin:22px 4px 8px}
 .tierhd:first-child{margin-top:4px}
 #list.archview .tierhd{display:none}
+#archhd{margin-top:4px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
@@ -2746,6 +2747,8 @@ ARCH_JS = """<script>
     var v=Math.max(0,(m?parseInt(m[1],10):0)+d);
     p.setAttribute('aria-label','Archived \\u00b7 '+v);
     var n=p.querySelector('.archn'); if(n)n.textContent=' \\u00b7 '+v;
+    var h=document.getElementById('archhd');
+    if(h)h.textContent='Archived \\u00b7 '+v+' submission'+(v===1?'':'s');
   }
   /* In place, no reload. Archiving is the operator's most frequent action and
      it was the only state change in the product with no undo, no spoken
@@ -3696,6 +3699,8 @@ def dash_page(a, subs):
                f'title="Archived submissions are hidden from the list. Nothing is deleted.">'
                f'<span class="archl">Archived</span><span class="archs">Arch.</span>'
                f'<span class="archn"> · {len(gone)}</span></button>') if gone else ""
+    archhd = (f'<div class="tierhd" id="archhd" hidden>Archived · {len(gone)} '
+              f'submission{"" if len(gone) == 1 else "s"}</div>') if gone else ""
     rowend = (f'<div class="rowend">{needlink}{archpill}</div>'
               if (needlink or archpill) else "")
     filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'
@@ -3710,7 +3715,7 @@ def dash_page(a, subs):
 <a class="skip" href="#list">Skip to submissions</a>
 {gear_html()}{toolbar}
 {hint}
-{filterrow}
+{filterrow}{archhd}
 <div id="list" tabindex="-1"{listrole}>{body}</div>
 <div class="vh" id="live" aria-live="polite"></div>
 </main>
@@ -3722,6 +3727,8 @@ def dash_page(a, subs):
  if(x)x.addEventListener('click',function(){{h.style.display='none';
   try{{localStorage.setItem('psa_hint_seen','1');}}catch(e){{}}}});}})();
 var af=document.getElementById('archtoggle');
+function say(m){{var l=document.getElementById('live');
+ if(l){{l.textContent='';setTimeout(function(){{l.textContent=m;}},30);}}}}
 function unsk(){{var l=document.getElementById('list');clearTimeout(af.skt);
  l.querySelectorAll('.skcard').forEach(function(c){{c.remove();}});l.removeAttribute('aria-busy');}}
 if(af)af.addEventListener('click',function(){{
@@ -3729,6 +3736,12 @@ if(af)af.addEventListener('click',function(){{
   af.setAttribute('aria-pressed',on?'true':'false');
   var lst=document.getElementById('list');
   if(lst)lst.classList.toggle('archview',on);
+  var hd=document.getElementById('archhd');if(hd)hd.hidden=!on;
+  if(on){{var n=parseInt((af.getAttribute('aria-label').match(/[0-9]+/)||['0'])[0],10);
+   say(n+' archived submission'+(n===1?'':'s'));}}
+  else{{var k=[].filter.call(document.querySelectorAll('#list .card[data-sub]'),
+    function(c){{return c.dataset.arch!=='1';}}).length;
+   say('Showing '+k+' submission'+(k===1?'':'s'));}}
   // reads the pill, never the `on` above: show() also runs when the fetch
   // lands, and by then the pill may have been switched back off
   function show(){{var v=af.classList.contains('on');
@@ -3760,7 +3773,8 @@ if(af)af.addEventListener('click',function(){{
        }});
        if(lst.psaSort)lst.psaSort();
        show();
-     }}).catch(function(){{af.dataset.ask='';unsk();if(af.classList.contains('on'))af.click();}});}}
+     }}).catch(function(){{af.dataset.ask='';unsk();if(af.classList.contains('on'))af.click();
+     say('Couldn’t load archived submissions');}});}}
   }}
   show();
 }});
@@ -3853,7 +3867,7 @@ def detail_page(a, sub):
         body = '<div class="empty">No cards assigned yet. PSA lists them during Research &amp; ID.</div>'
     if archived:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="0" aria-label="Unarchive submission #{html.escape(num)}">Unarchive</button>'
-        tag = ' · <span style="color:var(--m1)">Archived</span>'
+        tag = '<div class="sub">Archived</div>'
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1" aria-label="Archive submission #{html.escape(num)}">Archive</button>'
         tag = ""
@@ -3882,7 +3896,7 @@ def detail_page(a, sub):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
 <div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}{tag}</div>{ping}</div>
+<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}</div>{tag}{ping}</div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
 {body}{owner_datalist(owners) if cards else ""}
