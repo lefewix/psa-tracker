@@ -1386,6 +1386,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
  color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
  transition:color .15s,background-color .15s}
 .undo.uerr{color:var(--err)}
+.footacts .undo{margin:-12px -6px}
 /* ---- lightbox ------------------------------------------------------------ */
 /* overscroll-behavior:contain stops a scrim drag chaining to the dashboard; LIGHTBOX_JS pins
    body overflow. */
@@ -1572,6 +1573,7 @@ button:disabled{opacity:.5;cursor:default}
    the sub-number link is. */
 .card.grp:hover,.card.tlcard:hover{background:var(--surface)}
 .card.arch:hover{filter:none}
+.card.arch:has(.undo):hover{filter:grayscale(.55)}
 .gc.arch:hover a[href^="/img"]{opacity:.78;filter:grayscale(.3)}
 .f:hover{color:var(--fhov)}
 .f.on:hover{color:var(--ac-pale)}
@@ -2784,17 +2786,18 @@ ARCH_JS = """<script>
         var f=b.parentNode, old=f.querySelector('.undo');
         if(old)old.remove();
         var u=document.createElement('button');
-        u.type='button'; u.className='undo'; u.textContent='Undo';
-        f.insertBefore(u,b);
+        u.type='button'; u.className='undo';
+        u.textContent=(on?'Archived':'Unarchived')+' \\u00b7 Undo';
+        f.insertBefore(u,b); b.hidden=true;
         /* when the window closes the row leaves the view, taking the button
            with it, so the Archived pill it went behind takes the focus */
         var t=setTimeout(function(){var uf=document.activeElement===u;
-          u.remove(); place(row);
+          u.remove(); b.hidden=false; place(row);
           back(row.style.display==='none'?document.getElementById('archtoggle'):b,uf);
         },6000);
         u.addEventListener('click',function(){
           var uf=document.activeElement===u;
-          clearTimeout(t); u.remove(); b.disabled=true;
+          clearTimeout(t); u.remove(); b.hidden=false; b.disabled=true;
           post(sub,!on,function(ok2){
             b.disabled=false;
             if(ok2){flip(row,b,!on);
@@ -3611,7 +3614,8 @@ def dash_page(a, subs):
     # so .archn is safe). The count lives in its own span for the script; the
     # 640px block swaps the label for "Arch." and never drops the count.
     archpill = (f'<button type="button" class="f farch fsolo" '
-               f'id="archtoggle" aria-pressed="false" aria-label="Archived · {len(gone)}">'
+               f'id="archtoggle" aria-pressed="false" aria-label="Archived · {len(gone)}" '
+               f'title="Archived submissions are hidden from the list. Nothing is deleted.">'
                f'<span class="archl">Archived</span><span class="archs">Arch.</span>'
                f'<span class="archn"> · {len(gone)}</span></button>') if gone else ""
     rowend = (f'<div class="rowend">{needlink}{archpill}</div>'

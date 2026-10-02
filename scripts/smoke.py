@@ -1354,6 +1354,16 @@ def main():
             js = check("GET /app.js (T52)", "/app.js", (200,), cookie)
             if js and b"back(u,foc)" not in js:
                 fails.append("GET /: archiving does not move focus to the Undo chip")
+            # one undo affordance: the chip names the action and stands in for
+            # the row's button, and the row stays grey under the cursor (T133)
+            if js and (b"(on?'Archived':'Unarchived')+' \\u00b7 Undo'" not in js
+                       or b"f.insertBefore(u,b); b.hidden=true;" not in js
+                       or js.count(b"b.hidden=false;") != 2):
+                fails.append("GET /app.js: archiving leaves two undo words on the row (T133)")
+            if css and b".card.arch:has(.undo):hover{filter:grayscale(.55)}" not in css:
+                fails.append("GET /app.css: an archived row un-greys under the cursor (T133)")
+            if b'title="Archived submissions are hidden from the list. Nothing is deleted."' not in body:
+                fails.append("GET /: the Archived pill has no helper line (T133)")
 
             # --- one Escape closes the search preview: without preventDefault
             # the native type=search clear fires `input` and reopens it (T53)

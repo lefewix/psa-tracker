@@ -1092,6 +1092,8 @@ standing in for icons, no raster icons.
   behind that one.
 - **Do** keep a row on screen, in its new state, while its Undo chip is up — a chip that lives
   inside the row cannot be reachable if the row leaves the view the moment it flips.
+  The chip reads "Archived · Undo" and stands in for the row's own button until it goes; the
+  row stays grey under the cursor while it is up (`.card.arch:has(.undo):hover`).
 - **Do** give a destructive-ish action the same undo grammar the owner tag uses, and announce
   it. Reversibility belongs to the action that is hard to reverse, not the easy one.
 - **Do** hand focus to the Undo chip when disabling the pressed button would drop it to body,
