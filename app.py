@@ -3630,6 +3630,8 @@ def scan_fix(why):
         return f"PSA is down or blocking the tracker, so nothing in {s} needs changing yet."
     if why.startswith("login failed"):
         return f"Signing in to PSA failed; if it keeps failing, save the PSA password again in {s}."
+    if why.startswith("PSA payload changed"):
+        return f"PSA changed how it lists submissions and the tracker needs an update; nothing in {s} fixes it."
     return f"The scanner hit an error, so check the account in {s}."
 
 def sync_dot(stale, has_subs):
@@ -3708,8 +3710,8 @@ def dash_page(a, subs):
         # several scans missed in a row means the PSA link is down, and the
         # statuses below are older than they look
         if stale is not None and stale >= 6:
-            # "why" is the scripts' own line, not free text, but it carries an
-            # exception string, so it is escaped like anything else (T105)
+            # scan_fix maps the scripts' cause line to fixed copy; the raw line,
+            # exception text and all, never reaches the page (T128)
             hint = ('<div class="hint warn" role="status"><span>Not connecting to PSA since '
                     f'{int(stale)} hours ago, so these statuses may be behind. '
                     f'{scan_fix(scan_error(a))}</span></div>') + hint
