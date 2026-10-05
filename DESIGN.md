@@ -52,7 +52,7 @@ colors:
   segment-on: "#ffffff"
   segment-on-dark: "rgba(255,255,255,.1)"
   grade-red: "#b12b2b"
-  grade-red-dark: "#ff7a6e"
+  grade-red-dark: "#ff8779"
   alert: "#b03a2e"
   alert-dark: "#ff8a7a"
   saved-green: "#2f9e68"
@@ -1029,8 +1029,10 @@ Every tag shares one page-level `<datalist id="owners">` of the names in use, so
 offers existing people; the picker arrow is hidden in Chrome and Safari (T135).
 
 ### Scan Tile (signature)
-Each tile is an **inset well**: `--surface3` under a 1px `--hair`, 12px radius, 10px padding,
-and **no shadow** — a well inside a raised card is still one card deep, and a second shadow
+Each tile is an **inset well**: `--surface3` (opaque `#2e2f32` in dark, one colour on any ground)
+under a 1px `--hair`, 12px radius, 10px padding. A grid straight on the page ground (`/sub`, `/search`)
+paints the tile `--surface` and its neutral chips `--surface3`, as light `--surface3` is the ground's grey (T119).
+Tiles carry **no shadow** — a well inside a raised card is still one card deep, and a second shadow
 would make it a nested card. Inside it the image sits in one fixed **380/635 box** — the ratio of a
 slabbed PSA scan — under `object-fit: contain` on a transparent ground, so it is **never
 cropped**: PSA's `/small/` renditions are not one shape (a slab is 380x635, a raw prelim photo

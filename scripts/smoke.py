@@ -270,6 +270,21 @@ def accent_checks(fails):
             fails.append(f"--ac2 with {env or 'no accent env'}: want {want} (T182)")
 
 
+def well_checks(fails):
+    """The scan well is one opaque colour per palette and the PSA 10 chip clears
+    4.5:1 on its tint over that well in both (T119)."""
+    sys.path.insert(0, ROOT)
+    import app
+    for name, pal in (("light", app._LIGHT), ("dark", app._DARK)):
+        if not pal["surface3"].startswith("#"):
+            fails.append(f"app.py: {name} --surface3 is translucent again (T119)")
+            continue
+        g = app._rgb(pal["grade"])
+        c = app._contrast(g, app._over(g, 0.14, app._rgb(pal["surface3"])))
+        if c < 4.5:
+            fails.append(f"app.py: {name} PSA 10 chip is {c:.2f}:1 on the well (T119)")
+
+
 def common_checks(fails):
     """log, notify and env_set live in psa_common.py only, every caller imports
     them, and deploy.sh ships the file beside app.py (T86)."""
@@ -491,6 +506,9 @@ def main():
                     b"height:26px;z-index:19;" not in css
                     or b"html:has(header.toolbar.raised)::before{height:10px}" not in css):
                 fails.append("GET /app.css: the gap above the stuck toolbar is unmasked (T176)")
+            # a grid on the page ground takes the card plane, light's well is the ground (T119)
+            if b".wrap>.grid .gc{background:var(--surface)}" not in css:
+                fails.append("GET /app.css: tiles on the page ground melt into it (T119)")
         # taps and submits show they are working: a guarded nav bar, one POST per
         # form, a busy submitter, all cleared on back/forward restore (T198)
         gate = check("GET / (gate nav bar)", "/", (200,), must_have="window.psaNav=function")
@@ -692,6 +710,7 @@ def main():
         copy_checks(fails)
         env_checks(fails)
         accent_checks(fails)
+        well_checks(fails)
         common_checks(fails)
         tracking_checks(fails)
         comment_checks(fails)

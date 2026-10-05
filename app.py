@@ -118,7 +118,7 @@ _BG_DARK = _rgb("#101113")                     # dark page ground
 _CARD_DARK = _rgb("#1c1d20")                   # dark card surface
 _BG_LIGHT = _rgb("#f2f2f7")                    # light page ground (cards are white)
 _S3_LIGHT = _rgb("#f2f2f4")                    # --surface3 light (hover pill ground)
-_S3_DARK = _over(_WHITE, 0.08, _CARD_DARK)     # --surface3 dark, composited on the card
+_S3_DARK = _rgb("#2e2f32")                     # --surface3 dark (opaque, T119)
 _TRACK_LIGHT = _rgb("#ececef")                 # stage-bar track grounds
 _TRACK_DARK = _over(_WHITE, 0.14, _CARD_DARK)
 _FILL = _share(_AC_RGB, _BLACK, _WHITE, 4.5, 86)
@@ -146,7 +146,7 @@ _AC_MIX_D = {"--ac-hot": f"{_share(_AC_RGB, _WHITE, _S3_DARK, 4.5, 82)}%,white",
 # under white cards, dark is near-black #101113 under #1c1d20 cards. Never
 # blue-gray, never pure black.
 _DARK = {"bg": "#101113", "surface": "#1c1d20",
- "surface3": "rgba(255,255,255,.08)", "inp": "rgba(255,255,255,.08)",
+ "surface3": "#2e2f32", "inp": "rgba(255,255,255,.08)",
  "hovrow": "rgba(255,255,255,.07)",
  # search-preview tag chip: dark grounds swallow a low-alpha accent wash, so the
  # same chip needs a heavier mix here than in light to read at all.
@@ -176,7 +176,7 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "shc": "rgba(0,0,0,.34)", "shc2": "rgba(0,0,0,.5)", "shc3": "rgba(0,0,0,.28)",
  "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.4)",
  "sk": "color-mix(in srgb,var(--txt) 7%,transparent)",
- "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff7a6e", "fhov": "#ffffff",
+ "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff8779", "fhov": "#ffffff",
  "ok": "#43c383"}
 _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  "surface3": "#f2f2f4", "inp": "#f2f2f4",
@@ -213,7 +213,9 @@ def _check_neutrals():
             v = pal[tok]
             if not v.startswith("#"):
                 continue
-            c = _contrast(_rgb(v), bg)
+            # the 10 chip's ink sits on its own 14% tint over the scan well (T119)
+            c = _contrast(_rgb(v), _over(_rgb(v), 0.14, _rgb(pal["surface3"]))
+                          if tok == "grade" else bg)
             if c < target:
                 print(f"WARNING: --{tok} {v} on {name} bg is {c:.2f}:1 "
                       f"(target {target}:1)", flush=True)
@@ -1325,6 +1327,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    negative-margin bleed. FX_JS handles the off-screen sweep instead. */
 .gc{background:var(--surface3);border:1px solid var(--hair);border-radius:12px;padding:10px;
  display:flex;flex-direction:column}
+/* a grid straight on the page ground (/sub, /search): light --surface3 is the ground's own
+   grey, so the tile takes the card plane and the neutral chips take the well. (T119) */
+.wrap>.grid .gc{background:var(--surface)}
+.wrap>.grid .gc .g9,.wrap>.grid .gc .glo{background:var(--surface3)}
 /* --sk, the loading ground: a dead tile is the loading tile without the sweep, so it reads
    quieter than a scan still on its way instead of brighter. (T197) */
 .gc .ph{width:100%;aspect-ratio:380/635;border-radius:6px;
