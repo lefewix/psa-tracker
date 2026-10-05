@@ -570,7 +570,7 @@ def main():
             # stage bar stops short of the View cards capsule (T120)
             for rule in (b"#list:has(>.grp),#archgrid:has(>.grp){display:flex;flex-wrap:wrap",
                          b".card.grp{width:fit-content;", b".grp>.grid>*{flex:0 0 196px}",
-                         b".grp>.bar{margin-right:112px}"):
+                         b".grp>.bar{margin-right:112px}", b".grp>.stage>span{white-space:nowrap}"):
                 if rule not in css:
                     fails.append(f"GET /app.css: person page groups lost {rule.decode()} (T120)")
             # archived cards carry grayscale only, in every view: an opacity wash

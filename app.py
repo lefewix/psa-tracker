@@ -1297,7 +1297,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  .strip.sl{--fadel:28px}
  .strip.sr{--fader:28px}
  /* person page: each sub group is as wide as its tiles (196px tracks), groups flow side by
-    side. The note and stage line take the group's width, never set it. */
+    side. The note takes the group's width; the one-line stage line may widen it. */
  #list:has(>.grp),#archgrid:has(>.grp){display:flex;flex-wrap:wrap;gap:0 14px;align-items:flex-start}
  .card.grp{width:fit-content;min-width:264px;max-width:100%}
  .grp>.grid{display:flex;flex-wrap:wrap}
@@ -1308,7 +1308,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  .grp>.top>div>*{grid-column:1}
  .grp>.top .pills{grid-column:2;grid-row:1/3}
  .grp>.top .meta+.meta{grid-column:1/-1;contain:inline-size}
- .grp>.stage{contain:inline-size}
+ .grp>.stage>span{white-space:nowrap}
  /* the bar stops where the View cards capsule (97px) and its 14px gap begin */
  .grp>.bar{margin-right:112px}}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
