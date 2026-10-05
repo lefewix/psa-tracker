@@ -1228,6 +1228,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
  font-size:14px;color:var(--m1);margin:16px 0 10px}
 .stage>span{min-width:0}
+.stage span span{white-space:nowrap}
 /* no bar under an unknown status, so the stage line is last and its margin would double the
    card pad. */
 .stage.nobar{margin-bottom:0}
@@ -2538,9 +2539,18 @@ Changes apply at the next sync, within about 20 minutes.</div>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
+def _day(s):
+    """PSA's '07/21/26' or an ISO stamp -> its date, else None."""
+    for f in (lambda v: datetime.strptime(v, "%m/%d/%y"), lambda v: datetime.fromisoformat(v[:10])):
+        try:
+            return f(s).date()
+        except (ValueError, TypeError):
+            pass
+    return None
+
 def stage_dates(a, sub):
-    """stage label -> 'Jul 20': when the sub ENTERED each stage, for the detail
-    timeline. Arrived/Shipped use PSA's own dates; middle stages use the
+    """stage label -> ('Jul 20', date): when the sub ENTERED each stage, for the
+    detail timeline. Arrived/Shipped use PSA's own dates; middle stages use the
     status_history transitions the scanner actually observed. A sub's initial
     import row (seen_at == first_seen) is discovery, not a transition - skipped."""
     d = {}
@@ -2556,18 +2566,18 @@ def stage_dates(a, sub):
         if r["seen_at"] == (sub["first_seen"] or ""):
             continue
         if r["status"] in STAGES and r["status"] not in d:
-            d[r["status"]] = short_date(r["seen_at"])
+            d[r["status"]] = (short_date(r["seen_at"]), _day(r["seen_at"]))
     if sub["arrived"]:
-        d["Arrived"] = fmt_mdy(sub["arrived"])
+        d["Arrived"] = (fmt_mdy(sub["arrived"]), _day(sub["arrived"]))
     if sub["shipped"]:
-        d["Shipped"] = fmt_mdy(sub["shipped"])
+        d["Shipped"] = (fmt_mdy(sub["shipped"]), None)
     return d
 
 def timeline_html(status, dates=None, aside="", key="", ready=False):
     """Stage state as one text line (current stage, accent) above the 4px
-    progress capsule. `dates` (stage -> 'Jul 20', from stage_dates) appends when
-    the sub entered its current stage - detail pages only, so a dashboard row
-    stays to a single line. `aside` (the row's one link) rides the bar's own
+    progress capsule. `dates` (stage -> ('Jul 20', date), from stage_dates)
+    appends when the sub entered its current stage and how many days it has sat
+    there - detail pages only, so a dashboard row stays to a single line. `aside` (the row's one link) rides the bar's own
     row as a capsule pill at its right end.
     `key` is the sub number: FX_JS remembers each sub's stage per browser and
     only runs the bar's run-out for one that actually MOVED since the last
@@ -2584,9 +2594,13 @@ def timeline_html(status, dates=None, aside="", key="", ready=False):
     pct = 100.0 * (idx + 1) / len(STAGES)
     word = "Grades ready" if (ready and idx == 6) else STAGES[idx]
     line = f'<b>{html.escape(word)}</b> · stage {idx + 1} of {len(STAGES)}'
-    since = (dates or {}).get(STAGES[idx], "")
-    if since:
-        line += f' · since {html.escape(since)}'
+    since, day = (dates or {}).get(STAGES[idx], ("", None))
+    n = (datetime.now(DISPLAY_TZ).date() - day).days if day else -1
+    if n == 0:
+        line += ' · <span>since today</span>'
+    elif since:
+        days = f', {n} day{"s" if n != 1 else ""}' if n > 0 else ""
+        line += f' · <span>since {html.escape(since)}{days}</span>'
     k = f' data-k="{html.escape(str(key))}" data-st="{idx}"' if key else ""
     # aside rides the far end of the stage line, worn as a quiet capsule pill
     # (owner calls 2026-08-08: a bar-row placement was tried and reverted same

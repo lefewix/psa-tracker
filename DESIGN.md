@@ -989,6 +989,8 @@ Not a retrofit — a visible part of the system, and it has house styling.
 The product's signature component: one text line — current stage in accent-as-text at the
 650 data weight, then "· stage N of 8" in muted — above a 4px capsule whose fill transitions
 its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
+Detail pages add "· since Sep 12, 23 days" (days in the current stage, none once shipped),
+kept on one line by `.stage span span{white-space:nowrap}`; dashboard rows never carry it (T130).
 
 **An unknown status draws no bar.** A step the stage map does not carry prints "Status
 unknown" on the stage line, muted and unbolded, with no capsule under it (`.stage.nobar`

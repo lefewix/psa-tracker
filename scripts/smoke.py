@@ -1266,6 +1266,17 @@ def main():
             if b"<b>Arrived</b>" not in body or b"Grades ready" in body:
                 fails.append("GET /sub/14900002: a sub with no grades yet lost its "
                              "own stage word (T114)")
+            # the detail page counts days in the current stage; shipped and the
+            # dashboard rows do not (T130)
+            n = (datetime.date.today() - datetime.date(2026, 8, 1)).days
+            if f"since Aug 01, {n} days</span></span>".encode() not in body:
+                fails.append(f"GET /sub/14900002: no '{n} days' on the current stage (T130)")
+            if re.search(rb", \d+ days?</span>", check("GET /sub/14900004 (T130)", "/sub/14900004",
+                                                      (200,), cookie)):
+                fails.append("GET /sub/14900004: a shipped sub still counts days (T130)")
+            if re.search(rb'class="stage"><span>[^\n]*?, \d+ days?</span>',
+                         check("GET / (T130)", "/", (200,), cookie)):
+                fails.append("GET /: a dashboard row counts stage days (T130)")
             body = check("GET /sub/14900003 (unmapped status)", "/sub/14900003",
                          (200,), cookie, must_have="Status unknown")
             if b'<div class="bar">' in body:
