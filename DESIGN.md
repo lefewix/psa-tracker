@@ -994,6 +994,10 @@ its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
 unknown" on the stage line, muted and unbolded, with no capsule under it (`.stage.nobar`
 drops the line's bottom margin, so the row keeps the same rhythm as a bar row).
 
+**Person page groups are tile-wide (T120).** Above 640px each sub group is `fit-content` over
+fixed 196px tiles (min 264px) and the groups flow side by side; the status note runs under both
+header columns, and the bar stops 112px short so it never underlines the View cards capsule.
+
 **The run-out is earned, not ambient.** Each bar carries `data-k` (its sub number) and
 `data-st` (its stage index); FX_JS keeps a `psa_stage` map in `localStorage` and knocks a bar
 back to 0% — releasing it on the same 40ms stagger — **only for a sub whose stage differs from

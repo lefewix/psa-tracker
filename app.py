@@ -1295,7 +1295,22 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
   mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
    #000 calc(100% - var(--fader)),transparent)}
  .strip.sl{--fadel:28px}
- .strip.sr{--fader:28px}}
+ .strip.sr{--fader:28px}
+ /* person page: each sub group is as wide as its tiles (196px tracks), groups flow side by
+    side. The note and stage line take the group's width, never set it. */
+ #list:has(>.grp),#archgrid:has(>.grp){display:flex;flex-wrap:wrap;gap:0 14px;align-items:flex-start}
+ .card.grp{width:fit-content;min-width:264px;max-width:100%}
+ .grp>.grid{display:flex;flex-wrap:wrap}
+ .grp>.grid>*{flex:0 0 196px}
+ /* the status note runs under both header columns, so a one-tile group is no ribbon */
+ .grp>.top{display:grid;grid-template-columns:1fr auto;row-gap:0}
+ .grp>.top>div:first-child{display:contents}
+ .grp>.top>div>*{grid-column:1}
+ .grp>.top .pills{grid-column:2;grid-row:1/3}
+ .grp>.top .meta+.meta{grid-column:1/-1;contain:inline-size}
+ .grp>.stage{contain:inline-size}
+ /* the bar stops where the View cards capsule (97px) and its 14px gap begin */
+ .grp>.bar{margin-right:112px}}
 .hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
  color:var(--m1);background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 4px 14px var(--shc3)}
