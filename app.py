@@ -2166,8 +2166,6 @@ def settings_page(msg="", err="", only=""):
         accts = {k: v for k, v in accts.items() if k == only}
     multi = len(accts) > 1
     achips, wchips, wpanes, schips, spanes, ochips, opanes = [], [], [], [], [], [], []
-    live = False  # an account is arming -> page auto-refreshes
-    codefield = False  # a code input is on the page -> it must never auto-refresh
     # an account PSA is asking about sorts first, so arming the second account
     # opens the page on it and not on the healthy one (audit ux-3). sorted() is
     # stable, so everything else keeps load_accounts' order.
@@ -2197,14 +2195,12 @@ def settings_page(msg="", err="", only=""):
             ochips.append(f'<button type="button" class="f schip{on}{att}" data-group="o" '
                           f'data-pane="opane{i}">{mark}{email_html}</button>')
         if ost["waiting"]:
-            # the only state with a code input, so the refresh below stays off:
-            # a reload wipes the digits mid-typing (audit ux-2)
-            codefield = True
             ometa = "Code sent to the phone on this PSA account. Enter it within 10 minutes."
         elif ost["armed"]:
-            live = True
+            # .spoll: the page polls this pane alone, so a code typed elsewhere survives
             ometa = ("Signing in now. The code is on its way to the account’s phone; "
-                     "the field for it appears here as soon as PSA sends it.")
+                     "the field for it appears here as soon as PSA sends it. "
+                     '<span class="spoll">Checking with PSA…</span>')
         elif ost["needed"]:
             ometa = f"PSA is asking to verify this sign-in (since {html.escape(ost['needed'])}). Syncs are paused until a code goes through."
         else:
@@ -2219,7 +2215,7 @@ def settings_page(msg="", err="", only=""):
             obody = f"""<form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="otp_send">
 <button type="submit" class="fillbtn sbtn">Send code</button></form>"""
-        opanes.append(f"""<div class="spane sg-o" id="opane{i}"{hide}>
+        opanes.append(f"""<div class="spane sg-o" id="opane{i}" data-acct="{aid}"{hide}>
 <div class="meta">{ometa}</div>
 {obody}
 </div>""")
@@ -2265,10 +2261,9 @@ def settings_page(msg="", err="", only=""):
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
     obar = f'<div class="sbar">{"".join(ochips)}</div>' if multi else ""
-    refresh = '<meta http-equiv="refresh" content="20">' if (live and not codefield) else ""
     sbar2 = f'<div class="sbar">{"".join(schips)}</div>' if multi else ""
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>{refresh}
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="view" href="/">← Back to the site</a>
@@ -2322,8 +2317,23 @@ def settings_page(msg="", err="", only=""):
  aria-label="PSA password" autocomplete="new-password">
 <button type="submit" class="fillbtn">Add</button>
 </form></div></div>
+<div class="vh" id="live" aria-live="polite"></div>
 <script>
 (function(){{
+  var poll=setInterval(function(){{
+    var ps=document.querySelectorAll('.sg-o');
+    var left=[].filter.call(ps,function(p){{return p.querySelector('.spoll');}});
+    if(!left.length)return clearInterval(poll);
+    if(document.hidden)return;
+    left.forEach(function(p){{
+      fetch('/settings?only='+encodeURIComponent(p.dataset.acct)).then(function(r){{return r.text();}}).then(function(t){{
+        var n=new DOMParser().parseFromString(t,'text/html').querySelector('.sg-o');
+        if(!n||n.innerHTML===p.innerHTML)return;
+        p.innerHTML=n.innerHTML;
+        document.getElementById('live').textContent=p.querySelector('.meta').textContent;
+      }}).catch(function(){{}});
+    }});
+  }},4000);
   function close(m){{m.classList.remove('on');}}
   document.querySelectorAll('.smodal').forEach(function(m){{
     m.addEventListener('click',function(e){{if(e.target===m)close(m);}});
@@ -4676,8 +4686,10 @@ class H(BaseHTTPRequestHandler):
             if self.settings_ok():  # store admins walk straight in
                 m, e = FLASH.pop(urllib.parse.parse_qs(parsed.query).get("m", [""])[0],
                                  ("", ""))
+                scope = self.settings_scope()
+                want = urllib.parse.parse_qs(parsed.query).get("only", [""])[0]
                 return self.send(200, settings_page(msg=m, err=e,
-                                                    only=self.settings_scope()))
+                                                    only=scope or want))
             if not SETTINGS_HASH:
                 return self.send(404, "not found", "text/plain")
             return self.send(200, settings_gate())

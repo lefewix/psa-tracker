@@ -769,7 +769,7 @@ def main():
                                  "capsule that is not the verification code submit")
 
             # --- the verification panel opens on the account PSA is asking
-            # about, and never auto-refreshes under a code field (T11)
+            # about, and never reloads the page: the armed pane polls ?only= (T11, T121)
             odir = os.path.join(base, "accounts", "second")
 
             def otp(*marks):
@@ -789,8 +789,15 @@ def main():
                 fails.append("GET /settings (otp armed): the flagged chip is not marked or not selected")
             if b'value="otp_code"' in b_armed:
                 fails.append("GET /settings (otp armed): a code field renders before PSA sent one")
-            if b'http-equiv="refresh"' not in b_armed:
-                fails.append("GET /settings (otp armed): no auto-refresh while waiting for the SMS")
+            if b'http-equiv="refresh"' in b_armed:
+                fails.append("GET /settings (otp armed): the page still meta-refreshes (T121)")
+            if b'class="spoll"' not in b_armed or b'id="live"' not in b_armed:
+                fails.append("GET /settings (otp armed): no polled pane or no live region (T121)")
+            b_one = check("GET /settings?only=second", "/settings?only=second", (200,),
+                          scookie) or b""
+            if (b_one.count(b'class="spane sg-o"') != 1 or b'data-acct="second"' not in b_one
+                    or b'class="spoll"' not in b_one or b'data-acct="demo"' in b_one):
+                fails.append("GET /settings?only=second: not that account's pane alone (T121)")
             b_wait = otp("armed", "waiting")
             if b'value="otp_code"' not in b_wait:
                 fails.append("GET /settings (otp waiting): no code field")
@@ -1462,6 +1469,9 @@ def main():
                 fails.append("GET /settings (gear session): another account's chip renders")
             if body and b'data-acct="demo"' not in body:
                 fails.append("GET /settings (gear session): the session's own chip is missing")
+            body = call(url, "/settings?only=second", cookie)[1] or b""
+            if b'data-acct="second"' in body:
+                fails.append("GET /settings?only=second (gear session): another account's pane")
             genv = os.path.join(base, "global.env")
             gwas = open(genv, "rb").read()
             if call(url, "/settings/password", cookie,
