@@ -453,7 +453,9 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   `/icon.svg` is the favicon fan on full-bleed accent, padded inside the safe circle.
 - **Ink** (`--txt`): near-black on white, near-white on graphite. All primary text.
 - **Muted** (`--m1`): secondary text — metadata, captions, ETA pills, empty states, the
-  inactive filter label, the archived stage-bar fill.
+  inactive filter label.
+- **Muted Bar** (`--barmuted`): the held and archived stage-bar fill, 2.5 to 3:1 on the track,
+  always quieter than the accent bar.
 - **Tertiary Gray** (`--tert`): the search glyph and other non-text furniture.
 - **Quiet Fill** (`--inp` / `--surface3`): input grounds and the hover pill behind text
   actions. **Skeleton** (`--sk`, `--txt` at 7%): the ground of a loading or dead scan tile. The only filled rectangles in content, and they carry no border.

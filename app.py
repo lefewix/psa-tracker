@@ -162,7 +162,7 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
          "transparent 52%)"),
  "txt": "#f2f2f4", "m1": "#98989f", "tert": "#8a8a92",
  "hair": "rgba(255,255,255,.12)", "hairh": "rgba(255,255,255,.3)",
- "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)",
+ "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)", "barmuted": "#7e7e86",
  "chipfill": "#ffffff", "chippad": "5px 7px",
  "logofx": "brightness(0) invert(1)",
  # Liquid Glass chrome: translucent ground, one soft cast shadow, and a LENS -
@@ -187,7 +187,7 @@ _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
          "transparent 56%)"),
  "txt": "#1d1d1f", "m1": "#6e6e73", "tert": "#86868b",
  "hair": "rgba(0,0,0,.1)", "hairh": "rgba(0,0,0,.28)",
- "hair2": "rgba(0,0,0,.07)", "track": "#ececef",
+ "hair2": "rgba(0,0,0,.07)", "track": "#ececef", "barmuted": "#8e8e93",
  "chipfill": "transparent", "chippad": "0", "logofx": "none",
  "glass": "rgba(255,255,255,.72)", "glasssolid": "#ffffff", "rim": "rgba(255,255,255,.85)",
  "rimb": "rgba(15,20,30,.06)",
@@ -219,6 +219,10 @@ def _check_neutrals():
             if c < target:
                 print(f"WARNING: --{tok} {v} on {name} bg is {c:.2f}:1 "
                       f"(target {target}:1)", flush=True)
+        # held/archived bar: seen on its track, but quieter than the 3:1 --bar (T148)
+        c = _contrast(_rgb(pal["barmuted"]), _TRACK_LIGHT if name == "light" else _TRACK_DARK)
+        if not 2.5 <= c < 3.0:
+            print(f"WARNING: --barmuted on {name} track is {c:.2f}:1 (target 2.5-3:1)", flush=True)
 
 _check_neutrals()
 
@@ -1240,7 +1244,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
  transition:width .55s cubic-bezier(.23,1,.32,1)}
 /* a held sub is not advancing and an archived one is done, so neither earns the accent fill. */
-.card.arch .bar i,.card.hold .bar i{background:var(--m1)}
+.card.arch .bar i,.card.hold .bar i{background:var(--barmuted)}
 /* the card's one link: a quiet capsule at the stage line's end, label --ac-hot (clamped 4.5:1
    on --surface3), baseline-aligned to the line. */
 .stage .view{flex-shrink:0;margin:0;padding:7px 14px;border-radius:999px;line-height:16px;

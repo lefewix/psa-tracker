@@ -272,6 +272,24 @@ def accent_checks(fails):
             fails.append(f"--ac2 with {env or 'no accent env'}: want {want} (T182)")
 
 
+def barmuted_checks(fails):
+    """The held/archived bar has its own token in both palettes, quieter than
+    the accent --bar on the track (lighter in light, darker in dark), 2.5-3:1 (T148)."""
+    code = ("import app\n"
+            "for name, pal, pole, track in (('light', app._LIGHT, app._BLACK, app._TRACK_LIGHT),"
+            " ('dark', app._DARK, app._WHITE, app._TRACK_DARK)):\n"
+            " acmix = app._AC_MIX_L if name == 'light' else app._AC_MIX_D\n"
+            " bar = app._mix(app._AC_RGB, pole, int(acmix['--bar'].split('%')[0]))\n"
+            " m = app._rgb(pal['barmuted'])\n"
+            " c = app._contrast(m, track)\n"
+            " lighter = app._lum(m) > app._lum(bar)\n"
+            " ok = 2.5 <= c < 3.0 and lighter == (name == 'light') and app.THEME_VARS.count('--barmuted:') == 3\n"
+            " print(name, 'ok' if ok else f'bad {c:.2f}')\n")
+    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True).stdout
+    if out.split() != ["light", "ok", "dark", "ok"] or "WARNING" in out:
+        fails.append(f"--barmuted: {out.strip() or 'no output'} (T148)")
+
+
 def well_checks(fails):
     """The scan well is one opaque colour per palette and the PSA 10 chip clears
     4.5:1 on its tint over that well in both (T119)."""
@@ -623,7 +641,7 @@ def main():
                 fails.append("GET /app.css: the row foot wraps mid tracking number again (T175)")
             # a held sub's bar drops to the muted grey, so it stops painting
             # full accent under the red hold pill (T75)
-            if b".card.hold .bar i{background:var(--m1)}" not in css:
+            if b".card.arch .bar i,.card.hold .bar i{background:var(--barmuted)}" not in css:
                 fails.append("GET /app.css: a held card still paints an accent stage bar")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
@@ -754,6 +772,7 @@ def main():
         copy_checks(fails)
         env_checks(fails)
         accent_checks(fails)
+        barmuted_checks(fails)
         well_checks(fails)
         common_checks(fails)
         tracking_checks(fails)
