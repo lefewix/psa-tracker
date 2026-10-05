@@ -290,6 +290,15 @@ def barmuted_checks(fails):
         fails.append(f"--barmuted: {out.strip() or 'no output'} (T148)")
 
 
+def day_checks(fails):
+    """A UTC seen_at late in the Toronto evening counts as that local day (T130)."""
+    code = ("import os\nos.environ['PSA_DISPLAY_TZ']='America/Toronto'\nimport app\n"
+            "print(app._day('2026-09-12T03:00:00+00:00'), app._day('07/21/26'), app._day(''))")
+    out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, capture_output=True, text=True).stdout
+    if out.split()[-3:] != ["2026-09-11", "2026-07-21", "None"]:
+        fails.append(f"_day: {out.strip() or 'no output'} (T130)")
+
+
 def well_checks(fails):
     """The scan well is one opaque colour per palette and the PSA 10 chip clears
     4.5:1 on its tint over that well in both (T119)."""
@@ -777,6 +786,7 @@ def main():
         env_checks(fails)
         accent_checks(fails)
         barmuted_checks(fails)
+        day_checks(fails)
         well_checks(fails)
         common_checks(fails)
         tracking_checks(fails)

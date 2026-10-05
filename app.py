@@ -2548,13 +2548,17 @@ Changes apply at the next sync, within about 20 minutes.</div>
 </div></div></main>{THEME_JS}</body></html>"""
 
 def _day(s):
-    """PSA's '07/21/26' or an ISO stamp -> its date, else None."""
-    for f in (lambda v: datetime.strptime(v, "%m/%d/%y"), lambda v: datetime.fromisoformat(v[:10])):
-        try:
-            return f(s).date()
-        except (ValueError, TypeError):
-            pass
-    return None
+    """PSA's '07/21/26' or an ISO stamp -> its local date, else None. A UTC
+    seen_at after 20:00 Toronto is already tomorrow in UTC."""
+    try:
+        return datetime.strptime(s, "%m/%d/%y").date()
+    except (ValueError, TypeError):
+        pass
+    try:
+        d = datetime.fromisoformat(s)
+    except (ValueError, TypeError):
+        return None
+    return (d.astimezone(DISPLAY_TZ) if d.tzinfo else d).date()
 
 def stage_dates(a, sub):
     """stage label -> ('Jul 20', date): when the sub ENTERED each stage, for the
@@ -2574,7 +2578,8 @@ def stage_dates(a, sub):
         if r["seen_at"] == (sub["first_seen"] or ""):
             continue
         if r["status"] in STAGES and r["status"] not in d:
-            d[r["status"]] = (short_date(r["seen_at"]), _day(r["seen_at"]))
+            day = _day(r["seen_at"])
+            d[r["status"]] = (short_date(day.isoformat() if day else r["seen_at"]), day)
     if sub["arrived"]:
         d["Arrived"] = (fmt_mdy(sub["arrived"]), _day(sub["arrived"]))
     if sub["shipped"]:
