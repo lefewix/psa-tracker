@@ -994,9 +994,10 @@ its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
 unknown" on the stage line, muted and unbolded, with no capsule under it (`.stage.nobar`
 drops the line's bottom margin, so the row keeps the same rhythm as a bar row).
 
-**Person page groups are tile-wide (T120).** Above 640px each sub group is `fit-content` over
-fixed 196px tiles (min 264px) and the groups flow side by side; the status note runs under both
-header columns, the stage line never wraps (it may widen a one-tile group), and the bar stops 112px short so it never underlines the View cards capsule.
+**Person page groups sit in a two-column grid (T120).** Above 640px the sub groups fill two
+equal columns inside `.wrap`, in date order (no dense packing); a group of 3+ cards spans both.
+Tiles keep `.grid`'s auto-fill, so a half column runs them 2-up; the status note runs under both
+header columns, and the stage bar spans its group as on the dashboard.
 
 **The run-out is earned, not ambient.** Each bar carries `data-k` (its sub number) and
 `data-st` (its stage index); FX_JS keeps a `psa_stage` map in `localStorage` and knocks a bar
