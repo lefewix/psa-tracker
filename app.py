@@ -2388,12 +2388,13 @@ GEAR_HTML = ('<nav id="sitectl" aria-label="Site controls">'
              'a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.55 1H21'
              'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a></nav>')
 
-# Store mode vs personal mode (PSA_SETTINGS_GEAR, default 1 = store):
-# STORE - the site-password holder IS the admin, so admin sessions get the
-#   gear AND open /settings directly, no second password (customers never do).
-# PERSONAL (=0, the server) - password holders are friends: no gear, and /settings
-#   always demands the separate settings password (typed there or at the gate).
-SETTINGS_GEAR = os.environ.get("PSA_SETTINGS_GEAR", "1") not in ("0", "false", "no")
+# Store mode vs personal mode (PSA_SETTINGS_GEAR, default 0 = personal):
+# PERSONAL (default, the server) - password holders are friends: no gear, and
+#   /settings always demands the separate settings password (typed there or at the gate).
+# STORE (=1, opt in, the server) - the site-password holder IS the admin, so admin
+#   sessions get the gear AND open /settings directly, no second password
+#   (customers never do).
+SETTINGS_GEAR = os.environ.get("PSA_SETTINGS_GEAR", "0") not in ("0", "false", "no")
 
 def gear_html(customer=False):
     """Site controls nav; the gear in it only for store-mode admin sessions."""

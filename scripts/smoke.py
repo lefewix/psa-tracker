@@ -128,8 +128,8 @@ def free_port():
     return port
 
 
-def boot(base, port, log):
-    env = dict(os.environ,
+def boot(base, port, log, gear="1"):
+    env = dict(os.environ, PSA_SETTINGS_GEAR=gear or "",
                PSA_PORT=str(port), PSA_BIND="127.0.0.1", PSA_COOKIE_SECURE="0",
                PSA_SECRET="smoke-secret-not-real", PSA_SETTINGS_PW_HASH=SET_HASH,
                PSA_ACCOUNTS_DIR=os.path.join(base, "accounts"),
@@ -139,6 +139,8 @@ def boot(base, port, log):
                PSA_FAVICON=os.path.join(ROOT, "favicon.png"),
                PSA_TOUCH_ICON=os.path.join(ROOT, "apple-touch-icon.png"),
                PSA_HUB_KEY=HUB_KEY, PSA_VALUES="1", PSA_THEME="light")
+    if gear is None:
+        del env["PSA_SETTINGS_GEAR"]
     p = subprocess.Popen([sys.executable, os.path.join(ROOT, "app.py")], env=env,
                          cwd=ROOT, stdout=log, stderr=subprocess.STDOUT)
     for _ in range(100):
@@ -361,6 +363,41 @@ def shot_checks(fails):
         fails.append("psa_shot.py: still shoots on a fixed timer (T194)")
     if src.index("card.screenshot") < src.index("page.wait_for_function"):
         fails.append("psa_shot.py: screenshots before waiting for the scans (T194)")
+
+
+def gear_mode_checks(fails):
+    """Personal mode ships by default: unset means no gear and /settings asks
+    for the settings password; =1 brings the store gear back (T124)."""
+    base = tempfile.mkdtemp(prefix="psa-smoke-gear-")
+    log = open(os.path.join(base, "app.log"), "w")
+    build_fixture(base)
+    proc = None
+    try:
+        for gear in (None, "1"):
+            label = "PSA_SETTINGS_GEAR " + ("unset" if gear is None else "=" + gear)
+            port = free_port()
+            url = f"http://127.0.0.1:{port}"
+            proc = boot(base, port, log, gear)
+            if proc.poll() is not None:
+                fails.append(f"{label}: app.py did not start")
+                return
+            _, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+            cookie = (hdrs.get("Set-Cookie") or "").split(";")[0]
+            _, body, _ = call(url, "/", cookie)
+            _, sbody, _ = call(url, "/settings", cookie)
+            orb, gate = b'id="gearbtn"' in body, b"Enter the settings password" in sbody
+            if gear is None and (orb or not gate):
+                fails.append(f"{label}: gear orb {orb}, settings gate {gate}; want no orb, gate")
+            if gear and (not orb or gate or b"PSA accounts" not in sbody):
+                fails.append(f"{label}: gear orb {orb}, settings gate {gate}; want orb, open")
+            proc.send_signal(signal.SIGTERM)
+            proc.wait(5)
+            proc = None
+    finally:
+        if proc and proc.poll() is None:
+            proc.kill()
+        log.close()
+        shutil.rmtree(base, ignore_errors=True)
 
 
 def setup_instance_checks(fails):
@@ -714,6 +751,7 @@ def main():
         check("GET /setup (setup closed)", "/setup", (302,))
         keepalive_checks(port, fails)
         setup_instance_checks(fails)
+        gear_mode_checks(fails)
         copy_checks(fails)
         env_checks(fails)
         accent_checks(fails)
