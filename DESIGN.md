@@ -27,7 +27,7 @@ colors:
   tertiary: "#86868b"
   tertiary-dark: "#8a8a92"
   fill-quiet: "#f2f2f4"
-  fill-quiet-dark: "rgba(255,255,255,.08)"
+  fill-quiet-dark: "#2e2f32"  # --surface3 (T119); --inp stays rgba(255,255,255,.08)
   hairline: "rgba(0,0,0,.1)"
   hairline-dark: "rgba(255,255,255,.12)"
   hairline-soft: "rgba(0,0,0,.07)"
