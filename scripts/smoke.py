@@ -1485,16 +1485,38 @@ def main():
                 fails.append("GET /: plain gate shows the signed-out line")
 
             # --- rotating the site password revokes outstanding cookies (T6)
-            def site_pw(value):
+            def site_pw(value, current=None):
                 return call(url, "/settings/account", scookie,
-                            {"acct": "demo", "action": "site_pw",
-                             "value": value, "value2": value})[0]
+                            {"acct": "demo", "action": "site_pw", "value": value, "value2": value,
+                             **({} if current == "" else {"current": current or cur[0]})})
 
-            if site_pw(SITE_PW + "-rotated") != 303:
-                fails.append("POST /settings/account site_pw: rotation refused")
+            cur = [SITE_PW]
+            # the change needs the current site password, and says what it does (T132)
+            check("GET /settings (site password helper)", "/settings", (200,), scookie,
+                  must_have="Changing this signs out everyone who is currently signed in.")
+            for label, current in (("missing", ""), ("wrong", "not-the-pw")):
+                envf = os.path.join(base, "accounts", "demo", "account.env")
+                ewas = open(envf, "rb").read()
+                _, _, h = site_pw(SITE_PW + "-nope", current)
+                body = call(url, h.get("Location") or "/settings", scookie)[1]
+                if open(envf, "rb").read() != ewas or b"Current site password is wrong." not in body:
+                    fails.append(f"POST /settings/account site_pw ({label} current): not refused")
+                code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+                if code != 302 or not (hdrs.get("Set-Cookie") or ""):
+                    fails.append(f"POST /login after a {label}-current change: old password dead")
+            code, _, h = site_pw(SITE_PW + "-rotated")
+            cur[0] = SITE_PW + "-rotated"
+            if code != 303 or ("Site password changed. Everyone signed in with the old one "
+                               "has to sign in again.").encode() not in call(
+                                   url, h.get("Location") or "/settings", scookie)[1]:
+                fails.append("POST /settings/account site_pw: rotation refused or no success line")
             check("GET / (cookie after a password rotation)", "/", (200,), cookie,
                   must_have='action="/login"')
-            if site_pw(SITE_PW) != 303:
+            check("GET /settings (settings session survives a rotation)", "/settings", (200,),
+                  scookie, must_have="PSA accounts")
+            code = site_pw(SITE_PW)[0]
+            cur[0] = SITE_PW
+            if code != 303:
                 fails.append("POST /settings/account site_pw: restore refused")
             check("GET / (cookie after the password is restored)", "/", (200,),
                   cookie, must_have="14900001")

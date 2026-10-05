@@ -2234,9 +2234,12 @@ def settings_page(msg="", err="", only=""):
 </div>""")
             continue
         spanes.append(f"""<div class="spane sg-s" id="spane{i}"{hide}>
+<div class="meta">Changing this signs out everyone who is currently signed in.</div>
 <form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="site_pw">
-<input name="value" type="password" placeholder="New site password"
+<input name="current" type="password" placeholder="Current"
+ aria-label="Current site password" autocomplete="current-password">
+<input name="value" type="password" placeholder="New password"
  aria-label="New site password" autocomplete="new-password">
 <input name="value2" type="password" placeholder="Repeat"
  aria-label="Repeat new site password" autocomplete="new-password">
@@ -4924,6 +4927,8 @@ class H(BaseHTTPRequestHandler):
                 if action == "site_pw":
                     if accts[acct_id].get("feeder"):
                         return self.see(flash(err="This account scans into the shared dashboard; the site password covers it."))
+                    if not hmac.compare_digest((form.get("current") or [""])[0].encode(), accts[acct_id]["password"].encode()):
+                        return self.see(flash(err="Current site password is wrong."))
                     if len(value) < 4:
                         return self.see(flash(err="Site password needs at least 4 characters."))
                     if value != get("value2"):
@@ -4934,7 +4939,7 @@ class H(BaseHTTPRequestHandler):
                            for i, a in accts.items()):
                         return self.see(flash(err="That site password already routes to another account."))
                     env_set(account_env_path(acct_id), {"SITE_PASSWORD": value})
-                    return self.see(flash(msg="Site password changed. It works at the gate right away."))
+                    return self.see(flash(msg="Site password changed. Everyone signed in with the old one has to sign in again."))
                 if action == "webhook":
                     if not (value.startswith("https://discord.com/api/webhooks/")
                             or value.startswith("https://discordapp.com/api/webhooks/")):
