@@ -3155,6 +3155,12 @@ FX_JS = """<script>
     },ms);
   }
   arm();
+  /* back after over an hour hidden: reload once (T123) */
+  var hid=0;
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){hid=Date.now();}
+    else if(hid&&Date.now()-hid>36e5){hid=0;location.reload();}
+  });
 })();
 /* .ld on the img keeps the existing mechanism; .ld on its ANCHOR is what kills
    the sweep overlay (see .grid a.ld::after). Cached images report .complete

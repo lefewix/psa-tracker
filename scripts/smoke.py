@@ -1575,6 +1575,9 @@ def main():
                        or b"document.body.appendChild(u);" not in js
                        or b"if(row&&!document.getElementById('archtoggle')){location.reload();return;}" not in js):
                 fails.append("GET /app.js: the archive Undo chip is brief, unpausable, stacks or reloads /sub (T144)")
+            # a tab back after over an hour hidden reloads once (T123)
+            if js and b"else if(hid&&Date.now()-hid>36e5){hid=0;location.reload();}" not in js:
+                fails.append("GET /app.js: no reload when a tab returns after an hour hidden (T123)")
             if css and (b"body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px))" not in css
                         or b"min-height:44px" not in css.split(b"body>.undo{", 1)[-1].split(b"}", 1)[0]):
                 fails.append("GET /app.css: the touch Undo chip is not a 44px thumb-zone chip (T144)")
