@@ -844,6 +844,19 @@ def main():
             if b'att" data-group="o"' in b_clear or b'http-equiv="refresh"' in b_clear:
                 fails.append("GET /settings (otp clear): a marker or a refresh survived")
 
+            # --- Unlink asks inside the sheet, never window.confirm, and the
+            # unlinked banner links to settings (T125)
+            if b"confirm(" in b_clear or b'<form method="POST" action="/settings/account" id="unform" hidden>' not in b_clear:
+                fails.append("GET /settings: Unlink is a native confirm(), not the sheet (T125)")
+            check("POST /settings/account (unlink second)", "/settings/account", (302, 303),
+                  scookie, {"acct": "second", "action": "unlink"})
+            _, _, h2 = call(url, "/login", form={"password": SITE_PW + "-2"})
+            c2 = (h2.get("Set-Cookie") or "").split(";")[0]
+            b_un = check("GET / (unlinked)", "/", (200,), c2 or None) if c2 else b""
+            if (b"This account is unlinked" not in b_un
+                    or b'password in <a class="tlink" href="/settings">settings</a> to relink' not in b_un):
+                fails.append("GET / (unlinked): the banner's settings is not a link (T125)")
+
         # --- admin session
         code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
         cookie = (hdrs.get("Set-Cookie") or "").split(";")[0]

@@ -2295,10 +2295,12 @@ def settings_page(msg="", err="", only=""):
 <input name="value" type="password" placeholder="New PSA password"
  aria-label="New PSA password" autocomplete="new-password">
 <button type="submit" class="fillbtn sbtn">Save</button></form>
-<div class="sdanger"><form method="POST" action="/settings/account"
- onsubmit="return confirm('Unlink this account? The site keeps showing its last known data; syncs stop until you save a new PSA password.')">
+<div class="sdanger"><button type="button" class="sbtn sdel" id="unask">Unlink account</button>
+<form method="POST" action="/settings/account" id="unform" hidden>
+<div class="meta">Unlink this account? The site keeps showing its last known data; syncs stop until you save a new PSA password.</div>
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="unlink">
-<button type="submit" class="sbtn sdel">Unlink account</button></form></div>
+<div class="srow"><button type="submit" class="sbtn sdel">Unlink</button>
+<button type="button" class="sbtn squiet" id="unno">Cancel</button></div></form></div>
 </div></div>
 <div class="smodal" id="addmodal" role="dialog" aria-modal="true" aria-labelledby="addtitle">
 <div class="card sblock">
@@ -2339,10 +2341,22 @@ def settings_page(msg="", err="", only=""):
     if(e.key==='Escape')document.querySelectorAll('.smodal.on').forEach(close);
   }});
   var am=document.getElementById('amodal');
+  // Unlink asks inside the sheet, not with window.confirm (T125)
+  function unask(on){{
+    document.getElementById('unask').hidden=on;
+    document.getElementById('unform').hidden=!on;
+  }}
+  document.addEventListener('click',function(e){{
+    var t=e.target.closest&&e.target.closest('#unask,#unno');
+    if(!t)return;
+    unask(t.id==='unask');
+    document.getElementById(t.id==='unask'?'unno':'unask').focus();
+  }});
   document.querySelectorAll('.schip[data-acct]').forEach(function(b){{
     b.addEventListener('click',function(){{
       document.getElementById('amtitle').textContent=b.textContent.trim();
       am.querySelectorAll('.amacct').forEach(function(x){{x.value=b.dataset.acct;}});
+      unask(false);
       am.classList.add('on');
       // focus after the sheet is visible - a hidden field can't take focus
       var f=am.querySelector('input[name=value]');
@@ -3751,8 +3765,8 @@ def dash_page(a, subs):
     # unlinked account: keep serving everything, say why it stopped moving
     if a.get("unlinked"):
         hint = ('<div class="hint" role="status">This account is unlinked, showing its last '
-                'known status from PSA. Syncs are off; save a new PSA password in settings '
-                'to relink.</div>') + hint
+                'known status from PSA. Syncs are off; save a new PSA password in '
+                '<a class="tlink" href="/settings">settings</a> to relink.</div>') + hint
     else:
         # several scans missed in a row means the PSA link is down, and the
         # statuses below are older than they look
