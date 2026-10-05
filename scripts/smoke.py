@@ -675,12 +675,16 @@ def main():
             if b".hrow>.synced .estnote{margin-left:0}" not in css:
                 fails.append("GET /app.css: the header note keeps its right-align "
                              "margin on phones")
-            # above 640 a filmstrip has no bleed, so an overflowing one fades the
-            # edge that still has tiles beyond it. The fade is driven by .sl/.sr,
-            # so a strip that fits gets none of it (T80)
-            if b".strip.sl{--fadel:28px}" not in css or b".strip.sr{--fader:28px}" not in css:
+            # an overflowing filmstrip fades the edge that still has tiles beyond
+            # it, at every width: the rules sit unindented, outside any @media
+            # block. The fade is driven by .sl/.sr, so a strip that fits gets none
+            # of it (T80, T149). The strip snaps a tile to its left edge (T149)
+            if b"\n.strip.sl{--fadel:28px}" not in css or b"\n.strip.sr{--fader:28px}" not in css:
                 fails.append("GET /app.css: an overflowing filmstrip has no edge cue "
-                             "above 640px")
+                             "at every width")
+            if b"scroll-snap-type:x proximity;" not in css \
+                    or b"\n.strip>*{scroll-snap-align:start}" not in css:
+                fails.append("GET /app.css: the filmstrip does not snap (T149)")
             if js and b"querySelectorAll('.filters,.strip')" not in js:
                 fails.append("GET /app.js: the scroll cue no longer runs on filmstrips")
             # a tap that lands mid scroll must fall through the corner orbs to

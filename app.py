@@ -1291,16 +1291,17 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  font-weight:600;color:var(--m1);text-decoration:none;flex-shrink:0}
 /* a dead strip thumb: the chip's box, empty, on the loading ground */
 .morechip.dead{background:var(--sk)}
-/* no bleed past the phone breakpoint, so an overflowing strip is sliced mid tile; the cue is
-   a 28px mask fade on the edge with tiles past it (FX_JS sets .sl/.sr) */
+/* an overflowing strip fades the edge with tiles past it, 28px (FX_JS sets .sl/.sr); a strip
+   that fits gets neither class, so no fade. */
+.strip{--fadel:0px;--fader:0px;scroll-snap-type:x proximity;
+ -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
+  #000 calc(100% - var(--fader)),transparent);
+ mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
+  #000 calc(100% - var(--fader)),transparent)}
+.strip.sl{--fadel:28px}
+.strip.sr{--fader:28px}
+.strip>*{scroll-snap-align:start}
 @media(min-width:641px){
- .strip{--fadel:0px;--fader:0px;
-  -webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
-   #000 calc(100% - var(--fader)),transparent);
-  mask-image:linear-gradient(90deg,transparent,#000 var(--fadel),
-   #000 calc(100% - var(--fader)),transparent)}
- .strip.sl{--fadel:28px}
- .strip.sr{--fader:28px}
  /* person page: sub groups sit in two equal columns, in date order; a group of 3+ cards spans
     both. Tiles keep .grid's auto-fill, so a half column runs them 2-up. */
  #list:has(>.grp),#archgrid:has(>.grp){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
@@ -1718,7 +1719,7 @@ button:disabled{opacity:.5;cursor:default}
  .grid{grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:12px}
  /* phone filmstrip: 64x89 tiles, bleeding to the card's padding edge (-14px) so the last
     tile runs off as the "there is more" cue. */
- .strip{gap:8px;margin:12px -14px 0;padding:0 14px}
+ .strip{gap:8px;margin:12px -14px 0;padding:0 14px;scroll-padding-inline:14px}
  .strip img,.strip a[href^="/img"],.morechip,.skt{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
  .card.tlcard{margin:14px 0}

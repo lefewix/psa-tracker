@@ -609,10 +609,10 @@ radius, `--hair2` edge and a `0 2px 10px` cast shadow. The gap between cards is 
 separator — no hairlines between or around the list, no closing rule. An empty state takes
 the same card (`48px 20px` padding, `14px` top margin), never bare text on the ground.
 Inside a card, the mobile filmstrip still bleeds to the card's own padding edge
-(`-14px`) so the last tile runs off the card edge as the "there is more" cue. Above 640px,
-where there is no bleed, an overflowing strip carries the same cue as a 28px `mask-image`
-fade on whichever edge still has tiles past it (`.sl` / `.sr`, set by the same FX_JS the
-filter capsule uses); a strip that fits is never faded.
+(`-14px`) so the last tile runs off the card edge as the "there is more" cue. At every
+width an overflowing strip also carries a 28px `mask-image` fade on whichever edge still has
+tiles past it (`.sl` / `.sr`, set by the same FX_JS the filter capsule uses); a strip that
+fits is never faded. The strip snaps (`x proximity`), settling a tile on its left edge.
 
 The toolbar is sticky at `top: 10px` (`z-index: 20`), preceded by a 1px sentinel that drives
 its scroll-edge elevation; the filter capsule floats below it. A fixed 26px ground band
