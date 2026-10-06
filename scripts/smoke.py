@@ -128,6 +128,11 @@ def free_port():
     return port
 
 
+STYLE_ATTR = re.compile(rb'style=\\?"([^"\\]*)')
+STYLE_OK = {b"display:none", b"vertical-align:middle"}
+STYLE_DYN = re.compile(rb"width:\d+(\.\d)?%|--i:\d+")
+
+
 def boot(base, port, log, gear="1"):
     env = dict(os.environ, PSA_SETTINGS_GEAR=gear or "",
                PSA_PORT=str(port), PSA_BIND="127.0.0.1", PSA_COOKIE_SECURE="0",
@@ -1630,7 +1635,7 @@ def main():
                 if want not in row:
                     fails.append("GET /cards?owner=Twosub: the sort capsule is missing "
                                  + want.decode())
-            if b'<div id="list" style="margin-top:0">' not in tbody:
+            if b'<div id="list">' not in tbody:
                 fails.append("GET /cards?owner=Twosub: no #list for the sort to reorder")
             grp = re.findall(rb'<div class="card grp[^>]*>', tbody)
             if len(grp) != 2:
@@ -1645,6 +1650,19 @@ def main():
                 if not any(want in g for g in grp):
                     fails.append("GET /cards?owner=Twosub: no group carries "
                                  + want.decode())
+            # styling rides on classes: the only style attributes left are served
+            # values (bar width, --i stagger), JS-owned display:none and the
+            # close icon's vertical-align (T180)
+            for path, ck in (("/", cookie), ("/sub/14900001", cookie),
+                             ("/cards?owner=Twosub", cookie), ("/search?q=pikachu", cookie),
+                             ("/search?q=zzzz", cookie), ("/sub/99999999", cookie),
+                             ("/settings", scookie), ("/app.js", None)):
+                sb = call(url, path, ck)[1] or b""
+                bad = set(STYLE_ATTR.findall(sb)) - STYLE_OK if sb else {b"<no body>"}
+                bad = {v for v in bad if not STYLE_DYN.fullmatch(v)}
+                if bad:
+                    fails.append(f"GET {path}: static inline style left: "
+                                 + ", ".join(sorted(v.decode() for v in bad)) + " (T180)")
             arch("14900001", "1")
             abody = call(url, "/cards?owner=Twosub", cookie)[1] or b""
             arow = re.search(rb'<div class="filterrow">.*?(?=<div id="list")', abody, re.S)
@@ -2036,6 +2054,8 @@ def main():
             # the 500 retries the route that failed, the dashboard is secondary (T166)
             check("GET /sub/14900001 (db corrupt)", "/sub/14900001", (500,), cookie,
                   must_have='href="/sub/14900001">Try again</a><a class="view"')
+            if b"style=" in (call(url, "/sub/14900001", cookie)[1] or b""):
+                fails.append("GET /sub/14900001 (db corrupt): the 500 page has an inline style (T180)")
     finally:
         if proc and proc.poll() is None:
             proc.send_signal(signal.SIGTERM)

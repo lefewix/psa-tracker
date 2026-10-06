@@ -639,12 +639,12 @@ def discord_widget(a, owner):
     btn = ('<button type="button" class="f dbtn" id="dopen">'
            + ("Discord pings: on" if linked else "Discord pings") + "</button>")
     if linked:
-        inner = (f'<div class="srow" style="margin-top:16px"><span class="dstate">Discord pings on</span>'
+        inner = (f'<div class="srow mt16"><span class="dstate">Discord pings on</span>'
                  f'<button type="button" class="sbtn sdel f" id="dunlink" data-owner="{html.escape(owner)}">Turn off</button></div>'
                  f'<div class="dhint">You’ll be @-mentioned in the site’s Discord channel '
                  f'when a submission with your cards updates.</div>')
     else:
-        inner = (f'<div class="srow" style="margin-top:16px">'
+        inner = (f'<div class="srow mt16">'
                  f'<input type="password" id="did" placeholder="Discord user ID" '
                  f'aria-label="Discord user ID" '
                  f'autocomplete="off" inputmode="numeric" maxlength="20">'
@@ -1084,6 +1084,9 @@ body{background:transparent;min-height:100vh;color:var(--txt);
    never positive. */
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
+.sub.mt6{margin-top:6px}
+.wrap>h1{margin-top:14px}
+.mt28{margin-top:28px}
 .toolbar .sub{font-size:12.5px}
 .logo{display:block;height:30px;width:auto}
 .logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:6px;
@@ -1092,7 +1095,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .toolbar .logo:not(.sil,.chip){filter:var(--logotb)}
 .brand{display:flex;align-items:center;gap:12px}
 .gbox .logo{height:72px;margin:0 auto 18px}
-.hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:14px}
 .synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.5}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
 /* a header figure is a data value: 17/650, the .num rung. 13 stays where .synced is chrome. */
@@ -1276,6 +1279,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    stage bar. 10 + 4 + 18 = 32 clears both. */
 .foot{padding:0;border:0;margin-top:18px;display:flex;justify-content:space-between;
  align-items:baseline;gap:12px;flex-wrap:wrap}
+.foot.footbare{margin:0}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:14px;font-weight:400;color:var(--m1);flex:1 1 0}
 /* bare 14px text actions: pad the hit box to ~43px, cancel it with an equal negative margin,
@@ -1291,6 +1295,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.7;
  background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 4px 14px var(--shc3)}
+.empty span{font-size:12px}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* up to 8 tiles, the 8th a "+N" chip when the sub has more imaged cards than fit. */
 /* the strip scrolls at every width: 8 tiles = 742px, so a sheet under ~782px would scroll the
@@ -1349,6 +1354,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    shadow would be a nested card. Gap drops 18 -> 12 so the wells read as one set, and the
    track grows by the well's padding so the image keeps its width. */
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(164px,1fr));gap:12px;margin-top:24px}
+.grp>.grid{margin-top:14px}
 /* no hairline on the image: the well already draws the edge, two lines 10px apart read as
    a double rule.
    ONE box, never cropped. PSA's /small/ renditions are not one shape: a slabbed scan is
@@ -1525,6 +1531,10 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
 .skl{height:12px}
 .skl+.skl{margin-top:8px}
 .skcard .skl:first-child{height:17px}
+.skcard>.skl{width:38%}
+.skcard>.skl+.skl{width:24%}
+.skrow .skl{width:55%}
+.skrow .skl+.skl{width:30%}
 .skt{flex-shrink:0;width:84px;height:117px}
 .skb{height:4px;border-radius:2px;margin-top:30px}
 .skcard,.skrow{pointer-events:none}
@@ -1573,9 +1583,11 @@ button:disabled{opacity:.5;cursor:default}
 .err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:18px}
 /* ---- settings ------------------------------------------------------------ */
 .card.sblock{margin:0 0 14px;padding:22px 20px 24px}
+.card.sblock.mt22{margin-top:22px}
 .sblock .sform{max-width:430px}
 .sform button{margin-top:14px}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
+.srow.mt16{margin-top:16px}
 .srow input{flex:1;min-width:150px;margin-top:0}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
 /* a destructive text action is not a primary, so .sdel never takes .fillbtn; the radius is
@@ -1654,6 +1666,8 @@ button:disabled{opacity:.5;cursor:default}
 .gbox h1{font-size:24px;letter-spacing:-.02em}
 .gbox input{text-align:center}
 .gbox .sub{margin-top:6px}
+.gbox .view{display:inline-block;margin-top:10px}
+a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 /* ---- hover: pointer devices only ----------------------------------------- */
 @media(hover:hover){
 /* the hover tint layers on the card surface - background replaces, so a bare alpha wash would
@@ -2090,14 +2104,14 @@ def gate_page(error="", out=False):
 
 def not_found_page(msg="There’s no page at this address.", title="Not found", retry=None):
     """Branded 404 so a bad link doesn't drop out of the design."""
-    again = (f'<a class="fillbtn" style="display:block;text-decoration:none;font-size:15px;font-weight:600" '
+    again = (f'<a class="fillbtn" '
              f'href="{html.escape(retry)}">Try again</a>' if retry else "")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(title)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap"><div class="gate"><div class="gbox">
 {logo_tag()}<h1>{html.escape(title)}</h1><div class="sub">{html.escape(msg)}</div>
-{again}<a class="view" style="display:inline-block;margin-top:10px" href="/">&larr; Back to the dashboard</a>
+{again}<a class="view" href="/">&larr; Back to the dashboard</a>
 </div></div></main>{THEME_JS}</body></html>"""
 
 def error_page(path="/"):
@@ -2260,7 +2274,7 @@ def settings_page(msg="", err="", only=""):
 <div class="meta">{ometa}</div>
 {obody}
 </div>""")
-        remove_btn = (f'<form method="POST" action="/settings/account" style="margin:0">'
+        remove_btn = (f'<form method="POST" action="/settings/account">'
                       f'<input type="hidden" name="acct" value="{aid}">'
                       f'<input type="hidden" name="action" value="webhook_clear">'
                       f'<button type="submit" class="sbtn sdel">Remove</button></form>' if hook_on else "")
@@ -2312,10 +2326,10 @@ def settings_page(msg="", err="", only=""):
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
 <a class="view" href="/">← Back to the site</a>
-<div class="hrow" id="content" tabindex="-1" style="margin-top:14px"><div><h1>Settings</h1>
+<div class="hrow" id="content" tabindex="-1"><div><h1>Settings</h1>
 <div class="sub">Changes apply at the next sync, within about 20 minutes.</div></div></div>
 {note}
-<div class="card sblock" style="margin-top:22px">
+<div class="card sblock mt22">
 <h2 class="stitle">PSA accounts</h2>
 <div class="sbar">{"".join(achips)}{"" if only else add_btn}</div>
 </div>
@@ -2340,7 +2354,7 @@ def settings_page(msg="", err="", only=""):
 <div class="card sblock">
 <button type="button" class="sclose" aria-label="Close">{ICON_X}</button>
 <h2 class="stitle" id="amtitle"></h2>
-<form method="POST" action="/settings/account" class="srow" style="margin-top:16px">
+<form method="POST" action="/settings/account" class="srow mt16">
 <input type="hidden" name="acct" value="" class="amacct"><input type="hidden" name="action" value="psa_pw">
 <input name="value" type="password" placeholder="New PSA password"
  aria-label="New PSA password" autocomplete="new-password">
@@ -2828,7 +2842,7 @@ SEARCH_JS = """<script>
   /* seq drops any answer older than the latest ask (T199): a closed preview
      shows skeleton rows after 200 ms, an open one dims its stale rows */
   var seq=0, sk;
-  var SK=new Array(4).join('<div class="pvrow skrow" aria-hidden="true"><i class="sk pvimg"></i><span><i class="sk skl" style="width:55%"></i><i class="sk skl" style="width:30%"></i></span></div>');
+  var SK=new Array(4).join('<div class="pvrow skrow" aria-hidden="true"><i class="sk pvimg"></i><span><i class="sk skl"></i><i class="sk skl"></i></span></div>');
   function go(){
     clearTimeout(t);
     t=setTimeout(function(){
@@ -3927,7 +3941,7 @@ def dash_page(a, subs, sort=("sub", False)):
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
-                + (f'<br><span style="font-size:12px">{note}</span>' if note else "")
+                + (f'<br><span>{note}</span>' if note else "")
                 + '</div>')
     stale = scan_stale_hours(a)
     # the masthead lives IN the sticky glass toolbar: title, store, freshness,
@@ -4047,8 +4061,8 @@ if(af)af.addEventListener('click',function(){{
   if(on&&lst&&!af.dataset.got){{
     // a slow fetch shows skeleton rows, never an empty list (T199)
     af.skt=setTimeout(function(){{
-      var s='<div class="card skcard" aria-hidden="true"><i class="sk skl" style="width:38%"></i>'
-       +'<i class="sk skl" style="width:24%"></i><div class="strip">'
+      var s='<div class="card skcard" aria-hidden="true"><i class="sk skl"></i>'
+       +'<i class="sk skl"></i><div class="strip">'
        +new Array(6).join('<i class="sk skt"></i>')+'</div><i class="sk skb"></i></div>';
       lst.insertAdjacentHTML('beforeend',new Array({min(len(gone), 3) + 1}).join(s));
       lst.setAttribute('aria-busy','true');
@@ -4177,7 +4191,7 @@ def detail_page(a, sub):
     if len(who) == 1 and todo:
         ping = f'<a class="f dbtn" href="{href(todo[0])}">Get pinged when your cards move</a>'
     elif todo:
-        ping = ('<div class="sub" style="margin-top:6px">Get pinged when your cards move: '
+        ping = ('<div class="sub mt6">Get pinged when your cards move: '
                 + " · ".join(f'<a class="tlink" href="{href(o)}">{html.escape(o)}</a>' for o in todo)
                 + "</div>")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -4185,8 +4199,8 @@ def detail_page(a, sub):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-<div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
-<div class="hrow" id="content" tabindex="-1" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
+<div class="foot"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
+<div class="hrow" id="content" tabindex="-1"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}</div>{tag}{ping}</div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
@@ -4256,7 +4270,7 @@ def people_page(a, owner, sort=("sub", False)):
                 # type value (17/650/-.012em/1.3), so nothing is inherited.
                 f'<h2 class="num">#{html.escape(str(n))}</h2></a>'
                 f'<div class="meta">{svc} · {cnt}</div>{note}</div><div class="pills">{pill}</div></div>'
-                f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div></div>')
+                f'{tl}<div class="grid">{tiles_h}</div></div>')
     def grouped(cs, sort=("sub", False)):
         gs = {}
         for c in cs:
@@ -4270,7 +4284,7 @@ def people_page(a, owner, sort=("sub", False)):
     if act_cards:
         # #list is what SORT_JS reorders; the filterrow above it always carries
         # the 20px 0 12px that used to be this wrapper's own top margin
-        grid = '<div id="list" style="margin-top:0">' + grouped(act_cards, sort) + "</div>"
+        grid = '<div id="list">' + grouped(act_cards, sort) + "</div>"
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
@@ -4329,7 +4343,7 @@ def people_page(a, owner, sort=("sub", False)):
                '</span></div>') if act_cards else ""
     # back on the left, the export on the right: the sub page's own foot row,
     # with its 18px top margin dropped so the header sits where it always did
-    back = ('<div class="foot" style="margin:0">'
+    back = ('<div class="foot footbare">'
             '<span class="footacts"><a class="view" id="backlk" href="/">← Back</a>'
             '<a class="view" href="/">Home</a></span>'
             f'<span class="footacts"><a class="view" href="/cards?owner='
@@ -4341,7 +4355,7 @@ def people_page(a, owner, sort=("sub", False)):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
 {back}
-<div class="hrow" id="content" tabindex="-1" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
+<div class="hrow" id="content" tabindex="-1"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {filterrow}
@@ -4418,7 +4432,7 @@ def customer_page(a, email):
         return (f'<div class="card grp{" arch" if n in arch else ""}">'
                 f'<div class="top"><div><h2 class="num">#{html.escape(str(n))}</h2>'
                 f'<div class="meta">{svc} · {cnt}</div></div><div class="pills">{pill}</div></div>'
-                f'{tl}<div class="grid" style="margin-top:14px">{tiles}</div>{foot}</div>')
+                f'{tl}<div class="grid">{tiles}</div>{foot}</div>')
 
     order = sorted(groups, key=lambda n: -int(n) if str(n).isdigit() else 0)
     act = [n for n in order if n not in arch]
@@ -4441,13 +4455,13 @@ def customer_page(a, email):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Your cards</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
-<div class="hrow" style="margin-top:14px"><div><div class="brand">{logo_tag()}<h1>Your cards</h1></div>
+<div class="hrow"><div><div class="brand">{logo_tag()}<h1>Your cards</h1></div>
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
 <div class="synced custrow"><div class="custout">Last synced<b>{html.escape(stamp)}</b></div>
 <a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
 <div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
 {archpill}
-<div style="margin-top:{0 if gone else 28}px">{body}</div>
+<div{"" if gone else ' class="mt28"'}>{body}</div>
 {archsec}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{APP_JS_TAG}</body></html>"""
@@ -4516,7 +4530,7 @@ def search_page(a, q, owner="", customer=False):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
 {back}
-<h1 id="content" tabindex="-1" style="margin-top:14px">Search</h1>
+<h1 id="content" tabindex="-1">Search</h1>
 <div class="sub">{count}</div>
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}{"" if customer else owner_datalist(owners)}
