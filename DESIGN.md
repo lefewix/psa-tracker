@@ -545,15 +545,16 @@ on Segoe and Roboto.
   PM", T169), the full date and time in its title. Phones show the short form (the clock
   alone when live, "Not updating" when stale) so the toolbar stays one row, under 360 the dot alone. No marker
   reads "Last update unknown" over submissions, "No sync yet" only on an empty account (T162).
-- **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
+- **Field** (400, 15px, 1.5): inputs, search, and the bare button reset (which sets 15/600).
 - **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
   pills, links, owner tags, card names, empty states. The stage name sits here too, at body
   size with the data rung's 650 weight (`.stage b`), the one place the two rungs cross.
   (Lifted from 13/1.45 on 2026-08-08 — owner found the sheet claustrophobic and the text small.)
 - **Control** (500, 13px, 16px line box): control labels only — filter pills, compact
   buttons, the skip link. Stays at 13 because the capsule height arithmetic (38px at both
-  breakpoints) is stated in the CSS and depends on the 16px line box.
-- **Caption** (400, 12px, 1.5): subtitles under a title, sync notes, service line, helper text.
+  breakpoints) is stated in the CSS and depends on the 16px line box. A 13px control without
+  that arithmetic (the settings buttons, the skip link, the undo toast) leads at 1.4.
+- **Caption** (400, 12px, 1.4): subtitles under a title, sync notes, service line, helper text.
   The masthead subtitle alone runs 12.5px — half a pixel is all it needs to stop reading as a
   caption under a 26px title.
 - **Micro** (400, 12px, 1.4): the sub-figure line under a value, preview-row secondaries,
@@ -573,6 +574,24 @@ rung. A new size does not create a new rung.
 24px = −0.020em, 22px = −0.017em, 17px = −0.012em, 14px and below = 0. Nothing in this system
 ever tracks positive. When a caption sits inside a tracked value (`.ledval span`), it resets
 letter-spacing to normal, because tracking inherits and size does not.
+
+**The Leading Ladder Rule.** Leading is a function of the rung, like tracking, and every rule
+that sets a size states it (no `line-height: normal`, and `input`/`button` state theirs so the UA
+default never leaks in): display 26/24/22px = 1.15, figure 17px (and the 15px tile value) = 1.3,
+body and field 14-16px = 1.5, micro and caption 11-13px = 1.4, tag 11px = 1.0. Every 14px rule
+leads at 1.5, the two-line tile name included (min-height 42px). Pixel line boxes are allowed
+only where a capsule's height arithmetic depends on them (filter pills and the View pill 16px,
+the grade chip 17px). The one documented exception to the size ramp is the 12.5px toolbar
+subtitle and sync phrase (`.toolbar .sub`, `.sync`); it leads at the micro 1.4.
+
+**The Px Ramp Rule.** Every size is px on purpose: the capsule arithmetic is stated in px, so
+browser text-only zoom is a no-op here while page zoom works. If text-size settings are ever
+wanted, the fix is a rem migration of the whole ramp, not a per-rule patch.
+
+**The Accepted Small Text Rule.** These sit under 14px by decision and are not audit findings:
+the 13px sort pills, filter chips and settings buttons, the 12px `.estnote` ("CAD ·
+estimated"), captions, Prelim and person-page labels, the 11px cert monospace, and the 12.5px
+phone sync line.
 
 **The Incomplete Total Rule.** Every money total (dashboard row value, sub page value, person
 page cost, coverage and value) gets a trailing "+" iff at least one card that should count has
