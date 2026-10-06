@@ -832,6 +832,8 @@ def main():
         else:
             body = check("GET /settings (settings session)", "/settings", (200,),
                          scookie, must_have="PSA accounts")
+            if body and b'class="skip" href="#content"' not in body:
+                fails.append("GET /settings: no skip link (T160)")
             if body and CADENCE.encode() not in body:
                 fails.append("GET /settings: the subtitle lost the sync cadence (T163)")
             if body and b'data-acct="second"' not in body:
@@ -1233,7 +1235,7 @@ def main():
                 if want not in priced_as(svc):
                     fails.append(f"GET /cards?owner=Solo: {svc} is not priced "
                                  + want.decode())
-            if b'$0<span title="no price for Wibble Tier">+</span> CAD' \
+            if b'$0+<span class="vh"> no price for Wibble Tier</span> CAD' \
                     not in priced_as("Wibble Tier"):
                 fails.append("GET /cards?owner=Solo: an unpriced service has no "
                              "+ naming itself in the title")
@@ -1252,7 +1254,7 @@ def main():
                     if bad in b:
                         fails.append(f"GET {label}: still says {bad.decode()} (T164)")
             b = call(url, "/search?q=Umbreon", cookie)[1] or b""
-            if b">Not graded yet</div>" not in b or b'class="sublink" href="/sub/14900002" ' \
+            if b">Not graded yet<span class=\"vh\">" not in b or b'class="sublink" href="/sub/14900002" ' \
                     b'aria-label="View cards in #14900002">View cards</a>' not in b:
                 fails.append("GET /search?q=Umbreon: tile lacks Not graded yet or View cards (T164)")
             if (b'aria-label="View cards in #14900001">View cards</a>' not in sbody
@@ -1350,8 +1352,30 @@ def main():
             if b"2026-09-06" in body:
                 fails.append("GET /sub/14900004: the ISO ship date prints raw (T183)")
             body = check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
-            if b'class="cn pre" title="No cert number until PSA grades it"' not in body:
+            if 'class="cn pre">Not graded yet<span class="vh"> \u00b7 no cert number until PSA grades it'.encode() not in body:
                 fails.append("GET /sub/14900002: the Prelim slot is unexplained again")
+            # T160: an h2 per tile, a skip link, no empty alt, the lightbox is a
+            # dialog, and no mouse-only title tooltips
+            for p in ("/sub/14900001", "/sub/14900002", "/cards",
+                      "/search?q=Charizard", "/search?q=Umbreon"):
+                b = call(url, p, cookie)[1] or b""
+                tiles = b.count(b'<div class="gc')
+                if not tiles or b.count(b"<h2 ") < tiles or b.count(b'<h2 class="nm" title="') != tiles:
+                    fails.append(f"GET {p}: {tiles} tiles but not an h2 each (T160)")
+                if b'class="skip" href="#content"' not in b or b'id="content"' not in b:
+                    fails.append(f"GET {p}: no working skip link (T160)")
+                if b'alt=""' in b:
+                    fails.append(f'GET {p}: an img with alt="" (T160)')
+                if b'href="/img?' in b and b.count(b'aria-haspopup="dialog"') != b.count(b'href="/img?'):
+                    fails.append(f"GET {p}: a lightbox link does not announce a dialog (T160)")
+                if b'title="No cert number' in b or b'title="no price for' in b:
+                    fails.append(f"GET {p}: a mouse-only title tooltip is back (T160)")
+            sb = call(url, "/sub/14900001", cookie)[1] or b""
+            if sb.count(b'<h2 class="nm"') != sb.count(b'<div class="gc'):
+                fails.append("GET /sub/14900001: h2 count != tile count (T160)")
+            for p in ("/",):
+                if b'alt=""' in (call(url, p, cookie)[1] or b""):
+                    fails.append(f'GET {p}: an img with alt="" (T160)')
             if b"<b>Arrived</b>" not in body or b"Grades ready" in body:
                 fails.append("GET /sub/14900002: a sub with no grades yet lost its "
                              "own stage word (T114)")

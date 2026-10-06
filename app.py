@@ -62,7 +62,7 @@ def logo_tag():
         return ""
     cls = "logo sil" if LOGO_SIL else ("logo chip" if LOGO_CHIP else "logo")
     v = int(os.path.getmtime(LOGO_PATH))  # cache-buster: logo swaps show immediately
-    return f'<img class="{cls}" src="/logo?v={v}" alt="">'
+    return f'<img class="{cls}" src="/logo?v={v}" alt="{html.escape(SITE_TITLE)} logo">'
 
 # Accent-derived shades flip direction per theme: --ac-pale is the accent as
 # TEXT (deepened on the white sheet, lightened on the dark one), --ac-hot its
@@ -2281,8 +2281,9 @@ def settings_page(msg="", err="", only=""):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Settings</title>
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
+<a class="skip" href="#content">Skip to content</a>
 <a class="view" href="/">← Back to the site</a>
-<div class="hrow" style="margin-top:14px"><div><h1>Settings</h1>
+<div class="hrow" id="content" tabindex="-1" style="margin-top:14px"><div><h1>Settings</h1>
 <div class="sub">Changes apply at the next sync, within about 20 minutes.</div></div></div>
 {note}
 <div class="card sblock" style="margin-top:22px">
@@ -2659,7 +2660,7 @@ def strip_html(s, fronts):
         alt = html.escape(split_name(smart_title(nm))[0] or "Card scan")
         # anchor href = the large scan, exactly like a .grid tile: LIGHTBOX_JS
         # reads the href, so strip tiles open the same zoom overlay
-        tiles.append(f'<a href="{big}" tabindex="-1"><img loading="lazy" decoding="async" src="{src}" alt="{alt}"></a>')
+        tiles.append(f'<a href="{big}" tabindex="-1" aria-haspopup="dialog"><img loading="lazy" decoding="async" src="{src}" alt="{alt}"></a>')
     if more:
         # "+5" alone is not a name: say what the five are and where they live
         sn = html.escape(s["sub_number"])
@@ -2782,7 +2783,7 @@ SEARCH_JS = """<script>
     if(data.cards&&data.cards.length){
       h+='<div class="pvsec" role="presentation">Cards</div>';
       data.cards.forEach(function(c){
-        var img=c.img?'<img class="pvimg" src="'+c.img+'" alt="">':'';
+        var img=c.img?'<img class="pvimg" src="'+c.img+'" alt="'+esc(c.name||'Card scan').replace(/"/g,'&quot;')+'">':'';
         var sub=esc(c.cert?('Cert '+c.cert):('Submission #'+c.sub))+(c.owner?(' · '+esc(c.owner)):'');
         h+='<a class="pvrow" role="option" aria-selected="false" id="pvo'+(n++)+'" href="/sub/'+encodeURIComponent(c.sub)+'">'+img+'<span>'+esc(c.name||'Card')+'<small>'+sub+'</small></span></a>';
       });
@@ -2967,7 +2968,7 @@ LIGHTBOX_JS = """<script>
   var lb=document.createElement('div'); lb.className='lb';
   lb.setAttribute('role','dialog'); lb.setAttribute('aria-modal','true');
   lb.setAttribute('aria-label','Enlarged scan'); lb.tabIndex=-1;
-  lb.innerHTML='<img alt=""><p class="lbcap" aria-live="polite"></p>'
+  lb.innerHTML='<img alt="Card scan"><p class="lbcap" aria-live="polite"></p>'
     +'<button type="button" class="lbx" aria-label="Close">__XICON__</button>';
   document.body.appendChild(lb);
   var im=lb.querySelector('img'), cap=lb.querySelector('.lbcap'), x=lb.querySelector('.lbx'),
@@ -3693,8 +3694,8 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     gcls = "" if not gtx else (" g10" if g >= 10 else " g9" if g >= 9 else " glo")
     grade = f'<div class="gr{gcls}">{gtx}</div>'
     if is_prelim:
-        head = ('<div class="cn pre" title="No cert number until PSA grades it">'
-                'Not graded yet</div>')
+        head = ('<div class="cn pre">Not graded yet'
+                '<span class="vh"> · no cert number until PSA grades it</span></div>')
     else:
         head = f'<div class="cn">{html.escape(c["cert_no"] or c["cert_id"])}</div>'
     if c.get("front_thumb"):
@@ -3705,7 +3706,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
                + ("" if is_prelim else f' data-cert="{html.escape(c["cert_no"] or "")}"')
                + (f' data-val="${value:,.0f} {html.escape(vcur)}"'
                   if value is not None and not customer else ""))
-        img = f'<a href="{big}"{cap}><img loading="lazy" decoding="async" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
+        img = f'<a href="{big}"{cap} aria-haspopup="dialog"><img loading="lazy" decoding="async" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
     else:
         img = '<div class="ph">No image yet</div>'
     if customer:
@@ -3738,7 +3739,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
            f'${value:,.0f} <span>{vcur} · estimated</span></a>'
            if value is not None and not customer else "")
     return (f'<div class="gc{" arch" if archived else ""}">{img}{grade}{head}'
-            f'<div class="nm">{name}</div>{nmset}'
+            f'<h2 class="nm" title="{html.escape(smart_title(c["name"] or ""))}">{name}</h2>{nmset}'
             f'{val}{svc}{sub_link}'
             f'{own_input}'
             f'</div>')
@@ -4144,8 +4145,9 @@ def detail_page(a, sub):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>#{html.escape(num)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
+<a class="skip" href="#content">Skip to content</a>
 <div class="foot" style="border:0;padding:0"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
-<div class="hrow" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
+<div class="hrow" id="content" tabindex="-1" style="margin-top:14px"><div><h1>#{html.escape(num)}</h1>
 <div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}</div>{tag}{ping}</div>
 {eta_badge(sub, vextra)}</div>
 <div class="card tlcard{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
@@ -4278,8 +4280,8 @@ def people_page(a, owner, sort=("sub", False)):
         vnote = f'<br>values = PSA estimate or last sale · as of {html.escape(vas_of)}' if vline else ""
         # the + says the total is short a tier; the title names which one, so
         # the missing price can be added to PSA_PRICES without guessing
-        plus = (f'<span title="no price for '
-                f'{html.escape(", ".join(sorted(unpriced)))}">+</span>') if unpriced else ""
+        plus = (f'+<span class="vh"> no price for '
+                f'{html.escape(", ".join(sorted(unpriced)))}</span>') if unpriced else ""
         est = (f'<div class="synced">Est. grading cost<b>${total:,.0f}'
                f'{plus} CAD</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
@@ -4296,8 +4298,9 @@ def people_page(a, owner, sort=("sub", False)):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
+<a class="skip" href="#content">Skip to content</a>
 {back}
-<div class="hrow" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
+<div class="hrow" id="content" tabindex="-1" style="margin-top:14px"><div><h1>{html.escape(title)}</h1>
 <div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {filterrow}
@@ -4470,8 +4473,9 @@ def search_page(a, q, owner="", customer=False):
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
+<a class="skip" href="#content">Skip to content</a>
 {back}
-<h1 style="margin-top:14px">Search</h1>
+<h1 id="content" tabindex="-1" style="margin-top:14px">Search</h1>
 <div class="sub">{count}</div>
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}{"" if customer else owner_datalist(owners)}
