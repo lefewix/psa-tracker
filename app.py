@@ -1738,8 +1738,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .dash>.toolbar{margin-top:10px}
  .dash>#list{display:contents}
  .dash>#list>*{order:3}
- .dash>#list:not(.archview)>.card:nth-child(1 of .card:not(.arch)),
- .dash>#list.archview>.card:nth-child(1 of .card.arch),
+ .dash>#list>.card:nth-child(1 of .card:not([style*="none"])),
  .dash>#list>.tierhd:first-child{order:1;margin-top:8px}
  .dash>#archhd{order:1}
  .dash>.attn,.dash>.filterrow,.dash>.showln{order:2}

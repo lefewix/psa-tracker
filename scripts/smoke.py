@@ -1046,7 +1046,7 @@ def main():
                 "@media(max-width:640px){", 1)[-1]
             if (b'<main class="wrap dash">' not in (body or b"")
                     or " .dash>#list{display:contents}" not in css189
-                    or ".card:nth-child(1 of .card:not(.arch))" not in css189
+                    or '.card:nth-child(1 of .card:not([style*="none"]))' not in css189
                     or " .dash>.attn,.dash>.filterrow,.dash>.showln{order:2}" not in css189):
                 fails.append("GET /: the phone filter row is not under the first card (T189)")
             # no .last_ok yet over a full dashboard is unknown, not never (T162)
