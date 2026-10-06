@@ -1070,6 +1070,8 @@ the control is findable, and hides while the field is editable (T134).
 The "Saved · Undo" or retry chip sits inside the row in the pencil's place, on the tag's
 baseline, so a save never changes the tile's height; Enter and Escape hand keyboard focus
 back to the tag, not the body (T136).
+A save still in flight after 300 ms turns the underline `--m1` (`.saving`) until it
+lands; no spinner, no extra row (T201).
 Every tag shares one page-level `<datalist id="owners">` of the names in use, so typing
 offers existing people; the picker arrow is hidden in Chrome and Safari (T135).
 

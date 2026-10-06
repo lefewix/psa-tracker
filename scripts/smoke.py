@@ -577,6 +577,13 @@ def main():
             # a loading scan fades in rather than popping (T197)
             if b"'morechip dead'" not in js or b"classList.add('pend')" not in js:
                 fails.append("GET /app.js: dead strip thumbs collapse or scans pop in")
+            # an owner save marks itself in the underline after 300 ms and its chip
+            # takes the pencil's place inside the row, so no tile grows (T201)
+            if (b"i.classList.add('saving'); },300)" not in js
+                    or b"row.appendChild(u);" not in js
+                    or (css and (b".own.saving{border-bottom-color:var(--m1)}" not in css
+                                 or b".ownrow:has(.undo) .ownedit{display:none}" not in css))):
+                fails.append("GET /app.js: an owner save can move the grid (T201)")
         if css:
             if (b".morechip.dead{background:var(--sk)}" not in css
                     or b'.strip a[href^="/img"].ldg::after' not in css

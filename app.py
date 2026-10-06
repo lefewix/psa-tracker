@@ -1460,6 +1460,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    indicator (2.4.11). focus-visible after :focus so it wins. */
 .own:focus{border-bottom-color:var(--ring);outline:none}
 .own:focus-visible{border-bottom-color:var(--ring);outline:2px solid var(--ring);outline-offset:2px}
+.own.saving{border-bottom-color:var(--m1)}
 .own.saved{border-bottom-color:var(--ok)}
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
@@ -3235,9 +3236,12 @@ document.querySelectorAll('.own').forEach(function(i){
     });
   }
   function post(val,done){
+    // a slow save shows it is in flight, in the underline, never as new chrome (T201)
+    var sl=setTimeout(function(){ i.classList.add('saving'); },300);
+    function end(ok){ clearTimeout(sl); i.classList.remove('saving'); done(ok); }
     fetch('/owner', {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
       body:'cert_id='+encodeURIComponent(i.dataset.cert)+'&owner='+encodeURIComponent(val)})
-     .then(function(r){ done(r.ok); }).catch(function(){ done(false); });
+     .then(function(r){ end(r.ok); }).catch(function(){ end(false); });
   }
   function visit(){
     // already on this person's page? a click shouldn't reload it
