@@ -403,6 +403,17 @@ def hit_checks(fails):
             fails.append(f"app.py: {what} lost its 44px hit area (T187)")
 
 
+def desk_checks(fails):
+    """Above 1024px the sheet stays 820 and the strip and detail grid grow
+    inside it (T188)."""
+    src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
+    if ".wrap{max-width:820px;" not in src:
+        fails.append("app.py: the sheet is no longer 820px (T188)")
+    blk = src.split("@media(min-width:1025px){", 1)[-1].split("}}", 1)[0]
+    if "width:110px;height:153px" not in blk or "minmax(240px,1fr)" not in blk:
+        fails.append("app.py: the desktop strip or detail grid did not grow (T188)")
+
+
 def comment_checks(fails):
     """Comments name what sits beside them: the reading rung is 14px, the gate
     card and the settings panel count are not pinned to a stale number, and
@@ -910,6 +921,7 @@ def main():
         tracking_checks(fails)
         leading_checks(fails)
         hit_checks(fails)
+        desk_checks(fails)
         comment_checks(fails)
         shot_checks(fails)
 

@@ -929,9 +929,11 @@ The scrollbar is hidden, `overscroll-behavior-x: contain` keeps the gesture off 
 under 640px the strip bleeds to the row's full width (`margin: 10px -10px 0` with matching
 padding) at 64×89px tiles, so the first tile starts at the text measure and the run continues
 past the edge — the visual promise that there is more.
+Above 1024px the tiles grow to 110×153px and the detail grid (`.wrap>.grid`) runs three across
+at `minmax(240px,1fr)`: the desktop spends its width on taller scans, the sheet stays 820px (T188).
 
 Each tile serves the stored thumbnail asset, not the `/small/` 380×636 scan the grid tiles
-take: at 64-84px a row of eight of those cost the dashboard megabytes. Each tile is still a
+take: at 64-110px a row of eight of those cost the dashboard megabytes. Each tile is still a
 real link to the large scan and opens the same lightbox the grid uses, matched
 by the same `[href^="/img"]` selector. Every tile carries per-card alt text — the card's
 subject, trimmed the same way the grid trims it — because eight focusable links per row is a

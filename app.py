@@ -1334,6 +1334,11 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 .strip.sl{--fadel:28px}
 .strip.sr{--fader:28px}
 .strip>*{scroll-snap-align:start}
+/* desktop spends its width on taller scans, not a wider sheet: .wrap stays 820 (T188). The
+   strip runs 110x153 (8 tiles still scroll), the detail grid three across at ~265. */
+@media(min-width:1025px){
+ .strip img,.strip a[href^="/img"],.morechip,.skt{width:110px;height:153px}
+ .wrap>.grid{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}}
 @media(min-width:641px){
  /* person page: sub groups sit in two equal columns, in date order; a group of 3+ cards spans
     both. Tiles keep .grid's auto-fill, so a half column runs them 2-up. */
@@ -2697,7 +2702,7 @@ def strip_html(s, fronts):
     shown = fronts[:STRIP_MAX - 1] if more else fronts
     tiles = []
     for u, nm in shown:
-        # tiles are 64-84 CSS px, so the stored thumbnail asset is the right
+        # tiles are 64-110 CSS px, so the stored thumbnail asset is the right
         # size; /small/ is the 380x636 scan and belongs on the grid, not here
         src = "/img?u=" + urllib.parse.quote(u)
         big = "/img?u=" + urllib.parse.quote(img_url(u, "large"))
