@@ -1099,9 +1099,7 @@ image: the grade as a small filled chip (13px/500, 1px 7px, fully rounded, a 1px
 border) in two tiers (T204) — a 14% Grade Red tint for any 10 behind a 45% Grade Red border, one
 neutral `--surface` chip with `--txt` and a `--hairh` border for every other grade — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
-baseline, cert number in **11px** monospace micro in `--tert` — lookup text, not reading text,
-and measured on the well at 3.24:1 light / 3.91:1 dark, past the 3:1 floor for its kind (the
-`Not graded yet` label keeps 12px; it is a state, not a number) — card name
+baseline — card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), **no set line** (the name carries the
 subject; the set is read on the detail header, not scanned in a grid), value at 15/600 in
@@ -1114,7 +1112,12 @@ the owner tag pinned to the bottom via `margin-top: auto`, with no bottom pad of
 well's 10px matches the 10px above the scan. The chip takes `margin-left: -8px` (pad plus rim), so
 its rim hangs into the gutter and its label sits on the name's first glyph (360px and up). (T174) The rhythm between them is tight
 by intent: 8px above the chip, 4px above the cert and the value. the owner, 2026-09-16, on the
-first pass: "better, but within each card pill it's still a bit much." Tiles
+first pass: "better, but within each card pill it's still a bit much."
+**Five things a tile (T207):** scan, grade chip, name, value, owner. The cert number lives in
+the lightbox caption (name, grade, cert, value); "Not graded yet" is said once in the sub
+header (detail meta, person group meta), never per tile; the owner line is gone on that
+owner's own person page; a search tile is the detail tile plus one "Open sub #N" link, no
+service line. Tiles
 carry **no `content-visibility`** — its paint containment clipped everything that reaches past
 the tile box (focus rings, the hover pill's negative-margin bleed), so it was removed; the
 off-screen cost it targeted is handled in FX_JS instead, which lands the loading sweep only

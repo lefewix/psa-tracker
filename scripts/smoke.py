@@ -1276,6 +1276,11 @@ def main():
                 fails.append("POST /owner: tagging one card was refused")
             sbody = check("GET /cards?owner=Solo", "/cards?owner=Solo", (200,), cookie,
                           must_have="1 card with")
+            # no owner line on that owner's own page; the worklist keeps its field (T207)
+            if b'class="own"' in sbody or b'data-cert="99000002" value="Solo"' in sbody:
+                fails.append("GET /cards?owner=Solo: tiles still carry the page owner's name (T207)")
+            if b'class="own"' not in (call(url, "/cards?owner=unassigned", cookie)[1] or b""):
+                fails.append("GET /cards?owner=unassigned: the worklist lost its owner fields (T207)")
             # one money format in the person page value block: every figure
             # carries the currency, the fee total prints no cents (T71)
             for want in (b"Est. grading cost<b>$109 CAD</b>", b"<b>$120 CAD</b>",
@@ -1390,9 +1395,10 @@ def main():
                     if bad in b:
                         fails.append(f"GET {label}: still says {bad.decode()} (T164)")
             b = call(url, "/search?q=Umbreon", cookie)[1] or b""
-            if b">Not graded yet<span class=\"vh\">" not in b or b'class="sublink" href="/sub/14900002" ' \
-                    b'aria-label="View cards in #14900002">View cards</a>' not in b:
-                fails.append("GET /search?q=Umbreon: tile lacks Not graded yet or View cards (T164)")
+            # a search tile is the detail tile plus one link, "Open sub #N" (T207)
+            if (b'<a class="sublink" href="/sub/14900002">Open sub #14900002</a>' not in b
+                    or b'class="svc"' in b or b'class="cn' in b):
+                fails.append("GET /search?q=Umbreon: tile is not the detail tile plus Open sub #N (T207)")
             if (b'aria-label="View cards in #14900001">View cards</a>' not in sbody
                     or b'id="dopen">Discord pings</button>' not in sbody
                     or b'id="dlink" data-owner="Solo">Save</button>' not in sbody):
@@ -1450,7 +1456,7 @@ def main():
                     (call(url, "/cards?owner=Solo", cookie)[1] or b""):
                 fails.append("GET /cards?owner=Solo: Home is back beside Back (T206)")
             # every owner field offers the names in use from one datalist (T135)
-            for p in ("/sub/14900003", "/cards?owner=Solo", "/search?q=Charizard"):
+            for p in ("/sub/14900003", "/search?q=Charizard"):
                 b = call(url, p, cookie)[1] or b""
                 if (b.count(b"<datalist") != 1 or b'<option value="Duo">' not in b
                         or b'<option value="Solo">' not in b
@@ -1492,8 +1498,9 @@ def main():
             # its number plain (T70)
             body = check("GET /sub/14900001", "/sub/14900001", (200,), cookie,
                          must_have="Charizard")
-            if b'<div class="cn">99000001</div>' not in body:
-                fails.append("GET /sub/14900001: a graded tile lost its cert number")
+            # the cert number lives in the lightbox caption, not on the tile (T207)
+            if b'class="cn' in body or b'data-cert="99000001"' not in body:
+                fails.append("GET /sub/14900001: the cert is on the tile, or off the caption (T207)")
             # one neutral chip, any 10 the accent: a qualifier grade parses its last number (T204)
             gdb = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
             qual = (("97000001", "GEM MT 10"), ("97000002", "MINT 9"), ("97000003", "8"))
@@ -1533,8 +1540,9 @@ def main():
             if b"2026-09-06" in body:
                 fails.append("GET /sub/14900004: the ISO ship date prints raw (T183)")
             body = check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
-            if 'class="cn pre">Not graded yet<span class="vh"> \u00b7 no cert number until PSA grades it'.encode() not in body:
-                fails.append("GET /sub/14900002: the Prelim slot is unexplained again")
+            # prelim is said once, in the sub header, never per tile (T207)
+            if body.count(b"Not graded yet") != 1 or not re.search(rb'<h1>#14900002</h1>\n?<div class="sub">[^<]*(<b[^>]*>[^<]*</b>[^<]*)*Not graded yet</div>', body):
+                fails.append("GET /sub/14900002: Not graded yet is not said once in the header (T207)")
             # T160: an h2 per tile, a skip link, no empty alt, the lightbox is a
             # dialog, and no mouse-only title tooltips
             for p in ("/sub/14900001", "/sub/14900002", "/cards",

@@ -1395,14 +1395,6 @@ html:has(header.toolbar.raised)::before{height:10px}
    separates in both palettes (white on the grey well in light, the dark card under the lifted
    well in dark) and keeps --m1 over 4.5:1, which --ph does not in dark (3.8). (T112) */
 .gc .gr:not(:empty):not(.g10){background:var(--surface);color:var(--txt);border-color:var(--hairh)}
-/* the cert is lookup text, not reading text: 11px micro in --tert, the lighter of the two
-   greys, so it sits under the name instead of beside it. --tert on the well measures 3.24:1
-   light and 3.91:1 dark - past 3:1, which is the floor for non-essential text of this kind,
-   and the number is also the tile's link target and its title. .cn.pre keeps 12px: "Prelim"
-   is a state, not a number. (T112) */
-.gc .cn{font-size:11px;font-weight:400;color:var(--tert);margin-top:4px;line-height:1.4;
- font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
-.cn.pre{font-family:inherit;font-size:12px}
 /* the name is the subject only (split_name demotes the set). Two lines reserved so a grid row
    shares a baseline: 2 x 14 x 1.5 = 42. min-height, not height (1.4.4). */
 .gc .nm{font-size:14px;font-weight:400;color:var(--txt);margin-top:4px;min-height:42px;
@@ -1421,7 +1413,6 @@ html:has(header.toolbar.raised)::before{height:10px}
 .gc .cval{display:block;width:fit-content;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-.012em;line-height:1.3;color:var(--ac-pale);margin-top:4px}
 .gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;line-height:1.4;color:var(--m1)}
 .gc .cval:hover{text-decoration:underline;text-underline-offset:3px}
-.svc{font-size:12px;color:var(--m1);margin-top:4px;line-height:1.4}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
@@ -1782,7 +1773,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .gc>.gr{margin:0}
  .gc .own{margin-top:0;padding:6px 0 5px}
  .gc .ownedit{padding:0}
- .gc .gr:empty,.gc .cn:not(.pre){display:none}
+ .gc .gr:empty{display:none}
  .gc .ph{font-size:0}}
 /* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
    this covers iPad portrait. */
@@ -3722,8 +3713,8 @@ def split_name(name):
     i = (padded or cand)[-1]
     return (" ".join(toks[i + 1:]), f"{' '.join(toks[:i])} · {toks[i]}")
 
-def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline="",
-              value=None, vcur="CAD", tot=""):
+def card_tile(c, owners, show_sub=False, archived=False, customer=False, statline="",
+              value=None, vcur="CAD", tot="", page_owner=""):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
     subject, setline = split_name(smart_title(c["name"] or ""))
@@ -3736,11 +3727,6 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     nums = re.findall(r"\d+(?:\.\d+)?", str(c.get("grade") or ""))
     gcls = " g10" if nums and float(nums[-1]) >= 10 else ""
     grade = f'<div class="gr{gcls}">{gtx}</div>'
-    if is_prelim:
-        head = ('<div class="cn pre">Not graded yet'
-                '<span class="vh"> · no cert number until PSA grades it</span></div>')
-    else:
-        head = f'<div class="cn">{html.escape(c["cert_no"] or c["cert_id"])}</div>'
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
@@ -3757,16 +3743,16 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
         # the chip carries this card's own status instead
         sub_link = f'<div class="sublink sublink-static">{html.escape(statline)}</div>' if statline else ""
     else:
-        sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}" aria-label="View cards in #{html.escape(str(c["sub_number"]))}">View cards</a>'
+        sub_link = (f'<a class="sublink" href="/sub/{html.escape(str(c["sub_number"]))}">Open sub #{html.escape(str(c["sub_number"]))}</a>'
                     if show_sub else "")
-    svc = f'<div class="svc">{html.escape(service)}</div>' if (show_sub and service) else ""
     # readonly until OWNER_JS unlocks it: one click opens the person's page,
     # a second click (or typing) switches the field into edit mode
     # ONE sentence, tooltip and accessibility tree alike: sighted and screen
     # reader users were being told two different things about the same control
     ownlbl = (f"Owner: {owner}. Click or press Enter to open their cards, "
               "click again or type to rename.") if owner else ""
-    own_input = ("" if customer else
+    # T207: no owner line on that owner's own page, every tile there is theirs
+    own_input = ("" if customer or (owner and owner.lower() == page_owner.lower()) else
                  f'<div class="ownrow"><input class="own" data-cert="{cid}" value="{owner}" readonly'
                  + (f' title="{ownlbl}" aria-label="{ownlbl}"'
                     if owner else ' aria-label="Add owner name"')
@@ -3781,9 +3767,9 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
            f'target="_blank" rel="noopener" title="See PSA\'s estimate and recent sales">'
            f'${value:,.0f} <span>{vcur} · estimated</span></a>'
            if value is not None and not customer else "")
-    return (f'<div class="gc{" arch" if archived else ""}"{tot}>{img}{grade}{head}'
+    return (f'<div class="gc{" arch" if archived else ""}"{tot}>{img}{grade}'
             f'<h2 class="nm" title="{html.escape(smart_title(c["name"] or ""))}">{name}</h2>{nmset}'
-            f'{val}{svc}{sub_link}'
+            f'{val}{sub_link}'
             f'{own_input}'
             f'</div>')
 
@@ -4118,6 +4104,12 @@ def page_head(title, meta="", right="", back="/", action="", extra="", label="Ba
             f'<div class="hrow" id="content" tabindex="-1"><div><h1>{title}</h1>'
             f'<div class="sub">{meta}</div>{extra}</div>{right}</div>')
 
+def prelim_note(cards):
+    """' · Not graded yet' once in a sub's header when it holds a prelim card,
+    never on each tile (T207)."""
+    return (" · Not graded yet" if any(str(c["cert_id"]).startswith("spec:") for c in cards)
+            else "")
+
 def detail_meta(s):
     """The detail page's one meta line: service, cards, then the ship date and
     tracking, the hold, or the return window (T206, the old ETA badge's words)."""
@@ -4191,7 +4183,7 @@ def detail_page(a, sub):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-{page_head(f"#{html.escape(num)}", detail_meta(sub), vfig, action=act, extra=tag + ping)}
+{page_head(f"#{html.escape(num)}", detail_meta(sub) + prelim_note(cards), vfig, action=act, extra=tag + ping)}
 <div class="dstage{' hold' if sub['on_hold'] else ''}">{timeline_html(sub, stage_dates(a, sub), key=num)}{note}</div>
 {body}{owner_datalist(owners) if cards else ""}
 <div class="vh" id="live" aria-live="polite"></div>
@@ -4223,12 +4215,6 @@ def people_page(a, owner, sort=("sub", False)):
     if not unassigned:
         sub_line = f'{len(act_cards)} card{"s" if len(act_cards) != 1 else ""} with {a["label"]}'
     vals, vas_of, vcur = load_values(a)
-    def tiles(cs):
-        return "".join(card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
-                                 service=svc_map.get(c["sub_number"], ""),
-                                 statline=cust_statline(subs_by.get(c["sub_number"])),
-                                 value=vals.get(c["cert_no"] or ""), vcur=vcur)
-                       for c in cs)
     def group_html(n, cs):
         # admin person page mirrors the customer home: one dashboard-style card
         # per submission (service line, ETA pill, stage timeline) with this
@@ -4239,7 +4225,7 @@ def people_page(a, owner, sort=("sub", False)):
         link = (f'<a class="view" href="/sub/{html.escape(str(n))}" '
                 f'aria-label="View cards in #{html.escape(str(n))}">View cards</a>')
         tl = timeline_html(s, aside=link, key=n) if s else ""
-        cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
+        cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}' + prelim_note(cs)
         # each tile's share of the header totals, so OWNER_JS re-sums them after a retag (T217)
         p = service_price(a, s["service"]) if s else None
         def tot(c):
@@ -4249,7 +4235,8 @@ def people_page(a, owner, sort=("sub", False)):
             return (f' data-v="{"" if v is None else v}" data-g="{1 if c.get("grade") else ""}"'
                     f' data-dv="{"" if dv is None else dv}" data-p="{"" if p is None else p}"')
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
-                                    value=vals.get(c["cert_no"] or ""), vcur=vcur, tot=tot(c))
+                                    value=vals.get(c["cert_no"] or ""), vcur=vcur, tot=tot(c),
+                                    page_owner="" if unassigned else owner.strip())
                           for c in cs)
         note = status_note(s) if s else ""
         note = f'<div class="meta">{html.escape(note)}</div>' if note else ""
@@ -4490,10 +4477,10 @@ def search_page(a, q, owner="", customer=False):
     if res:
         arch = archived_set(a)
         subs_by = {s["sub_number"]: s for s in load_subs(a)}
+        vals, _, vcur = load_values(a)
         grid = '<div class="grid">' + "".join(
             card_tile(c, owners, show_sub=True, archived=(c["sub_number"] in arch),
-                      service=(subs_by.get(c["sub_number"]) or {}).get("service", ""),
-                      customer=customer,
+                      customer=customer, value=vals.get(c["cert_no"] or ""), vcur=vcur,
                       statline=cust_statline(subs_by.get(c["sub_number"]))) for c in res) + "</div>"
     elif ql and customer:
         grid = f'<div class="empty">No cards match “{html.escape(q)}”.</div>'
