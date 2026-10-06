@@ -791,27 +791,12 @@ def main():
                 fails.append("GET /app.css: the filmstrip does not snap (T149)")
             if js and b"querySelectorAll('.filters,.strip')" not in js:
                 fails.append("GET /app.js: the scroll cue no longer runs on filmstrips")
-            # a tap that lands mid scroll must fall through the corner orbs to
-            # the owner pencil or View card underneath, on touch only (T60)
-            if b"html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none" \
-                    not in css:
-                fails.append("GET /app.css: the corner orbs still take taps mid scroll")
-            # and on the way down the page they leave altogether, come back on the
-            # way up, and never paint over an open search preview (T116)
-            if b"html.scrolldn #gearbtn,html.scrolldn #themeflip," not in css \
-                    or b"body:has(.preview.on) #gearbtn" not in css:
-                fails.append("GET /app.css: the corner orbs no longer hide on scroll "
-                             "down or behind the search preview")
-            if b"#sitectl:focus-within #gearbtn" not in css:
-                fails.append("GET /app.css: a focused corner orb can stay invisible")
-            if js and b"'scrolldn'" not in js:
-                fails.append("GET /app.js: nothing marks the scroll direction")
-            if js and b"y=pageYOffset" not in js:
-                fails.append("GET /app.js: a restored scroll position reads as a "
-                             "scroll down and hides the orbs")
-            # the orbs and the landing zone they sit in clear the home indicator (T116)
-            if css.count(b"env(safe-area-inset-bottom,0px)") < 2:
-                fails.append("GET /app.css: the orbs and the page foot ignore the safe area")
+            # no corner orbs: nothing fixed floats over the rows; gear and theme sit
+            # in the dashboard toolbar, theme also on settings (T208)
+            if re.search(rb"#gearbtn|#themeflip|position:fixed;bottom", css):
+                fails.append("GET /app.css: the corner orbs are back (T208)")
+            if js and (b"createElement('nav')" in js or b"'scrolldn'" in js):
+                fails.append("GET /app.js: the theme script still builds a floating orb (T208)")
         check("GET /logo", "/logo", (200,))
 
         # --- /img and /logo are cached at the Cloudflare edge on origin TTL, so
@@ -1136,15 +1121,16 @@ def main():
                         open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()):
                     fails.append("GET /: archive flip leaves the old aria-label (T159)")
 
-                # --- the corner orbs sit inside one landmark, not loose on the
-                # body: the gear ships the nav, the theme orb joins it (T60)
-                if (b'<nav id="sitectl" aria-label="Site controls"><a id="gearbtn"'
-                        not in body):
-                    fails.append("GET /: the gear orb is outside the Site controls nav")
-                # --- and that nav comes right after the skip link, before the
-                # toolbar, so the orbs are tab stops 2 and 3, not the last two (T161)
-                if not re.search(rb'<a class="skip"[^>]*>[^<]*</a>\s*<nav id="sitectl"', body):
-                    fails.append("GET /: Site controls nav is not right after the skip link (T161)")
+                # --- gear and theme are toolbar icons beside sign-out, not
+                # floating orbs; no page carries the old controls nav (T208)
+                tb = body.split(b'<div class="tbend">', 1)[-1].split(b"</header>", 1)[0]
+                if (b'id="gearbtn"' not in tb or b'id="themeflip"' not in tb
+                        or tb.index(b'id="themeflip"') > tb.index(b'href="/logout"')
+                        or b'id="sitectl"' in body):
+                    fails.append("GET /: gear and theme are not toolbar icons beside sign-out (T208)")
+                _, sb, _ = call(url, "/settings", cookie)
+                if b'id="themeflip"' not in sb or b'id="sitectl"' in sb:
+                    fails.append("GET /settings: no theme toggle on the settings page (T208)")
 
                 # --- a touch keyboard gets Search on the search box (T56)
                 if b'enterkeyhint="search"' not in body:

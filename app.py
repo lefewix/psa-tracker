@@ -1125,7 +1125,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    (--rimb). Both sub-threshold; the shadow carries elevation. */
 /* two classes on purpose: .f below zeroes background and border, and 0,2,0 lets the solo pill
    keep its glass. */
-.toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{
+.toolbar,.filters,.sbar,.f.fsolo{
  background:var(--glass);
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
  border:1px solid var(--hair);
@@ -1545,27 +1545,6 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
 .skcard,.skrow{pointer-events:none}
 .skrow>span:last-child{flex:1}
 .view:active,.numlink:active{opacity:.6}
-/* ---- corner controls: glass orbs ----------------------------------------- */
-/* 44x44 is the HIG floor; the 8px gap is kept by pushing the gear to 20 + 44 + 8 = 72. */
-#gearbtn,#themeflip{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));
- z-index:40;width:44px;height:44px;
- border-radius:50%;color:var(--m1);cursor:pointer;
- display:flex;align-items:center;justify-content:center;padding:0;margin:0;
- transition:color var(--t1) var(--e1),opacity var(--t1) var(--e1),transform var(--t1) var(--e1);text-decoration:none}
-#themeflip{right:20px}
-#gearbtn{right:72px}
-#gearbtn:active,#themeflip:active{transform:scale(.94)}
-/* the orbs float over the owner tag and View, so FX_JS marks the doc scrolling for 150ms after
-   each scroll and they go inert - the tap falls through. Pointers keep them live. */
-@media(hover:none){
- html.scrolling #gearbtn,html.scrolling #themeflip{pointer-events:none;opacity:.55}}
-/* reading goes down the page, so on the way down the orbs leave: FX_JS marks the direction
-   on <html>, scrolling back up brings them in. The search preview owns that corner outright
-   while it is open. Focus out-orders both, so a keyboard walk never lands on an orb that
-   isn't painted. */
-html.scrolldn #gearbtn,html.scrolldn #themeflip,
-body:has(.preview.on) #gearbtn,body:has(.preview.on) #themeflip{opacity:0;pointer-events:none}
-#sitectl:focus-within #gearbtn,#sitectl:focus-within #themeflip{opacity:1;pointer-events:auto}
 /* ---- forms --------------------------------------------------------------- */
 /* every single-line control is a capsule; 3px extra side padding buys the curve back.
    Content-side radii stay square-ish. */
@@ -1701,7 +1680,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 .numlink:hover .num{color:var(--ac-pale)}
 .fillbtn:hover{background:var(--ac-fill-hot)}
 .sbtn.sdel:hover{background:transparent;color:var(--err)}
-#gearbtn:hover,#themeflip:hover{color:var(--txt)}}
+}
 /* ---- motion: one settle on the rows, nothing decorative ------------------- */
 @media(prefers-reduced-motion:no-preference){
  .card{animation:rise var(--t2) var(--e2) both;animation-delay:calc(var(--i,0)*.04s)}
@@ -1820,7 +1799,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .bar i{transition:none}
  .grid a[href^="/img"]::after,.strip a[href^="/img"]::after{display:none}
  html.navw body::after{background:var(--bar);animation:pulse 1s ease-in-out infinite}
- .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
+ .f:active,.archbtn:active,button:active{transform:none}
  .toolbar{transition:none}
  .filters{transition:none}
  .preview{transform:none;transition:opacity var(--t1) var(--e1),visibility 0s var(--t1)}
@@ -1841,7 +1820,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 /* background-COLOR, never the shorthand, which would wipe the segtrack layer and the scroll
    cue. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{background-color:var(--glasssolid)}
+ .toolbar,.filters,.sbar,.f.fsolo{background-color:var(--glasssolid)}
  /* backdrop-filter made the capsule a stacking context; without it the pills' z-index:-1
     pseudo falls behind the opaque background. */
  .filters,.sbar{isolation:isolate}}
@@ -1849,7 +1828,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 @supports not (background:color-mix(in srgb,red 5%,transparent)){
  body::before{background:none}}
 @media(prefers-reduced-transparency:reduce){
- .toolbar,.filters,.sbar,#gearbtn,#themeflip,.f.fsolo{backdrop-filter:none;-webkit-backdrop-filter:none;
+ .toolbar,.filters,.sbar,.f.fsolo{backdrop-filter:none;-webkit-backdrop-filter:none;
   background-color:var(--glasssolid)}
  .filters,.sbar{isolation:isolate}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
@@ -1925,17 +1904,18 @@ THEME_JS = f"""<script>
 (function(){{
   var d=document.documentElement, def="{THEME}";
   var cur=d.dataset.theme||def;
-  var b=document.createElement('button');b.id='themeflip';b.type='button';
+  var b=document.getElementById('themeflip');
   var SUN={json.dumps(_SUN)}, MOON={json.dumps(_MOON)};
   var mq=matchMedia('(prefers-color-scheme: dark)');
   function sys(){{return mq.matches?'dark':'light';}}
   function render(){{
+    if(window.psaTC)psaTC(cur);
+    if(!b)return;
     b.innerHTML=(cur==='dark')?SUN:MOON;
     b.title=(cur==='dark')?'Switch to light mode':'Switch to dark mode';
     b.setAttribute('aria-label',b.title);
-    if(window.psaTC)psaTC(cur);
   }}
-  b.addEventListener('click',function(){{
+  if(b)b.addEventListener('click',function(){{
     cur=(cur==='dark')?'light':'dark';
     /* choosing the system's current value returns the page to auto-follow */
     try{{
@@ -1945,15 +1925,9 @@ THEME_JS = f"""<script>
     d.dataset.theme=cur;
     render();
   }});
-  /* both orbs live in one landmark. gear_html() ships the nav (empty in personal
-     mode); on the gate, setup and 404 this makes it. */
-  var nav=document.getElementById('sitectl');
-  if(!nav){{
-    nav=document.createElement('nav');nav.id='sitectl';
-    nav.setAttribute('aria-label','Site controls');
-    document.body.appendChild(nav);
-  }}
-  nav.appendChild(b);render();
+  /* the toggle sits in the dashboard toolbar and the settings header (T208); pages
+     without it still follow the system live */
+  render();
   mq.addEventListener('change',function(e){{
     var stored=null;try{{stored=localStorage.getItem('psa_theme');}}catch(x){{}}
     if(!stored){{cur=e.matches?'dark':'light';d.dataset.theme=cur;render();}}
@@ -2343,7 +2317,7 @@ def settings_page(msg="", err="", only=""):
 <a class="skip" href="#content">Skip to content</a>
 <a class="view" href="/">← Back to the site</a>
 <div class="hrow" id="content" tabindex="-1"><div><h1>Settings</h1>
-<div class="sub">Changes apply at the next sync, within about 20 minutes.</div></div></div>
+<div class="sub">Changes apply at the next sync, within about 20 minutes.</div></div>{THEME_BTN}</div>
 {note}
 <div class="card sblock mt22">
 <h2 class="stitle">PSA accounts</h2>
@@ -2463,8 +2437,7 @@ def settings_page(msg="", err="", only=""):
 </script>
 </main>{APP_JS_TAG}</body></html>"""
 
-GEAR_HTML = ('<nav id="sitectl" aria-label="Site controls">'
-             '<a id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
+GEAR_HTML = ('<a class="lgout" id="gearbtn" href="/settings" title="Settings" aria-label="Settings">'
              '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
              'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'
              '<circle cx="12" cy="12" r="3.2"/>'
@@ -2475,7 +2448,8 @@ GEAR_HTML = ('<nav id="sitectl" aria-label="Site controls">'
              'l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34 1.7 1.7 0 0 0 1-1.55V3'
              'a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06'
              'a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87 1.7 1.7 0 0 0 1.55 1H21'
-             'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a></nav>')
+             'a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></a>')
+THEME_BTN = f'<button type="button" class="lgout" id="themeflip" aria-label="Switch theme">{_MOON}</button>'
 
 # Store mode vs personal mode (PSA_SETTINGS_GEAR, default 0 = personal):
 # PERSONAL (default, the server) - password holders are friends: no gear, and
@@ -2486,10 +2460,8 @@ GEAR_HTML = ('<nav id="sitectl" aria-label="Site controls">'
 SETTINGS_GEAR = os.environ.get("PSA_SETTINGS_GEAR", "0") not in ("0", "false", "no")
 
 def gear_html(customer=False):
-    """Site controls nav; the gear in it only for store-mode admin sessions."""
-    if customer:
-        return ""
-    return GEAR_HTML if SETTINGS_GEAR else '<nav id="sitectl" aria-label="Site controls"></nav>'
+    """The toolbar's settings gear, only for store-mode admin sessions."""
+    return GEAR_HTML if SETTINGS_GEAR and not customer else ""
 
 # ---------- first-run setup ----------
 # A fresh instance (accounts/ empty) serves a one-time setup form instead of the
@@ -3493,25 +3465,6 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
     cue();
   });
 })();
-/* the corner orbs step aside mid scroll: .scrolling on <html> for 150ms after
-   every scroll event is what the touch rule hangs off (see #gearbtn's media
-   block). The same listener carries the direction as .scrolldn, which hides the
-   orbs outright on the way down the page. 6px of slop so a rubber-band bounce is
-   not a direction change, and nothing hides in the first 120px, where the page
-   has barely moved and the gear is still the obvious way to settings. One passive
-   listener, one property read, so it still costs nothing. y starts where the page
-   does: coming back to a restored scroll position fires one big scroll event, and
-   from 0 that would read as a scroll down and hide the orbs nobody moved. */
-(function(){
-  var d=document.documentElement,t,y=pageYOffset||0;
-  addEventListener('scroll',function(){
-    var n=pageYOffset||d.scrollTop||0;
-    d.classList.add('scrolling');
-    if(Math.abs(n-y)>6){d.classList.toggle('scrolldn',n>y&&n>120);y=n;}
-    clearTimeout(t);
-    t=setTimeout(function(){d.classList.remove('scrolling');},150);
-  },{passive:true});
-})();
 /* scroll-edge elevation. A sticky bar that casts a full shadow while sitting
    at the top of an unscrolled page is claiming a depth it hasn't got. A 1px
    sentinel is dropped in just above the bar; while it is still on screen the
@@ -4002,7 +3955,7 @@ def dash_page(a, subs, sort=("sub", False)):
     toolbar = (f'<header class="toolbar"><div class="tbtop">'
                f'<div class="brand">{logo_tag()}<div><h1>{html.escape(SITE_TITLE)}</h1>'
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
-               f'<div class="tbend">{sync_dot(stale, bool(subs))}'
+               f'<div class="tbend">{sync_dot(stale, bool(subs))}{gear_html()}{THEME_BTN}'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
                f'</div></div>{search_box()}</header>')
     hint = (f'<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
@@ -4069,7 +4022,7 @@ def dash_page(a, subs, sort=("sub", False)):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#list">Skip to submissions</a>
-{gear_html()}{toolbar}
+{toolbar}
 {hint}{attn}
 {filterrow}{archhd}
 <div id="list" tabindex="-1"{listrole}>{body}</div>
@@ -4256,7 +4209,7 @@ def detail_page(a, sub):
 <div class="card tlcard{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
 {body}{owner_datalist(owners) if cards else ""}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{gear_html()}{APP_JS_TAG}</body></html>"""
+</main>{APP_JS_TAG}</body></html>"""
 
 def people_page(a, owner, sort=("sub", False)):
     """Admin person page (and the operator's `unassigned` worklist).
@@ -4422,7 +4375,7 @@ def people_page(a, owner, sort=("sub", False)):
 {grid}
 {archsec}{owner_datalist(owners)}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{gear_html()}{APP_JS_TAG}</body></html>"""
+</main>{APP_JS_TAG}</body></html>"""
 
 def people_csv(a, owner):
     """The person page as a spreadsheet: one row per tile that page renders,
@@ -4595,7 +4548,7 @@ def search_page(a, q, owner="", customer=False):
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}{"" if customer else owner_datalist(owners)}
 <div class="vh" id="live" aria-live="polite"></div>
-</main>{gear_html(customer)}{APP_JS_TAG}</body></html>"""
+</main>{APP_JS_TAG}</body></html>"""
 
 # ---------- server ----------
 

@@ -332,11 +332,6 @@ components:
     textColor: "{colors.ink}"
     rounded: "{rounded.sm}"
     padding: "0"
-  orb-control:
-    backgroundColor: "{colors.glass}"
-    textColor: "{colors.muted}"
-    rounded: "{rounded.orb}"
-    size: "44px"
 ---
 
 # Design System: PSA Submission Tracker
@@ -357,8 +352,8 @@ its restraint plus its Liquid Glass chrome and card rhythm. The direction is an 
 standing exit (2026-07-31): the assigned grounded direction was stood aside by the owner's
 call in favor of playing the category canon straight.
 
-Depth exists in one place only: the chrome. The sticky toolbar, the segmented filter
-capsule, and the two fixed corner orbs are translucent, blurred, saturated, and **lensed** —
+Depth exists in one place only: the chrome. The sticky toolbar and the segmented filter
+capsule are translucent, blurred, saturated, and **lensed** —
 rimmed with a specular catch along the top edge and a falloff along the bottom, so they read
 as curved glass rather than as frosted rectangles. Under them, and only visible through them,
 sits an ambient ground: two very wide accent-derived radials pooled in the top corners that
@@ -619,18 +614,11 @@ and anything a webfont would buy is bought instead with spacing and weight.
 ## Layout
 
 A single centered column, `max-width: 820px`, on a page padded `18px 20px 96px`
-(`16px 14px 88px` under 640px). The bottom padding reserves the corner-orb landing zone, and
-both it and the orbs' own `bottom` carry `env(safe-area-inset-bottom, 0px)` so the home
-indicator never shares the zone.
-Both orbs sit in one `<nav aria-label="Site controls">`, and on a touch screen they go inert
-(`pointer-events:none`, `opacity .55`) for 150ms after each scroll event, so a tap that lands
-mid scroll falls through to the card underneath. Reading goes down the page, so they leave on
-the way down (`html.scrolldn`, past 120px, 6px of slop) and return on the way up, and an open
-search preview (`body:has(.preview.on)`) hides them outright since it owns that column.
-`#sitectl:focus-within` out-orders both: a focused orb is always painted (T116).
-On the dashboard the nav (empty in personal mode, the theme script fills it) is emitted just
-before the toolbar, so the orbs are tab stops 2 and 3;
-never inside it, the toolbar's backdrop-filter would pin a fixed child to the bar (T161).
+(`16px 14px 88px` under 640px), the bottom carrying `env(safe-area-inset-bottom, 0px)`.
+No control floats over the page (T208): the settings gear (store mode only) and the theme
+toggle are `.lgout` icon actions in the dashboard toolbar, just before sign-out, and the theme
+toggle also sits at the right of the settings header. Theme defaults to the OS and a choice
+persists per browser (`psa_theme`); the gate, setup and 404 pages carry no toggle.
 
 Content sits in **raised cards flush with the column**: each submission is a card at
 `padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px
@@ -694,7 +682,7 @@ enter the dashboard row.
 ## Elevation & Depth
 
 Hybrid, split strictly by role. **Chrome is lensed glass; content is flat.** The toolbar, the
-filter capsule, the settings segmented bar, and the two fixed corner orbs share one material:
+filter capsule and the settings segmented bar share one material:
 translucent ground, `blur(16px) saturate(170%)`, a hairline border, an inset specular top rim,
 an inset bottom falloff rim, and one soft cast shadow. Beneath them the ambient ground
 (`body::before`, `position: fixed`, `z-index: -1`) lays two accent-derived radials in the top
@@ -726,7 +714,7 @@ shadow rather than glass. They materialize together — the scrim fades, its bac
 
 ### Named Rules
 **The Glass-Is-Chrome Rule.** `backdrop-filter` appears on the toolbar, the filter/segment
-capsules, the corner orbs, and overlay scrims. Never on a content row, a scan tile, or
+capsules, and overlay scrims. Never on a content row, a scan tile, or
 anything holding data.
 
 **The Dual-Rim Rule.** Every glass surface carries both rims — `--rim` on the top inset edge,
@@ -773,7 +761,7 @@ square ledger); scan tiles are 12px wells. Images take 6px (scans on tiles, cove
 logo chip) and preview thumbnails 4px; a lightbox image takes 12px because it is presented
 rather than listed. Preview rows and the quiet hover pill behind a text action take 8px. The
 search preview panel and the modal sheet take 14px; the full toolbar takes 16px and the compact
-search bar 14px. Corner orbs are 44px circles.
+search bar 14px.
 
 Borders are always exactly 1px and always `--hair` (or `--hair2` in a settings danger zone).
 There is no second border weight and no colored border except the owner tag's focus underline
@@ -810,7 +798,7 @@ content — a panel, a sheet, an image, a row — it is not.
 - **Hover / Focus:** background deepens to `--ac-fill-hot` over 180ms; focus takes the global
   2px accent outline at 2px offset (inputs take it at zero offset).
 - **Press:** `scale(.97)` over `--t1` `--e1`, set element-level because it carries no
-  color and therefore cannot leak a fill. Orbs use `.94`.
+  color and therefore cannot leak a fill.
 - **Text buttons:** accent-as-text on transparent — "Archive", "View cards", "Undo",
   disclosure links. They carry an invisible padded hit box (`12px 8px` padding cancelled by an
   equal negative margin) so the resting layout is byte-identical to unpadded text. Hover is
@@ -818,7 +806,7 @@ content — a panel, a sheet, an image, a row — it is not.
   and read as a stray sub-panel inside a card), no underline (tried and disliked; both owner
   calls 2026-08-08).
 - **Archive undo chip:** "Archived · Undo" holds 10s, paused while hovered or keyboard focused. On
-  touch it leaves the row for the thumb zone: fixed bottom-left on the orbs' baseline, 44px,
+  touch it leaves the row for the thumb zone: fixed bottom-left, 20px off the edges, 44px,
   13px, a solid detached capsule (`--glasssolid`, hairline, `0 10px 26px` cast) (T144).
 - **Stage-line pill (`.stage .view`):** the exception — the row's one link sits at the far
   end of the stage line as a visible quiet capsule (App Store's row action; a bar-row
@@ -1216,7 +1204,7 @@ standing in for icons, no raster icons.
 - **Do** emit both the light and dark palettes on every page so the client toggle is instant.
 - **Do** separate content with a 1px `--hair` rule and nothing else.
 - **Do** give every glass surface both rims (`--rim` top, `--rimb` bottom) plus its cast shadow.
-- **Do** keep Liquid Glass on the toolbar, the segmented capsules, and the corner orbs only.
+- **Do** keep Liquid Glass on the toolbar and the segmented capsules only.
 - **Do** ship the `@supports not (backdrop-filter)`, `prefers-reduced-transparency`, and
   `@supports not (color-mix)` fallbacks with every new glass or ambient surface.
 - **Do** put the filled identity on `.fillbtn` and leave the bare `button` selector a reset.
@@ -1228,7 +1216,7 @@ standing in for icons, no raster icons.
 - **Do** set monospace on cert numbers and keep tabular numerals everywhere else.
 - **Do** name only the current stage under 640px.
 - **Do** write in sentence case, in the system face.
-- **Do** press-scale interactive elements (`.97`, orbs `.94`) — it is the system's tactility.
+- **Do** press-scale interactive elements (`.97`) — it is the system's tactility.
 - **Do** give a horizontally scrolling strip a hidden scrollbar, `overscroll-behavior-x:
   contain`, and a mobile bleed to the row's full width.
 - **Do** give every image in a strip or grid real alt text drawn from the card's own name.
