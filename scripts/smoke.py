@@ -746,6 +746,9 @@ def main():
             if b".hrow>.synced .estnote{margin-left:0}" not in css:
                 fails.append("GET /app.css: the header note keeps its right-align "
                              "margin on phones")
+            # on a phone Discord pings rides the person page's name line (T211)
+            if b".hrow:has(>.tots) .dbtn{grid-column:2;grid-row:1}" not in css:
+                fails.append("GET /app.css: Discord pings left the name line on phones (T211)")
             # an overflowing filmstrip fades the edge that still has tiles beyond
             # it, at every width: the rules sit unindented, outside any @media
             # block. The fade is driven by .sl/.sr, so a strip that fits gets none
@@ -1241,6 +1244,15 @@ def main():
                 if want not in sbody:
                     fails.append("GET /cards?owner=Solo: the value block is missing "
                                  + want.decode())
+            # the cards lead: one row of figures, value first, and the footnote
+            # folded behind a details, so a phone sees a card above 300px (T211)
+            if (not re.search(rb'<div class="trow"><span>Est\. value[^<]*<b>[^/]*</b></span>'
+                              rb'<span>Insured coverage<b>[^/]*</b></span>'
+                              rb'<span>Est\. grading cost<b>', sbody)
+                    or b'<details class="estnote"><summary>How these are counted</summary>'
+                    not in sbody or b'class="lbl2"' in sbody):
+                fails.append("GET /cards?owner=Solo: the totals are not one row "
+                             "with the footnote folded (T211)")
             # the CSV is a file, so the nav bar never starts on it (T198)
             if b'&amp;format=csv" download>' not in sbody:
                 fails.append("GET /cards?owner=Solo: Export CSV lacks download (T198)")
@@ -1309,7 +1321,7 @@ def main():
             if (b'ledval">$204' + pl + b"<span>" not in d
                     or b"<b>$204" + pl + b" CAD</b>" not in sp
                     or b"<b>$204" + pl + b" CAD</b>" not in pp
-                    or b"<br>+ = some cards have no figure yet</span>" not in pp):
+                    or b"<br>+ = some cards have no figure yet</details>" not in pp):
                 fails.append("GET /, /sub, /cards: an unpriced graded card leaves "
                              "its total without + or the footnote (T165)")
             db.execute("UPDATE card_values SET estimate = 310, last_sale = 290 "

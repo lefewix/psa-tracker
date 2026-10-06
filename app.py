@@ -1104,6 +1104,9 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .synced b.holdb{color:var(--holdtx)}
 .synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
+.tots .trow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 24px}
+.tots .estnote{margin-top:0;max-width:none}
+.tots summary{cursor:pointer;width:max-content;margin-left:auto}
 /* the customer's sign-out is the icon in the freshness block, not the top-left "back" slot. */
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
@@ -1730,6 +1733,16 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  /* the 34ch measure keeps its width but not its right edge: full-width and left-aligned,
     margin-left:auto floated it to the middle. */
  .hrow>.synced .estnote{margin-left:0}
+ .hrow>.tots{margin-top:0}
+ .hrow>.tots .trow{justify-content:flex-start}
+ .hrow>.tots summary{margin-left:0}
+ /* person page: Discord pings rides the name line, so the cards start higher (T211) */
+ .hrow:has(>.tots){row-gap:8px}
+ .hrow:has(>.tots)~.toolbar{margin-top:10px}
+ .hrow:has(>.tots)~.filterrow{margin-top:12px}
+ .hrow:has(>.tots)>div:first-child{flex:1 0 100%;display:grid;grid-template-columns:1fr auto;align-items:center}
+ .hrow:has(>.tots) .dbtn{grid-column:2;grid-row:1}
+ .hrow:has(>.tots) h1+.sub{grid-column:1/-1}
  /* the segment never breaks to a second row, nor is it an overflow box to 360px: three pills
     measure ~247px, and staying un-clipped is what lets the hit pseudo work (28 + 8 each way
     = 44 on the 38px capsule). Under 360 it scrolls and clips. */
@@ -4327,22 +4340,24 @@ def people_page(a, owner, sort=("sub", False)):
                 uncovered += 1
             else:
                 covered += dv
-        ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{plus(uncovered)} CAD</b>'
+        ins = (f'<span>Insured coverage<b>${covered:,.0f}{plus(uncovered)} CAD</b></span>'
                if covered or uncovered else "")
         vtot = sum(vals.get(c["cert_no"] or "", 0) for c in act_cards)
         vmiss = vtot and sum(1 for c in act_cards if c.get("grade") and (c["cert_no"] or "") not in vals)
-        vline = (f'<span class="lbl2">Est. value · graded</span><b>${vtot:,.0f}{plus(vmiss)} {vcur}</b>'
+        vline = (f'<span>Est. value · graded<b>${vtot:,.0f}{plus(vmiss)} {vcur}</b></span>'
                  if vtot else "")
         vnote = f'<br>values = PSA estimate or last sale · as of {html.escape(vas_of)}' if vline else ""
         # the hidden text names the unpriced tier, so the missing price can
         # be added to PSA_PRICES without guessing
         cplus = plus(unpriced, "no price for " + ", ".join(sorted(unpriced)))
-        est = (f'<div class="synced">Est. grading cost<b>${total:,.0f}'
-               f'{cplus} CAD</b>{ins}{vline}'
-               f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
+        # one row of figures, the footnote folded: the cards lead the page (T211)
+        est = (f'<div class="synced tots"><div class="trow">{vline}{ins}'
+               f'<span>Est. grading cost<b>${total:,.0f}{cplus} CAD</b></span></div>'
+               f'<details class="estnote"><summary>How these are counted</summary>'
+               f'base per-card fees · pending PSA upcharges<br>'
                f'coverage = declared value on file with PSA{vnote}'
                f'{"<br>+ = some cards have no figure yet" if unpriced or uncovered or vmiss else ""}'
-               '</span></div>') if act_cards else ""
+               '</details></div>') if act_cards else ""
     # back on the left, the export on the right: the sub page's own foot row,
     # with its 18px top margin dropped so the header sits where it always did
     back = ('<div class="foot footbare">'

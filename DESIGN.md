@@ -1028,6 +1028,11 @@ kept on one line by `.stage span span{white-space:nowrap}`; dashboard rows never
 unknown" on the stage line, muted and unbolded, with no capsule under it (`.stage.nobar`
 drops the line's bottom margin, so the row keeps the same rhythm as a bar row).
 
+**The person page leads with cards (T211).** Its header figures sit in one `.tots .trow` row,
+value, coverage, grading cost; the footnote folds behind a `<details>` "How these are counted".
+Under 640px Discord pings rides the name line and the gaps to search and sort tighten, so the
+first group starts under 300px at 390.
+
 **Person page groups sit in a two-column grid (T120).** Above 640px the sub groups fill two
 equal columns inside `.wrap`, in date order (no dense packing); a group of 3+ cards spans both.
 Tiles keep `.grid`'s auto-fill, so a half column runs them 2-up; the status note runs under both
