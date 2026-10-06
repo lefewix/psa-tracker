@@ -818,6 +818,8 @@ content — a panel, a sheet, an image, a row — it is not.
   fourth pill shipped briefly and was removed with the rest of the grades promotion
   (2026-08-02 owner ruling). Service sorts by tier fee, priciest first (unpriced last), and
   heads each tier with a `.tierhd` line at 14/650 `--m1`; other sorts drop the headers (T151).
+  The active pill ends in a 5px `currentColor` chevron that turns up on reversal (`.rev`); the
+  choice rides `?sort=&dir=` and the server renders it. Shipped rows sort last under Return (T152).
 - **State:** inactive is muted 500-weight on transparent; active takes the `--segon` fill,
   accent-as-text, 600 weight, and the Segment Lift shadow. The Archived pill is the exception
   in both directions: pressed it takes `--ac-fill` with a `#fff` label (see the Opt-In Fill

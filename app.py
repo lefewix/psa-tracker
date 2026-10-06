@@ -12,7 +12,7 @@ invisible by design. Site passwords must therefore be unique across accounts.
 Config: every environment key this file reads, global (systemd EnvironmentFile)
 and per-account (account.env), is listed with its default in deploy/example.env.
 """
-import base64, csv, gzip, hashlib, hmac, html, io, json, os, re, shlex, sqlite3, subprocess, sys, tempfile, threading, time, traceback
+import base64, csv, functools, gzip, hashlib, hmac, html, io, json, os, re, shlex, sqlite3, subprocess, sys, tempfile, threading, time, traceback
 import urllib.parse, urllib.request
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -1184,6 +1184,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    HIG floor). Vertical only; z-index:-1 keeps it behind real boxes. Under 360px clips. */
 .f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
+.fsort.on::after{content:"";display:inline-block;width:5px;height:5px;margin:0 1px 0 6px;
+ border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-3px) rotate(45deg);
+ transition:transform .18s}
+.fsort.on.rev::after{transform:translateY(0) rotate(-135deg)}
 /* Archived pressed borrows .fillbtn's grammar (--ac-fill + #fff), not the segment's --segon
    wash: it is a view switch, not a fourth sort. */
 .f.farch.on{background:var(--ac-fill);color:#fff}
@@ -2696,7 +2700,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
                 f' data-price="{"" if price is None else price}"'
-                f' data-eta="{html.escape(s["est_end"] or s["est_start"] or "")}"')
+                f' data-eta="{html.escape(sort_eta(s))}"')
     led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
     foot_h = (f'<div class="foot"><span class="est">{foot}</span>{act}</div>'
               if (foot or act) else "")
@@ -3508,20 +3512,29 @@ SORT_JS = """<script>
     btns.forEach(function(b){
       var on=b.dataset.sort===m;
       b.classList.toggle('on',on);
+      b.classList.toggle('rev',on&&!!d);
       b.setAttribute('aria-pressed',on?'true':'false');
       b.textContent=(on&&d&&REV[m])||BASE[b.dataset.sort];
     });
     cur=m; rev=d;
     try{localStorage.setItem('psa_sort',m+(d?':r':''))}catch(e){}
+    // T152: the view lives in the URL too, so a reload or a shared link keeps it
+    q.set('sort',m); q.set('dir',(NAT[m]==='asc')===!d?'asc':'desc');
+    try{history.replaceState(history.state,'',location.pathname+'?'+q+location.hash)}catch(e){}
   }
-  var cur='sub',rev=0;
+  var NAT={sub:'desc',svc:'desc',eta:'asc'};
+  var q=new URLSearchParams(location.search);
+  // the server already sorted a ?sort= view; pick up what it rendered
+  var on0=document.querySelector('.fsort.on');
+  var cur=on0?on0.dataset.sort:'sub',rev=on0&&on0.classList.contains('rev')?1:0;
   btns.forEach(function(b){b.addEventListener('click',function(){
     var m=b.dataset.sort,again=m===cur;
     apply(m, again?!rev:0);
     if(again)_say(SAID[m][rev?1:0]);
   })});
   var saved=null; try{saved=localStorage.getItem('psa_sort')}catch(e){}
-  if(saved){
+  if(BASE[q.get('sort')]){if(cur==='svc')apply(cur,rev);}  // svc tier headers are client-side
+  else if(saved){
     var m=saved.split(':')[0], d=saved.indexOf(':r')>-1;
     if(BASE[m]&&(m!=='sub'||d))apply(m,d);
   }
@@ -3750,9 +3763,57 @@ def sync_dot(stale, has_subs):
     return (f'<div class="sync{cls}"{title}><i aria-hidden="true"></i>'
             f'<span class="sl">{word}</span><span class="ss">{short}</span>{vh}</div>')
 
-def dash_page(a, subs):
+# T152: the sort pills' choice rides the query string. Each pill's natural
+# direction is what a first click shows; ?dir names the other one to reverse.
+SORT_DIR = {"sub": "desc", "svc": "desc", "eta": "asc"}
+
+def sort_pick(qs):
+    """(key, reversed) from ?sort=&dir=, anything off the whitelist ignored."""
+    m = qs.get("sort", [""])[0]
+    if m not in SORT_DIR:
+        return "sub", False
+    return m, qs.get("dir", [""])[0] in ("asc", "desc") and qs["dir"][0] != SORT_DIR[m]
+
+def sort_eta(s):
+    """A shipped sub shows no return date, so it sorts with the dateless ones, last."""
+    return "" if s["status"] == "Shipped" else (s["est_end"] or s["est_start"] or "")
+
+def sort_rows(rows, m, d, key):
+    """SORT_JS's cmp in Python; key(row) gives (sub, service, price, eta)."""
+    def cmp(x, y):
+        (a, sa, pa, ea), (b, sb, pb, eb) = key(x), key(y)
+        sub = int(b) - int(a) if str(a).isdigit() and str(b).isdigit() else 0
+        if m == "sub":
+            return -sub if d else sub
+        if m == "svc":
+            if (pa is None) != (pb is None):
+                return -1 if pb is None else 1
+            r = (pb or 0) - (pa or 0)
+            if r:
+                return -r if d else r
+            sa, sb = (sa or "").lower(), (sb or "").lower()
+            if sa != sb:
+                return -1 if sa < sb else 1
+        else:
+            if bool(ea) != bool(eb):
+                return -1 if ea else 1
+            if ea != eb:
+                return (1 if ea < eb else -1) if d else (-1 if ea < eb else 1)
+        return sub
+    return sorted(rows, key=functools.cmp_to_key(cmp))
+
+def sort_pills(m, d):
+    return "".join(
+        f'<button type="button" class="f fsort{" on" if k == m else ""}{" rev" if k == m and d else ""}" '
+        f'data-sort="{k}" aria-pressed="{"true" if k == m else "false"}">'
+        f'{"Oldest" if k == m == "sub" and d else label}</button>'
+        for k, label in (("sub", "Newest"), ("svc", "Service"), ("eta", "Return")))
+
+def dash_page(a, subs, sort=("sub", False)):
     arch = archived_set(a)
-    active = [s for s in subs if s["sub_number"] not in arch]
+    active = sort_rows([s for s in subs if s["sub_number"] not in arch], *sort,
+                       key=lambda s: (s["sub_number"], s["service"],
+                                      service_price(a, s["service"]), sort_eta(s)))
     gone = [s for s in subs if s["sub_number"] in arch]
     # the page needs two numbers off the cards table, not the rows themselves:
     # the value totals are summed in sqlite, and the untagged count reads two
@@ -3805,9 +3866,7 @@ def dash_page(a, subs):
                     f'{scan_fix(scan_error(a))}</span></div>') + hint
     pills = []
     if subs:  # sort pills (SORT_JS reorders #list client-side; choice persists per browser)
-        pills += ['<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>',
-                  '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Service</button>',
-                  '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>']
+        pills.append(sort_pills(*sort))
     # role=group, not navigation: three sort toggles are not a navigation
     # landmark. Styled and queried by CLASS everywhere, so the role carries no
     # layout weight.
@@ -4040,7 +4099,7 @@ def detail_page(a, sub):
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{gear_html()}{APP_JS_TAG}</body></html>"""
 
-def people_page(a, owner):
+def people_page(a, owner, sort=("sub", False)):
     """Admin person page (and the operator's `unassigned` worklist).
     Admin-only: customer sessions are routed to customer_page, never here."""
     owners = owners_map(a)
@@ -4091,7 +4150,7 @@ def people_page(a, owner):
         # on a dashboard row: SORT_JS reorders #list's .card children and does
         # not care that these children are submission groups. No data-arch: the
         # archived groups live in #archgrid, which SORT_JS never touches.
-        eta = html.escape(s["est_end"] or s["est_start"] or "") if s else ""
+        eta = html.escape(sort_eta(s)) if s else ""
         p = service_price(a, s["service"]) if s else None
         sortattr = (f' data-sub="{html.escape(str(n))}" data-svc="{svc}"'
                     f' data-price="{"" if p is None else p}" data-eta="{eta}"')
@@ -4103,16 +4162,20 @@ def people_page(a, owner):
                 f'<h2 class="num">#{html.escape(str(n))}</h2></a>'
                 f'<div class="meta">{svc} · {cnt}</div>{note}</div><div class="pills">{pill}</div></div>'
                 f'{tl}<div class="grid" style="margin-top:14px">{tiles_h}</div></div>')
-    def grouped(cs):
+    def grouped(cs, sort=("sub", False)):
         gs = {}
         for c in cs:
             gs.setdefault(c["sub_number"], []).append(c)
         order = sorted(gs, key=lambda n: -int(n) if str(n).isdigit() else 0)
+        if sort != ("sub", False):
+            order = sort_rows(order, *sort, key=lambda n: (
+                n, svc_map.get(n, ""), service_price(a, svc_map.get(n, "")) if n in subs_by else None,
+                sort_eta(subs_by[n]) if n in subs_by else ""))
         return "".join(group_html(n, gs[n]) for n in order)
     if act_cards:
         # #list is what SORT_JS reorders; the filterrow above it always carries
         # the 20px 0 12px that used to be this wrapper's own top margin
-        grid = '<div id="list" style="margin-top:0">' + grouped(act_cards) + "</div>"
+        grid = '<div id="list" style="margin-top:0">' + grouped(act_cards, sort) + "</div>"
     elif unassigned:
         grid = '<div class="empty">🎉 Every active card has an owner tag.</div>'
     elif arc_cards:
@@ -4125,10 +4188,7 @@ def people_page(a, owner):
     # the dashboard's three sort pills, verbatim: SORT_JS reorders the
     # submission groups in #list and the choice is the same psa_sort the
     # dashboard stores. Only when there are active groups to reorder.
-    pills = ('<button type="button" class="f fsort on" data-sort="sub" aria-pressed="true">Newest</button>'
-             '<button type="button" class="f fsort" data-sort="svc" aria-pressed="false">Service</button>'
-             '<button type="button" class="f fsort" data-sort="eta" aria-pressed="false">Return</button>'
-             ) if act_cards else ""
+    pills = sort_pills(*sort) if act_cards else ""
     filters = (f'<div class="filters" role="group" aria-label="Sort submissions">'
                f'{pills}</div>') if pills else ""
     # solo pill, same grammar as the dashboard's: a capsule wrapping a single
@@ -4779,7 +4839,8 @@ class H(BaseHTTPRequestHandler):
         if path == "/":
             if urllib.parse.parse_qs(parsed.query).get("arch"):
                 return self.send(200, arch_rows(acct, load_subs(acct)))
-            return self.send(200, dash_page(acct, load_subs(acct)))
+            return self.send(200, dash_page(acct, load_subs(acct),
+                                            sort_pick(urllib.parse.parse_qs(parsed.query))))
         if path == "/cards":
             qs = urllib.parse.parse_qs(parsed.query)
             owner = qs.get("owner", [""])[0]
@@ -4787,7 +4848,7 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, people_csv(acct, owner), "text/csv; charset=utf-8",
                                  extra=[("Content-Disposition",
                                          f'attachment; filename="{csv_filename(owner)}"')])
-            return self.send(200, people_page(acct, owner))
+            return self.send(200, people_page(acct, owner, sort_pick(qs)))
         if path == "/search":
             qs = urllib.parse.parse_qs(parsed.query)
             return self.send(200, search_page(acct, qs.get("q", [""])[0],

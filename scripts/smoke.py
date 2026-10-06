@@ -924,6 +924,30 @@ def main():
                     or b'data-sort="svc" aria-pressed="false">Service<' not in (body or b"")
                     or b'data-svc="Regular" data-price="109.0"' not in (body or b"")):
                 fails.append("GET /: not three sort pills, or Service rows lack the tier price (T151)")
+            # the sort rides the URL and the server renders it; shipped sorts
+            # with the dateless rows, last under Return either way (T152)
+            def order(b):
+                return re.findall(rb'<h2 class="num">#(\d+)</h2>', b.split(b'id="list"', 1)[-1])
+            if order(body or b"") != [b"14900004", b"14900003", b"14900002", b"14900001"]:
+                fails.append(f"GET /: default order {order(body or b'')} (T152)")
+            asc = check("GET /?sort=eta", "/?sort=eta", (200,), cookie)
+            desc = check("GET /?sort=eta&dir=desc", "/?sort=eta&dir=desc", (200,), cookie)
+            bad = check("GET /?sort=x&dir=y", "/?sort=%3Cx%3E&dir=up", (200,), cookie)
+            # 14900004 shipped (stale ETA in the past) after past-due 14900003
+            if order(asc or b"") != [b"14900003", b"14900002", b"14900001", b"14900004"]:
+                fails.append(f"GET /?sort=eta: order {order(asc or b'')} (T152)")
+            if (order(desc or b"") != [b"14900001", b"14900002", b"14900003", b"14900004"]
+                    or b'class="f fsort on rev" data-sort="eta" aria-pressed="true">Return<'
+                    not in (desc or b"")):
+                fails.append(f"GET /?sort=eta&dir=desc: order {order(desc or b'')} (T152)")
+            if (order(bad or b"") != order(body or b"")
+                    or b'class="f fsort on" data-sort="sub" aria-pressed="true">Newest<' not in (bad or b"")
+                    or b"&lt;x" in (bad or b"")):
+                fails.append("GET /?sort=<x>&dir=up: bad params not ignored (T152)")
+            sub_rev = check("GET /?sort=sub&dir=asc", "/?sort=sub&dir=asc", (200,), cookie)
+            if (order(sub_rev or b"") != [b"14900001", b"14900002", b"14900003", b"14900004"]
+                    or b'aria-pressed="true">Oldest<' not in (sub_rev or b"")):
+                fails.append("GET /?sort=sub&dir=asc: not oldest first (T152)")
             # one quiet attention line above the list, each count a link (T150)
             want = ('<div class="hint attn" id="attn">'
                     '<a class="tlink" href="/sub/14900002">1 on hold</a> · '
@@ -1481,6 +1505,15 @@ def main():
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": "Twosub"})
             tbody = check("GET /cards?owner=Twosub", "/cards?owner=Twosub",
                           (200,), cookie) or b""
+            # same ?sort=&dir= as the dashboard, rendered server-side (T152)
+            for q, want in (("", [b"14900002", b"14900001"]),
+                            ("&sort=eta&dir=desc", [b"14900001", b"14900002"]),
+                            ("&sort=nope&dir=desc", [b"14900002", b"14900001"])):
+                got = re.findall(rb'<h2 class="num">#(\d+)</h2>',
+                                 check("GET /cards?owner=Twosub" + q, "/cards?owner=Twosub" + q,
+                                       (200,), cookie) or b"")
+                if got != want:
+                    fails.append(f"GET /cards?owner=Twosub{q}: order {got} (T152)")
             row = re.search(rb'<div class="filterrow">.*?(?=<div id="list")', tbody, re.S)
             row = row.group(0) if row else b""
             for want in (b'<div class="filters" role="group" aria-label="Sort submissions">',
