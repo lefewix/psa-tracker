@@ -39,10 +39,9 @@ def _hexcolor(env, default):
     v = os.environ.get(env, "").strip()
     return v if re.fullmatch(r"#[0-9a-fA-F]{6}", v) else default
 
-# Per-store branding: one primary accent + one ambient secondary; every other
-# shade is derived in CSS via color-mix, so stores only pick two colors.
+# Per-store branding: one accent; every other shade is derived in CSS via
+# color-mix, so a store picks one color.
 ACCENT = _hexcolor("PSA_ACCENT", "#3a6fd8")
-ACCENT_2 = _hexcolor("PSA_ACCENT_2", "#5b8def" if ACCENT == "#3a6fd8" else ACCENT)
 # Light is the flagship sheet; a store opts into the dark ground with PSA_THEME=dark.
 THEME = "dark" if os.environ.get("PSA_THEME", "light").strip().lower() == "dark" else "light"
 
@@ -226,7 +225,7 @@ _MOTION = "--t1:.15s;--t2:.25s;--t3:.55s;--e1:ease-out;--e2:cubic-bezier(.23,1,.
 
 # The store's PSA_THEME is the default; both palettes are emitted so the
 # client-side day/night toggle can flip instantly (data-theme on <html>).
-THEME_VARS = (f":root{{--ac:{ACCENT};--ac2:{ACCENT_2};{_MOTION}{_theme_vars(THEME)}}}"
+THEME_VARS = (f":root{{--ac:{ACCENT};{_MOTION}{_theme_vars(THEME)}}}"
               f':root[data-theme="dark"]{{{_theme_vars("dark")}}}'
               f':root[data-theme="light"]{{{_theme_vars("light")}}}')
 # prefers-contrast: hairlines and secondary text step up hard. Emitted in the

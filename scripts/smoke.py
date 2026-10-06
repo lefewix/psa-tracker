@@ -265,16 +265,16 @@ def env_checks(fails):
 
 
 def accent_checks(fails):
-    """A store that sets only PSA_ACCENT gets --ac2 in the same hue, both set
-    keep both, neither keeps the steel blue pair, and no WARNING prints (T182)."""
-    for env, want in (({}, "#5b8def"), ({"PSA_ACCENT": "#2e8b57"}, "#2e8b57"),
-                      ({"PSA_ACCENT": "#2e8b57", "PSA_ACCENT_2": "#ffcc00"}, "#ffcc00")):
+    """Any store accent boots with no WARNING, and the dead second accent
+    (PSA_ACCENT_2, painted nowhere since T210) is no longer emitted."""
+    for env, want in (({}, "#3a6fd8"), ({"PSA_ACCENT": "#2e8b57"}, "#2e8b57"),
+                      ({"PSA_ACCENT": "#2e8b57", "PSA_ACCENT_2": "#ffcc00"}, "#2e8b57")):
         e = {k: v for k, v in os.environ.items() if not k.startswith("PSA_ACCENT")}
         e.update(env)
         out = subprocess.run([sys.executable, "-c", "import app;print(app.THEME_VARS)"],
                              cwd=ROOT, env=e, capture_output=True, text=True).stdout
-        if f"--ac2:{want};" not in out or "WARNING" in out:
-            fails.append(f"--ac2 with {env or 'no accent env'}: want {want} (T182)")
+        if f"--ac:{want};" not in out or "--ac2" in out or "WARNING" in out:
+            fails.append(f"--ac with {env or 'no accent env'}: want {want}, no --ac2 (T182, T210)")
 
 
 def barmuted_checks(fails):

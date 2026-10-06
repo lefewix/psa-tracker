@@ -116,7 +116,7 @@ submission data; no configuration needed).
 
 ## Branding
 
-Two accent colors drive the whole palette: `PSA_ACCENT` + `PSA_ACCENT_2`
+One accent color drives the whole palette: `PSA_ACCENT`
 (validated hex, global env) plus `PSA_THEME=light|dark` for the default theme
 (visitors can flip it per-browser with the corner toggle).
 

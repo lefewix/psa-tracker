@@ -386,10 +386,6 @@ a single chromatic accent that a store owns, and a reserved red that appears onl
   input fill; `--inp` is the harder ground in both palettes, so clamping there is correct
   everywhere the ring is actually painted.
 
-### Secondary
-- **Second accent** (`--ac2`, env `PSA_ACCENT_2`): still emitted, painted nowhere since the
-  ambient ground went (T210).
-
 ### Tertiary
 - **Grade Red** (`--err`, one danger ink since T210): the color of a grade landing. **One place only: the grade line of
   a scan tile.** A red "N grades landed" status pill and a red detail-page badge shipped
@@ -435,8 +431,8 @@ a single chromatic accent that a store owns, and a reserved red that appears onl
   dark ground (T139).
 
 ### Named Rules
-**The Two-Color Store Rule.** A store picks exactly two colors (`PSA_ACCENT`,
-`PSA_ACCENT_2`). Every other accent shade is derived in CSS via `color-mix(in srgb, …)`.
+**The One-Color Store Rule.** A store picks exactly one color (`PSA_ACCENT`; `PSA_ACCENT_2`
+is ignored since T210 dropped the ambient ground). Every other accent shade is derived in CSS via `color-mix(in srgb, …)`.
 Never hardcode a third brand color, and never bypass the derivation to hand-pick a shade.
 
 **The Validated Accent Rule.** Env colors are matched against `#[0-9a-fA-F]{6}` server-side
