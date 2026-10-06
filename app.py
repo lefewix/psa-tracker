@@ -1097,7 +1097,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* the customer's sign-out is the icon in the freshness block, not the top-left "back" slot. */
 .synced.custrow{display:flex;align-items:flex-start;gap:12px;justify-content:flex-end}
 .synced.custrow .custout{text-align:right}
-/* sync state: one dot and one phrase (T162), the clock time in its title and .vh span,
+/* sync state: one dot and one phrase (T162) that names the clock time in plain sight (T169),
    .ss the phone form. The dot is 6px of non-text, so --ok's 3:1 check covers it. */
 .sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
  font-weight:500;color:var(--m1);line-height:1.5;white-space:nowrap}
@@ -1560,7 +1560,7 @@ button{background:transparent;border:0;color:inherit;
 /* press-scale stays element-level: it sets no colour, so it cannot leak a fill. */
 button:active{transform:scale(.97)}
 button:disabled{opacity:.5;cursor:default}
-.err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:14px}
+.err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:18px}
 /* ---- settings ------------------------------------------------------------ */
 .card.sblock{margin:0 0 14px;padding:22px 20px 24px}
 .sblock .sform{max-width:430px}
@@ -1632,10 +1632,13 @@ button:disabled{opacity:.5;cursor:default}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
 /* the gate is a card too: on the grouped ground a bare stack floats anchorless and the quiet
-   fill vanished. */
+   fill vanished. A card with an .err already holds one empty 18px error line (its full line
+   box, so an error never grows the card), so its bottom pad gives that back (T169); the 404
+   has no .err and keeps the full pad. */
 .gbox{width:min(340px,100%);text-align:center;background:var(--surface);
  border:1px solid var(--hair2);border-radius:20px;padding:28px 22px;
  box-shadow:0 2px 10px var(--shc3)}
+.gbox:has(>.err){padding-bottom:14px}
 /* the gate is a narrow card, not a page: a title sized for an 820px sheet wraps a two-word
    name. One step down, unchanged on phones. */
 .gbox h1{font-size:24px;letter-spacing:-.02em}
@@ -2060,7 +2063,7 @@ def gate_page(error="", out=False):
 {'<div class="setupnote" role="status">You’re signed out.</div>' if out else ""}
 <form method="POST" action="/login">
 <input type="password" name="password" placeholder="{ph}" aria-label="{ph}"
- autofocus autocomplete="current-password" autocapitalize="none" autocorrect="off"
+ {'autofocus ' if error else ''}autocomplete="current-password" autocapitalize="none" autocorrect="off"
  spellcheck="false" aria-describedby="err"{inv}>
 <button type="submit" class="fillbtn">Enter</button></form>
 <div class="err" id="err" role="alert">{html.escape(error)}</div>
@@ -3804,8 +3807,9 @@ def sync_dot(stale, has_subs):
     scan that worked, not the newest submission change. Scans run every 9 to 22
     minutes (T101), so an hour without one is two missed scans: Not updating.
     The T24 banner waits 6 hours before it speaks; the dot only turns amber.
-    Phones get the short form so the toolbar stays one row."""
-    title = vh = ""
+    The live phrase ends on the clock time (T169); phones get the short form,
+    the clock alone when live, so the toolbar stays one row."""
+    title = ""
     if stale is None:
         cls = ""
         word, short = (("Last update unknown", "Sync unknown") if has_subs
@@ -3813,19 +3817,19 @@ def sync_dot(stale, has_subs):
     else:
         seen = datetime.fromtimestamp(time.time() - stale * 3600, timezone.utc)
         when = html.escape(fmt_local(seen.isoformat()))
-        title, vh = f' title="Last sync {when}"', f'<span class="vh">Last sync {when}</span>'
+        title = f' title="Last sync {when}"'
+        loc = seen.astimezone(DISPLAY_TZ)
+        since = (loc.strftime("%I:%M %p").lstrip("0") if stale < 20
+                 else loc.strftime("%b %d"))
         mins = int(stale * 60)
         if mins < 2:
-            cls, word, short = " live", "Updated just now", "Just now"
+            cls, word, short = " live", f"Updated just now · {since}", since
         elif mins < 60:
-            cls, word, short = " live", f"Updated {mins} min ago", f"{mins} min ago"
+            cls, word, short = " live", f"Updated {mins} min ago · {since}", since
         else:
-            loc = seen.astimezone(DISPLAY_TZ)
-            since = (loc.strftime("%I:%M %p").lstrip("0") if stale < 20
-                     else loc.strftime("%b %d"))
             cls, word, short = " stale", f"Not updating since {since}", "Not updating"
     return (f'<div class="sync{cls}"{title}><i aria-hidden="true"></i>'
-            f'<span class="sl">{word}</span><span class="ss">{short}</span>{vh}</div>')
+            f'<span class="sl">{word}</span><span class="ss">{short}</span></div>')
 
 # T152: the sort pills' choice rides the query string. Each pill's natural
 # direction is what a first click shows; ?dir names the other one to reverse.

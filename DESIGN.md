@@ -538,8 +538,9 @@ on Segoe and Roboto.
   weight. The toolbar states sync in chrome instead of a figure: `.sync`, one 6px dot
   (`--ok` under an hour, `--holdtx` an hour or more, `--m1` unknown) and one phrase at
   12.5/500 in one grammar, "Updated just now", "Updated 48 min ago", "Not updating since
-  9:16 PM", the exact time in its title and a `.vh` span. Phones show the short form ("48 min
-  ago", "Not updating") so the toolbar stays one row, under 360 the dot alone. No marker
+  9:16 PM"; a live phrase ends on the clock time in plain sight ("Updated 48 min ago · 8:52
+  PM", T169), the full date and time in its title. Phones show the short form (the clock
+  alone when live, "Not updating" when stale) so the toolbar stays one row, under 360 the dot alone. No marker
   reads "Last update unknown" over submissions, "No sync yet" only on an empty account (T162).
 - **Field** (400, 15px): inputs, search, and the bare button reset (which sets 15/600).
 - **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
@@ -898,6 +899,11 @@ renders no card. Every signed-in session sees it. No red, no pills.
 
 **Failure reuses the 404 card**: a read that fails (locked or unreadable db) answers 500 with the
 same gate box, titled "Something went wrong", never an empty dashboard.
+
+**The gate field rests unfocused** (no autofocus, so no ring until it is tapped or tabbed to);
+only the retry after an error lands focused. `.err` reserves its full 18px line box so an error
+never grows the card, and a `.gbox` holding an `.err` drops its bottom pad to 14px to give that
+empty line back (T169).
 
 **The gate keeps a standing line** under the error rung, a `.setupnote` reading "Ask the store
 for the password.", so a visitor who cannot get in is told who to ask before they guess. Lockout

@@ -541,6 +541,11 @@ def main():
         check("GET / (no session)", "/", (200,), must_have='action="/login"')
         # the gate says who has the password, always, not only after an error (T115)
         check("GET / (gate hint)", "/", (200,), must_have="Ask the store for the password.")
+        # the gate field rests without the focus ring; only a retry after an
+        # error lands focused. The error line reserves its full 18px line box so
+        # the card never grows, and the bottom pad gives that line back (T169)
+        if b"autofocus" in check("GET / (gate rests unfocused)", "/", (200,)):
+            fails.append("GET /: the gate autofocuses, so its field never shows a rest state (T169)")
         check("GET /sub/14900001 (no session)", "/sub/14900001", (200,))
         check("GET / (bad token)", "/", (200,), cookie="psa_session=nope.nope.nope",
               must_have='action="/login"')
@@ -549,6 +554,9 @@ def main():
         # the sheet every browser downloads is CSS, not an essay. Source comments
         # are stripped when the served copy is built, so this caps the RULES, not
         # the prose - app.py may explain itself at length (T82, T112)
+        if css and (b"min-height:18px}" not in css.split(b".err{", 1)[-1][:120]
+                    or b".gbox:has(>.err){padding-bottom:14px}" not in css):
+            fails.append("GET /app.css: the gate card is not balanced around its error line (T169)")
         if css and len(css) >= 40000:
             fails.append(f"GET /app.css: {len(css)} bytes, want under 40000")
         # a scan that 404s is swapped for the no-scan placeholder, anchor and
@@ -819,6 +827,8 @@ def main():
               must_have='action="/login"')
         check("POST /login (non-ASCII password)", "/login", (200,),
               form={"password": "caf\u00e9"}, must_have="Incorrect password")
+        check("POST /login (retry lands focused)", "/login", (200,),
+              form={"password": "nope"}, must_have=" autofocus autocomplete")
 
         # --- the settings gate: rendered for no session, and after a wrong password
         check("GET /settings (no settings session)", "/settings", (200,),
@@ -1095,22 +1105,24 @@ def main():
                 fails.append("GET /: the PSA outage banner leaks its raw cause or links no fix (T128)")
             # the toolbar says the same thing in one dot and one word (T104)
             # one grammar, the clock time in the title (T162)
-            # phones read the short form so the toolbar stays one row; screen
-            # readers get the clock time in the .vh span
+            # phones read the short form so the toolbar stays one row. The clock
+            # time is in plain sight, not a .vh span: the live phrase ends on it
+            # and the live phone form is the clock alone (T169)
             dot = re.compile(rb'<div class="sync( \w+)?" title="(Last sync [A-Z][a-z]{2} \d\d, '
                              rb'\d{1,2}:\d\d [AP]M [^"]*)"><i aria-hidden="true"></i>'
-                             rb'<span class="sl">([^<]*)</span><span class="ss">([^<]*)</span>'
-                             rb'<span class="vh">([^<]*)</span></div>')
+                             rb'<span class="sl">([^<]*)</span><span class="ss">([^<]*)</span></div>')
+            clk = rb"\d{1,2}:\d\d [AP]M"
             for ago, cls, want, short in (
-                    (2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d\d", b"Not updating"),
-                    (90 * 60, b" stale", rb"Not updating since \d{1,2}:\d\d [AP]M", b"Not updating"),
-                    (48 * 60, b" live", rb"Updated 48 min ago", b"48 min ago"),
-                    (0, b" live", rb"Updated just now", b"Just now")):
+                    (2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d\d", rb"Not updating"),
+                    (90 * 60, b" stale", rb"Not updating since " + clk, rb"Not updating"),
+                    (48 * 60, b" live", rb"Updated 48 min ago \xc2\xb7 " + clk, clk),
+                    (0, b" live", rb"Updated just now \xc2\xb7 " + clk, clk)):
                 last_ok(ago)
                 body = check(f"GET / (last scan {ago}s ago)", "/", (200,), cookie)
                 m = dot.search(body)
                 if (not m or m.group(1) != cls or not re.fullmatch(want, m.group(3))
-                        or m.group(4) != short or m.group(5) != m.group(2)):
+                        or not re.fullmatch(short, m.group(4)) or b'class="vh">Last sync' in body
+                        or (cls == b" live" and not m.group(3).endswith(m.group(4)))):
                     fails.append(f"GET /: a scan {ago}s old reads "
                                  f"{m and m.group(0)!r}, want {want!r} (T162)")
                 if (b"Not connecting to PSA" in body) != (ago >= 6 * 3600):
