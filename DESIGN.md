@@ -432,9 +432,8 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   Rule. It is the emotional payoff of the product; its scarcity is why it lands. And only a
   **PSA 10** gets it: at this store a 10 is the norm (603 of 715 graded cards), so painting
   every grade red spent the color on the ordinary. The grade rides in a small filled chip, not
-  plain text: a 10 takes a 14% Grade Red tint under Grade Red ink, a 9 a neutral `--surface3`
-  chip with body ink (`--txt`), an 8 or lower — and any non-numeric grade — the same neutral
-  chip in muted (`--m1`). A tint, never a solid red block: a solid fill would be the badge the
+  plain text: a 10 (any wording: "GEM MT 10" reads its last number) takes a 14% Grade Red tint under
+  Grade Red ink; every other grade, non-numeric included, one neutral chip with body ink (T204). A tint, never a solid red block: a solid fill would be the badge the
   Reserved Red Rule already rejected. Chip size and its 21px line box never change, so the tier
   reads as a step down in temperature, not in importance.
 - **Alert Red** (`--err` / `--holdtx`): form errors, destructive text actions, and the hold
@@ -1111,9 +1110,8 @@ grid gap dropped to 12px, the track grew by the well's padding to hold the image
 `.card` stepped its shadow one notch to `0 4px 14px`. The neutral grade chips moved off
 `--surface3` to `--surface` for the same reason: the well wears their old ground. Below the
 image: the grade as a small filled chip (13px/500, 1px 7px, fully rounded, a 1px
-border) in one of three tiers — a 14% Grade Red tint for a PSA 10 behind a 45% Grade Red border,
-a neutral `--surface` chip with `--txt` and a `--hairh` border for a 9, the same neutral chip in
-`--m1` behind the softer `--hair` for 8 and below — hugging its own text and sitting in a
+border) in two tiers (T204) — a 14% Grade Red tint for any 10 behind a 45% Grade Red border, one
+neutral `--surface` chip with `--txt` and a `--hairh` border for every other grade — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
 baseline, cert number in **11px** monospace micro in `--tert` — lookup text, not reading text,
 and measured on the well at 3.24:1 light / 3.91:1 dark, past the 3:1 floor for its kind (the

@@ -1494,6 +1494,20 @@ def main():
                          must_have="Charizard")
             if b'<div class="cn">99000001</div>' not in body:
                 fails.append("GET /sub/14900001: a graded tile lost its cert number")
+            # one neutral chip, any 10 the accent: a qualifier grade parses its last number (T204)
+            gdb = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
+            qual = (("97000001", "GEM MT 10"), ("97000002", "MINT 9"), ("97000003", "8"))
+            gdb.executemany("UPDATE cards SET grade=? WHERE cert_id=?", [(g, c) for c, g in qual])
+            gdb.commit()
+            chips = re.findall(rb'<div class="gr([^"]*)">PSA ([^<]*)</div>',
+                               call(url, "/sub/14900003", cookie)[1] or b"")
+            chips += re.findall(rb'<div class="gr([^"]*)">PSA ([^<]*)</div>', body)
+            if sorted(chips) != sorted([(b" g10", b"GEM MT 10"), (b"", b"MINT 9"), (b"", b"8"),
+                                        (b" g10", b"10"), (b"", b"9")]):
+                fails.append(f"GET /sub/14900003: grade chips {chips}, want any 10 g10 and the rest one neutral class")
+            gdb.execute("UPDATE cards SET grade='' WHERE sub_number='14900003'")
+            gdb.commit()
+            gdb.close()
             # detail grid tiles stay keyboard reachable (T158)
             grid = re.findall(rb'<a [^>]*href="/img[^>]*>', body)
             if not grid or any(b'tabindex="-1"' in a for a in grid):

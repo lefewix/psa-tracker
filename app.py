@@ -1379,7 +1379,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 /* a grid straight on the page ground (/sub, /search): light --surface3 is the ground's own
    grey, so the tile takes the card plane and the neutral chips take the well. (T119) */
 .wrap>.grid .gc{background:var(--surface)}
-.wrap>.grid .gc .g9,.wrap>.grid .gc .glo{background:var(--surface3)}
+.wrap>.grid .gc .gr:not(:empty):not(.g10){background:var(--surface3)}
 /* --sk, the loading ground: a dead tile is the loading tile without the sweep, so it reads
    quieter than a scan still on its way instead of brighter. (T197) */
 .gc .ph{width:100%;aspect-ratio:380/635;border-radius:6px;
@@ -1397,8 +1397,7 @@ html:has(header.toolbar.raised)::before{height:10px}
    they would paint their own ground. --surface - the card plane showing through the well -
    separates in both palettes (white on the grey well in light, the dark card under the lifted
    well in dark) and keeps --m1 over 4.5:1, which --ph does not in dark (3.8). (T112) */
-.gc .g9{background:var(--surface);color:var(--txt);border-color:var(--hairh)}
-.gc .glo{background:var(--surface);color:var(--m1);border-color:var(--hair)}
+.gc .gr:not(:empty):not(.g10){background:var(--surface);color:var(--txt);border-color:var(--hairh)}
 /* the cert is lookup text, not reading text: 11px micro in --tert, the lighter of the two
    greys, so it sits under the name instead of beside it. --tert on the well measures 3.24:1
    light and 3.91:1 dark - past 3:1, which is the floor for non-essential text of this kind,
@@ -3736,11 +3735,9 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     owner = html.escape(owners.get(str(c["cert_id"]), ""))
     # the grade is the news on this tile: a small tinted chip under the scan, red for a 10
     gtx = f'PSA {html.escape(c["grade"])}' if c.get("grade") else ""
-    try:
-        g = float(c.get("grade"))
-    except (TypeError, ValueError):
-        g = 0.0  # 'Auth', 'A' and friends grade with the low tier
-    gcls = "" if not gtx else (" g10" if g >= 10 else " g9" if g >= 9 else " glo")
+    # the last number, so "GEM MT 10" is a 10 and "9 OC" a 9; one neutral chip, a 10 the accent
+    nums = re.findall(r"\d+(?:\.\d+)?", str(c.get("grade") or ""))
+    gcls = " g10" if nums and float(nums[-1]) >= 10 else ""
     grade = f'<div class="gr{gcls}">{gtx}</div>'
     if is_prelim:
         head = ('<div class="cn pre">Not graded yet'
