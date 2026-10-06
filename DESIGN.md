@@ -87,13 +87,13 @@ typography:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "15px"
     fontWeight: 400
-    lineHeight: 1.45
+    lineHeight: 1.5
     letterSpacing: "normal"
   field-mobile:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "16px"
     fontWeight: 400
-    lineHeight: 1.45
+    lineHeight: 1.5
     letterSpacing: "normal"
   body:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
@@ -112,7 +112,7 @@ typography:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "12px"
     fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: 1.4
     letterSpacing: "normal"
   micro:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
@@ -128,7 +128,7 @@ typography:
     letterSpacing: "normal"
   cert:
     fontFamily: "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace"
-    fontSize: "12px"
+    fontSize: "11px"
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
@@ -550,8 +550,8 @@ on Segoe and Roboto.
   pills, links, owner tags, card names, empty states. The stage name sits here too, at body
   size with the data rung's 650 weight (`.stage b`), the one place the two rungs cross.
   (Lifted from 13/1.45 on 2026-08-08 — owner found the sheet claustrophobic and the text small.)
-- **Control** (500, 13px, 16px line box): control labels only — filter pills, compact
-  buttons, the skip link. Stays at 13 because the capsule height arithmetic (38px at both
+- **Control** (500, 13px, 16px line box): control labels only — filter pills and the View
+  pill. Stays at 13 because the capsule height arithmetic (38px at both
   breakpoints) is stated in the CSS and depends on the 16px line box. A 13px control without
   that arithmetic (the settings buttons, the skip link, the undo toast) leads at 1.4.
 - **Caption** (400, 12px, 1.4): subtitles under a title, sync notes, service line, helper text.
@@ -562,7 +562,7 @@ on Segoe and Roboto.
   tier is now a single 12px rung.
 - **Tag** (500, 11px, 1.0): the search-preview category chip. `line-height: 1` keeps its 3px
   of vertical padding from growing the row.
-- **Cert** (monospace, 12px): certification numbers on scan tiles. A prelim card falls back
+- **Cert** (monospace, 11px, 1.4): certification numbers on scan tiles. A prelim card falls back
   to the inherited face at 12px because there is no number to align.
 
 ### Named Rules
@@ -589,9 +589,9 @@ browser text-only zoom is a no-op here while page zoom works. If text-size setti
 wanted, the fix is a rem migration of the whole ramp, not a per-rule patch.
 
 **The Accepted Small Text Rule.** These sit under 14px by decision and are not audit findings:
-the 13px sort pills, filter chips and settings buttons, the 12px `.estnote` ("CAD ·
-estimated"), captions, Prelim and person-page labels, the 11px cert monospace, and the 12.5px
-phone sync line.
+the 13px sort pills, filter chips and settings buttons, the 12px `.estnote` header notes
+("PSA estimates · as of"), the "CAD · estimated" sub-figure line, captions, Prelim and
+person-page labels, the 11px cert monospace, and the 12.5px phone sync line.
 
 **The Incomplete Total Rule.** Every money total (dashboard row value, sub page value, person
 page cost, coverage and value) gets a trailing "+" iff at least one card that should count has
