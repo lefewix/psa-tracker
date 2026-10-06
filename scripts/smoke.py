@@ -1240,6 +1240,35 @@ def main():
                 fails.append("GET /cards?owner=Solo: an unpriced service has no "
                              "+ naming itself in the title")
             priced_as("Regular")
+            # one + rule on every money total: + iff a card that should count
+            # has no figure yet, and the person footnote defines it (T165)
+            pl = b'+<span class="vh"> some cards have no figure yet</span>'
+            def totals():
+                return (call(url, "/", cookie)[1] or b"",
+                        call(url, "/sub/14900001", cookie)[1] or b"",
+                        call(url, "/cards?owner=Solo", cookie)[1] or b"")
+            d, sp, pp = totals()
+            if (b'ledval">$626<span>' not in d or b"<b>$626 CAD</b>" not in sp
+                    or b"<b>$204 CAD</b>" not in pp or pl in d + sp + pp
+                    or b"+ = some cards" in pp):
+                fails.append("GET /, /sub, /cards: a complete total carries + (T165)")
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": "Solo"})
+            db = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
+            db.execute("UPDATE card_values SET estimate = NULL, last_sale = NULL "
+                       "WHERE cert_no = '99000001'")
+            db.commit()
+            d, sp, pp = totals()
+            if (b'ledval">$204' + pl + b"<span>" not in d
+                    or b"<b>$204" + pl + b" CAD</b>" not in sp
+                    or b"<b>$204" + pl + b" CAD</b>" not in pp
+                    or b"<br>+ = some cards have no figure yet</span>" not in pp):
+                fails.append("GET /, /sub, /cards: an unpriced graded card leaves "
+                             "its total without + or the footnote (T165)")
+            db.execute("UPDATE card_values SET estimate = 310, last_sale = 290 "
+                       "WHERE cert_no = '99000001'")
+            db.commit()
+            db.close()
+            call(url, "/owner", cookie, {"cert_id": "99000001", "owner": ""})
             check("GET /sub/14900002 (one card)", "/sub/14900002", (200,), cookie,
                   must_have="1 card \u00b7")
             for label in ("/", "/sub/14900002", "/cards", "/cards?owner=Solo"):

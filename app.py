@@ -835,19 +835,27 @@ def load_values(a):
             latest = r["fetched_at"]
     return vals, (short_date(latest) if latest else ""), cur
 
+def plus(missing, why="some cards have no figure yet"):
+    """The one incomplete-total marker: a total gets + iff at least one card
+    that should count toward it has no figure yet (T165)."""
+    return f'+<span class="vh"> {html.escape(why)}</span>' if missing else ""
+
 def sub_value_totals(a):
-    """(sub_number -> total display value, currency label). The dashboard shows
+    """(sub_number -> total display value, subs short a graded card's value,
+    currency label). The dashboard shows
     one total per submission and no per card value, so the totals come off ONE
     grouped join instead of loading every card and every value row."""
     if not VALUES_ON:
-        return {}, "CAD"
+        return {}, set(), "CAD"
     try:
         conn = _ro_conn(a)
         try:
             rows = conn.execute(
                 "SELECT c.sub_number AS sub_number, "
-                "SUM(COALESCE(v.estimate, v.last_sale)) AS total "
-                "FROM cards c JOIN card_values v ON v.cert_no = c.cert_no "
+                "SUM(COALESCE(v.estimate, v.last_sale)) AS total, "
+                "SUM(COALESCE(c.grade, '') != '' AND "
+                "COALESCE(v.estimate, v.last_sale) IS NULL) AS miss "
+                "FROM cards c LEFT JOIN card_values v ON v.cert_no = c.cert_no "
                 "GROUP BY c.sub_number").fetchall()
             try:
                 fx = conn.execute("SELECT rate FROM fx_rates WHERE pair='USDCAD'").fetchone()
@@ -856,9 +864,10 @@ def sub_value_totals(a):
         finally:
             conn.close()
     except sqlite3.Error:
-        return {}, "CAD"
+        return {}, set(), "CAD"
     rate, cur = (fx["rate"], "CAD") if fx and fx["rate"] else (1.0, "USD")
-    return {r["sub_number"]: r["total"] * rate for r in rows if r["total"]}, cur
+    return ({r["sub_number"]: r["total"] * rate for r in rows if r["total"]},
+            {r["sub_number"] for r in rows if r["miss"]}, cur)
 
 def owners_map(a):
     c = own_conn(a)
@@ -2669,7 +2678,7 @@ def strip_html(s, fronts):
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
-def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None):
+def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None, vmiss=False):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
@@ -2709,7 +2718,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
                 f' data-price="{"" if price is None else price}"'
                 f' data-eta="{html.escape(sort_eta(s))}"')
-    led = (f'<div class="ledval">${value:,.0f}<span>{vcur} · estimated</span></div>') if value else ""
+    led = (f'<div class="ledval">${value:,.0f}{plus(vmiss)}<span>{vcur} · estimated</span></div>') if value else ""
     foot_h = (f'<div class="foot"><span class="est">{foot}</span>{act}</div>'
               if (foot or act) else "")
     # role=listitem + the h2: every card_html row lands in the dashboard's
@@ -3874,7 +3883,7 @@ def dash_page(a, subs, sort=("sub", False)):
     # the value totals are summed in sqlite, and the untagged count reads two
     # columns per card (owners live in the other db, so that one stays in Python)
     owners = owners_map(a)
-    tot, vcur = sub_value_totals(a) if subs else ({}, "CAD")
+    tot, vmiss, vcur = sub_value_totals(a) if subs else ({}, set(), "CAD")
     active_nums = {s["sub_number"] for s in active}
     untag = sum(1 for sub_number, cert_id in (card_owner_keys(a) if subs else [])
                 if sub_number in active_nums and not owners.get(str(cert_id), ""))
@@ -3884,6 +3893,7 @@ def dash_page(a, subs, sort=("sub", False)):
         # fetches them from /?arch=1 the first time it is switched on.
         fronts = sub_fronts(a)   # ONE query for every row's filmstrip
         body = "".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
+                                 vmiss=s["sub_number"] in vmiss,
                                  fronts=fronts.get(s["sub_number"]),
                                  price=service_price(a, s["service"])) for s in active)
     else:
@@ -4041,9 +4051,10 @@ def arch_rows(a, subs):
     gone = [s for s in subs if s["sub_number"] in arch]
     if not gone:
         return ""
-    tot, vcur = sub_value_totals(a)
+    tot, vmiss, vcur = sub_value_totals(a)
     fronts = sub_fronts(a)
     return "".join(card_html(s, archived=True, value=tot.get(s["sub_number"]), vcur=vcur,
+                             vmiss=s["sub_number"] in vmiss,
                              fronts=fronts.get(s["sub_number"]),
                              price=service_price(a, s["service"])) for s in gone)
 
@@ -4105,7 +4116,7 @@ def detail_page(a, sub):
     vextra = ""
     if vtotal:
         vmiss = sum(1 for c in cards if c.get("grade") and (c["cert_no"] or "") not in vals)
-        vextra = (f'<span class="lbl2">Est. value</span><b>${vtotal:,.0f}{"+" if vmiss else ""} {vcur}</b>'
+        vextra = (f'<span class="lbl2">Est. value</span><b>${vtotal:,.0f}{plus(vmiss)} {vcur}</b>'
                   f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
     if cards:
         body = ('<div class="grid">'
@@ -4272,20 +4283,22 @@ def people_page(a, owner, sort=("sub", False)):
                 uncovered += 1
             else:
                 covered += dv
-        ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{"+" if uncovered else ""} CAD</b>'
+        ins = (f'<span class="lbl2">Insured coverage</span><b>${covered:,.0f}{plus(uncovered)} CAD</b>'
                if covered or uncovered else "")
         vtot = sum(vals.get(c["cert_no"] or "", 0) for c in act_cards)
-        vline = (f'<span class="lbl2">Est. value · graded</span><b>${vtot:,.0f} {vcur}</b>'
+        vmiss = vtot and sum(1 for c in act_cards if c.get("grade") and (c["cert_no"] or "") not in vals)
+        vline = (f'<span class="lbl2">Est. value · graded</span><b>${vtot:,.0f}{plus(vmiss)} {vcur}</b>'
                  if vtot else "")
         vnote = f'<br>values = PSA estimate or last sale · as of {html.escape(vas_of)}' if vline else ""
-        # the + says the total is short a tier; the title names which one, so
-        # the missing price can be added to PSA_PRICES without guessing
-        plus = (f'+<span class="vh"> no price for '
-                f'{html.escape(", ".join(sorted(unpriced)))}</span>') if unpriced else ""
+        # the hidden text names the unpriced tier, so the missing price can
+        # be added to PSA_PRICES without guessing
+        cplus = plus(unpriced, "no price for " + ", ".join(sorted(unpriced)))
         est = (f'<div class="synced">Est. grading cost<b>${total:,.0f}'
-               f'{plus} CAD</b>{ins}{vline}'
+               f'{cplus} CAD</b>{ins}{vline}'
                f'<span class="estnote">base per-card fees · pending PSA upcharges<br>'
-               f'coverage = declared value on file with PSA{vnote}</span></div>') if act_cards else ""
+               f'coverage = declared value on file with PSA{vnote}'
+               f'{"<br>+ = some cards have no figure yet" if unpriced or uncovered or vmiss else ""}'
+               '</span></div>') if act_cards else ""
     # back on the left, the export on the right: the sub page's own foot row,
     # with its 18px top margin dropped so the header sits where it always did
     back = ('<div class="foot" style="margin:0">'

@@ -570,6 +570,10 @@ rung. A new size does not create a new rung.
 ever tracks positive. When a caption sits inside a tracked value (`.ledval span`), it resets
 letter-spacing to normal, because tracking inherits and size does not.
 
+**The Incomplete Total Rule.** Every money total (dashboard row value, sub page value, person
+page cost, coverage and value) gets a trailing "+" iff at least one card that should count has
+no figure yet (`plus()`), with a `.vh` reason. The person page footnote defines it once.
+
 **The Sentence Case Rule.** Every string is sentence case. No `text-transform: uppercase`, no
 letter-spaced label caps, no kickers or eyebrows anywhere in the system.
 
