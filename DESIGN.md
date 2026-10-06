@@ -811,8 +811,15 @@ content — a panel, a sheet, an image, a row — it is not.
   deepens the fill by 6% ink.
 - **Destructive:** transparent ground, alert-red label, capsule radius so the focus ring
   follows the shape. It never becomes a filled red button.
-- **Quiet save (`.sbtn.squiet`):** the destructive grammar in accent instead of red, for the
-  settings saves demoted so one screen keeps one filled capsule (the verification code submit).
+- **Three tiers only (T212):** filled primary (`.fillbtn`: Send code, the Discord sheet's
+  Save, modal saves), quiet capsule secondary (`.stage .view` and `.sbtn.squiet`: `--surface3`
+  fill, `--ac-hot` 13/600 label, `11px 18px`, hover deepens 6% ink), plain text link
+  (Archive, Undo, destructive red). Settings saves are the secondary capsule, so one panel
+  screen keeps one filled capsule (the verification code submit). The account chip bar keeps
+  its glass rims but casts no shadow. Settings fields stack under 420px.
+- **Settings errors:** `flash(err, at=form)` renders the error as `.err role=alert` under the
+  form that caused it (opening that account's pane); only errors without a form (PSA password,
+  Add) use the top `.snote`. Helper lines are full sentences.
 
 ### Chips
 - **Style:** a plain capsule (999px) holds borderless segments: the faint `--segtrack` fill,

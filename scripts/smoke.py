@@ -396,7 +396,7 @@ def hit_checks(fails):
     for want, what in ((".ownedit::before{content:'';position:absolute;inset:0 -2px}", ".ownedit"),
                        (".undo::before{content:'';position:absolute;inset:-2px 0}", ".undo"),
                        (".sbtn.squiet::before{content:'';position:absolute;inset:-2px 0}", ".squiet"),
-                       ("min-width:44px;text-align:left", "the settings Save"),
+                       ("min-width:44px;position:relative", "the settings Save"),
                        ("padding:22px 0 0;margin-top:1px", ".own"),
                        ("padding-block:8px}", "the sub-360 sort capsule")):
         if want not in src:
@@ -1453,7 +1453,7 @@ def main():
                 fails.append("GET /search?q=Umbreon: tile is not the detail tile plus Open sub #N (T207)")
             if (b'aria-label="View cards in #14900001">View cards</a>' not in sbody
                     or b'id="dopen">Discord pings</button>' not in sbody
-                    or b'id="dlink" data-owner="Solo">Save</button>' not in sbody):
+                    or b'class="fillbtn sbtn" id="dlink" data-owner="Solo">Save</button>' not in sbody):
                 fails.append("GET /cards?owner=Solo: group link or Discord pings naming drifted (T164)")
             # --- the person page searches names as well as cards, and carries a
             # Home link Back cannot replace once you have hopped person to person
@@ -1896,6 +1896,16 @@ def main():
                 code, _, hdrs = call(url, "/login", form={"password": SITE_PW})
                 if code != 302 or not (hdrs.get("Set-Cookie") or ""):
                     fails.append(f"POST /login after a {label}-current change: old password dead")
+            # a bad settings save shows its error under its own form, not at the top (T212)
+            _, _, h = call(url, "/settings/account", scookie,
+                           {"acct": "demo", "action": "webhook", "value": "http://x"})
+            body = call(url, h.get("Location") or "/settings", scookie)[1] or b""
+            pane = body.split(b'id="wpane0"', 1)[-1].split(b'class="spane', 1)[0]
+            if (b'<div class="err" role="alert">Webhook must be' not in pane
+                    or b'class="snote serr"' in body):
+                fails.append("POST /settings/account webhook: the error is not under its field (T212)")
+            if body.count(b'class="sbtn squiet">Save<') < 2 or b'placeholder="Webhook URL"' not in body:
+                fails.append("GET /settings: Save is not the quiet capsule secondary (T212)")
             code, _, h = site_pw(SITE_PW + "-rotated")
             cur[0] = SITE_PW + "-rotated"
             if code != 303 or ("Site password changed. Everyone signed in with the old one "

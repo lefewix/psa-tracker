@@ -649,7 +649,7 @@ def discord_widget(a, owner):
                  f'<input type="password" id="did" placeholder="Discord user ID" '
                  f'aria-label="Discord user ID" '
                  f'autocomplete="off" inputmode="numeric" maxlength="20">'
-                 f'<button type="button" class="sbtn f" id="dlink" data-owner="{html.escape(owner)}">Save</button></div>'
+                 f'<button type="button" class="fillbtn sbtn" id="dlink" data-owner="{html.escape(owner)}">Save</button></div>'
                  f'<div class="dhint">Paste your Discord user ID to get @-mentioned when a submission with '
                  f'your cards updates. Discord: Settings &rarr; Advanced &rarr; Developer Mode, then '
                  f'right-click your name &rarr; Copy User ID. Your ID is stored server-side and never shown again.</div>')
@@ -1578,12 +1578,11 @@ button:disabled{opacity:.5;cursor:default}
 .srow.mt16{margin-top:16px}
 .srow input{flex:1;min-width:150px;margin-top:0}
 .sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;line-height:1.4;flex-shrink:0}
-/* a destructive text action is not a primary, so .sdel never takes .fillbtn; the radius is
-   restated because the element rule hands none out. .squiet: same, in accent. */
-.sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
- border-radius:999px}
-.sbtn.sdel{color:var(--err)}
-.sbtn.squiet{color:var(--ac-pale);min-width:44px;text-align:left;position:relative}
+/* three tiers (T212): .fillbtn primary, .squiet the quiet capsule secondary (the View cards
+   grammar), .sdel a plain destructive text action. */
+.sbtn.sdel,.sbtn.squiet{margin-top:10px;border-radius:999px}
+.sbtn.sdel{background:transparent;padding:11px 0;color:var(--err)}
+.sbtn.squiet{background:var(--surface3);color:var(--ac-hot);min-width:44px;position:relative}
 .sbtn.squiet::before{content:'';position:absolute;inset:-2px 0}  /* 40.2 + 4 = 44.2 (T187) */
 .srow .sbtn.sdel,.srow .sbtn.squiet{margin-top:0}
 .stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt)}
@@ -1591,6 +1590,9 @@ button:disabled{opacity:.5;cursor:default}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
 .snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
+/* a settings error sits under the form that caused it (T212) */
+.spane>.err,.sblock>.err{min-height:0}
+.sbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb)}  /* the panel is the deepest thing (T212) */
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
 /* attention dot: the account PSA wants verified. Accent, not red - red is grades and the
    hold pill. The label rides in a .vh span. */
@@ -1676,7 +1678,8 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
 .lgout:hover,.sclose:hover{color:var(--txt)}
-.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
+.view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover{color:var(--ac-hot)}
+.sbtn.squiet:hover{background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
 /* text actions keep the invisible hit box but hover never paints it - the slab hung over the
    stage bar. Hover is the colour deepen; View is the one visible capsule. */
 .stage .view:hover{color:var(--ac-hot);background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
@@ -1804,6 +1807,8 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .gc .ownedit{padding:0}
  .gc .gr:empty{display:none}
  .gc .ph{font-size:0}}
+/* settings fields stack on a phone so no placeholder clips (T212) */
+@media(max-width:419px){.srow input{flex-basis:100%}}
 /* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
    this covers iPad portrait. */
 @media(pointer:coarse) and (min-width:641px){
@@ -2197,15 +2202,16 @@ FLASH = {}  # one-shot settings notices: token -> (msg, err). They ride a token
             # and not the query string because the Add reply carries a freshly
             # generated site password, which must not land in history or a Referer.
 
-def flash(msg="", err=""):
-    """Stash a settings notice, return the /settings URL that shows it once."""
+def flash(msg="", err="", at=""):
+    """Stash a settings notice, return the /settings URL that shows it once.
+    at names the form an error belongs to; it renders under that form (T212)."""
     if len(FLASH) > 30:
         FLASH.clear()
     tok = base64.urlsafe_b64encode(os.urandom(9)).decode()
-    FLASH[tok] = (msg, err)
+    FLASH[tok] = (msg, err, at)
     return "/settings?m=" + tok
 
-def settings_page(msg="", err="", only=""):
+def settings_page(msg="", err="", only="", at=""):
     """Panels styled like the rest of the site. Accounts panel: chips by
     email; clicking one opens a popup (new PSA password / unlink - the email
     never changes), Add opens a popup asking only PSA email + password (label
@@ -2219,6 +2225,10 @@ def settings_page(msg="", err="", only=""):
         accts = {k: v for k, v in accts.items() if k == only}
     multi = len(accts) > 1
     achips, wchips, wpanes, schips, spanes, ochips, opanes = [], [], [], [], [], [], []
+    def ferr(key):  # the error under the form it came from
+        if not (err and at == key):
+            return ""
+        return f'<div class="err" role="alert">{html.escape(err)}</div>'
     # an account PSA is asking about sorts first, so arming the second account
     # opens the page on it and not on the healthy one (audit ux-3). sorted() is
     # stable, so everything else keeps load_accounts' order.
@@ -2264,7 +2274,7 @@ def settings_page(msg="", err="", only=""):
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="otp_code">
 <input name="value" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Verification code"
  aria-label="PSA verification code" maxlength="8">
-<button type="submit" class="fillbtn sbtn">Send</button></form>"""
+<button type="submit" class="fillbtn sbtn">Send</button></form>{ferr("otp:" + a["id"])}"""
         elif ost["armed"]:
             obody = ""  # already sent; the pane polls until the field arrives
         else:
@@ -2280,12 +2290,12 @@ def settings_page(msg="", err="", only=""):
                       f'<input type="hidden" name="action" value="webhook_clear">'
                       f'<button type="submit" class="sbtn sdel">Remove</button></form>' if hook_on else "")
         wpanes.append(f"""<div class="spane sg-w" id="wpane{i}"{hide}>
-<div class="meta">{"configured" if hook_on else "not set"}</div>
+<div class="meta">{"A webhook is set." if hook_on else "No webhook set."}</div>
 <form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="webhook">
-<input name="value" type="password" placeholder="discord.com/api/webhooks/… URL"
+<input name="value" type="password" placeholder="Webhook URL"
  aria-label="Discord webhook URL" autocomplete="off">
-<button type="submit" class="sbtn squiet">Save</button></form>
+<button type="submit" class="sbtn squiet">Save</button></form>{ferr("hook:" + a["id"])}
 {remove_btn}
 </div>""")
         if a.get("feeder"):
@@ -2303,20 +2313,20 @@ def settings_page(msg="", err="", only=""):
  aria-label="New site password" autocomplete="new-password">
 <input name="value2" type="password" placeholder="Repeat"
  aria-label="Repeat new site password" autocomplete="new-password">
-<button type="submit" class="sbtn squiet">Save</button></form>
+<button type="submit" class="sbtn squiet">Save</button></form>{ferr("site:" + a["id"])}
 </div>""")
     add_btn = '<button type="button" class="f" id="saddbtn">Add account</button>'
-    pwpanel = "" if only else """<div class="card sblock">
+    pwpanel = "" if only else f"""<div class="card sblock">
 <h2 class="stitle">Settings password</h2>
-<div class="meta">opens this settings page</div>
+<div class="meta">Opens this settings page.</div>
 <form method="POST" action="/settings/password" class="srow">
 <input name="new_pw" type="password" placeholder="New settings password"
  aria-label="New settings password" autocomplete="new-password">
 <input name="confirm_pw" type="password" placeholder="Repeat"
  aria-label="Repeat new settings password" autocomplete="new-password">
-<button type="submit" class="sbtn squiet">Save</button></form>
+<button type="submit" class="sbtn squiet">Save</button></form>{ferr("setpw")}
 </div>"""
-    note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err else
+    note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err and not at else
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
     obar = f'<div class="sbar">{"".join(ochips)}</div>' if multi else ""
@@ -2345,7 +2355,7 @@ def settings_page(msg="", err="", only=""):
 {pwpanel}
 <div class="card sblock">
 <h2 class="stitle">Site password</h2>
-<div class="meta">what visitors type to enter the site</div>
+<div class="meta">What visitors type to enter the site.</div>
 {sbar2}
 {"".join(spanes)}
 </div>
@@ -2442,6 +2452,10 @@ def settings_page(msg="", err="", only=""):
         p.style.display=(p.id===b.dataset.pane)?'':'none';}});
     }});
   }});
+  // an error under another account's form opens that account's pane
+  var fe=document.querySelector('.spane>.err'),fp=fe&&fe.parentNode,
+      fc=fp&&document.querySelector('.schip[data-pane="'+fp.id+'"]');
+  if(fc&&fp.style.display==='none')fc.click();
 }})();
 </script>
 </main>{APP_JS_TAG}</body></html>"""
@@ -4956,12 +4970,12 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, setup_page())
         if path == "/settings":
             if self.settings_ok():  # store admins walk straight in
-                m, e = FLASH.pop(urllib.parse.parse_qs(parsed.query).get("m", [""])[0],
-                                 ("", ""))
+                m, e, at = FLASH.pop(urllib.parse.parse_qs(parsed.query).get("m", [""])[0],
+                                     ("", "", ""))
                 scope = self.settings_scope()
                 want = urllib.parse.parse_qs(parsed.query).get("only", [""])[0]
                 return self.send(200, settings_page(msg=m, err=e,
-                                                    only=scope or want))
+                                                    only=scope or want, at=at))
             if not SETTINGS_HASH:
                 return self.send(404, "not found", "text/plain")
             return self.send(200, settings_gate())
@@ -5121,13 +5135,13 @@ class H(BaseHTTPRequestHandler):
             new_pw = (form.get("new_pw") or [""])[0]
             confirm = (form.get("confirm_pw") or [""])[0]
             if len(new_pw) < 6:
-                return self.see(flash(err="Settings password needs at least 6 characters."))
+                return self.see(flash(err="Settings password needs at least 6 characters.", at="setpw"))
             if not env_ok(new_pw):  # same env file, same truncation
-                return self.see(flash(err="The password has to be a single line of text."))
+                return self.see(flash(err="The password has to be a single line of text.", at="setpw"))
             if new_pw != confirm:
-                return self.see(flash(err="The two passwords don’t match."))
+                return self.see(flash(err="The two passwords don’t match.", at="setpw"))
             if any(hmac.compare_digest(new_pw.encode(), a["password"].encode()) for a in load_accounts().values()):
-                return self.see(flash(err="That password already routes to an account at the gate."))
+                return self.see(flash(err="That password already routes to an account at the gate.", at="setpw"))
             global SETTINGS_HASH
             SETTINGS_HASH = hashlib.sha256(new_pw.encode()).hexdigest()
             try:
@@ -5151,8 +5165,10 @@ class H(BaseHTTPRequestHandler):
                 accts = load_accounts()
                 if acct_id not in accts:
                     return self.send(400, "unknown account", "text/plain")
+                at = {"site_pw": "site", "webhook": "hook", "otp_code": "otp"}.get(action)
+                at = f"{at}:{acct_id}" if at else ""
                 if not env_ok(value):
-                    return self.see(flash(err="That has to be a single line of text."))
+                    return self.see(flash(err="That has to be a single line of text.", at=at))
                 if action == "psa_pw":
                     if not value:
                         return self.see(flash(err="Enter the new PSA password first."))
@@ -5163,24 +5179,24 @@ class H(BaseHTTPRequestHandler):
                         msg="PSA password saved. The next sync signs in fresh with it."))
                 if action == "site_pw":
                     if accts[acct_id].get("feeder"):
-                        return self.see(flash(err="This account scans into the shared dashboard; the site password covers it."))
+                        return self.see(flash(err="This account scans into the shared dashboard; the site password covers it.", at=at))
                     if not hmac.compare_digest((form.get("current") or [""])[0].encode(), accts[acct_id]["password"].encode()):
-                        return self.see(flash(err="Current site password is wrong."))
+                        return self.see(flash(err="Current site password is wrong.", at=at))
                     if len(value) < 4:
-                        return self.see(flash(err="Site password needs at least 4 characters."))
+                        return self.see(flash(err="Site password needs at least 4 characters.", at=at))
                     if value != get("value2"):
-                        return self.see(flash(err="The two site passwords don’t match."))
+                        return self.see(flash(err="The two site passwords don’t match.", at=at))
                     if is_settings_pw(value):
-                        return self.see(flash(err="That’s the settings password. Pick a different one."))
+                        return self.see(flash(err="That’s the settings password. Pick a different one.", at=at))
                     if any(i != acct_id and hmac.compare_digest(value.encode(), a["password"].encode())
                            for i, a in accts.items()):
-                        return self.see(flash(err="That site password already routes to another account."))
+                        return self.see(flash(err="That site password already routes to another account.", at=at))
                     env_set(account_env_path(acct_id), {"SITE_PASSWORD": value})
                     return self.see(flash(msg="Site password changed. Everyone signed in with the old one has to sign in again."))
                 if action == "webhook":
                     if not (value.startswith("https://discord.com/api/webhooks/")
                             or value.startswith("https://discordapp.com/api/webhooks/")):
-                        return self.see(flash(err="Webhook must be a discord.com/api/webhooks/… URL."))
+                        return self.see(flash(err="Webhook must be a discord.com/api/webhooks/… URL.", at=at))
                     env_set(account_env_path(acct_id), {"DISCORD_WEBHOOK": value})
                     return self.see(flash(msg="Webhook saved. Status changes for this account ping it."))
                 if action == "webhook_clear":
@@ -5199,7 +5215,7 @@ class H(BaseHTTPRequestHandler):
                                 "Come back here and enter it."))
                     code = re.sub(r"\D", "", value)
                     if not 4 <= len(code) <= 8:
-                        return self.see(flash(err="Enter the code PSA texted (digits only)."))
+                        return self.see(flash(err="Enter the code PSA texted (digits only).", at=at))
                     tmp = os.path.join(d, "otp.code.tmp")
                     fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
                     with os.fdopen(fd, "w") as f:
