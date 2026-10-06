@@ -1241,6 +1241,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 .tierhd{font-size:14px;font-weight:650;color:var(--m1);margin:22px 4px 8px}
 .tierhd:first-child{margin-top:4px}
 .showln{font-size:14px;line-height:1.5;color:var(--m1);margin:0 4px 12px}
+main:has(#list.archview) .showln{display:none}  /* the filter is active rows only (T218) */
 #list.archview .tierhd{display:none}
 #archhd{margin-top:4px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
