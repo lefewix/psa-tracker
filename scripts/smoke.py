@@ -388,6 +388,21 @@ def leading_checks(fails):
             fails.append(f"app.py: {sel[:-1]} leaves leading to the UA's normal (T179)")
 
 
+def hit_checks(fails):
+    """The narrowest controls reach 44x44 through a hit pseudo or padding that
+    leaves the painted layout alone (T187). Measured at 390x844 in Playwright
+    (/tmp/psa-fix/T187/measure.py); this pins the CSS that does it."""
+    src = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read()
+    for want, what in ((".ownedit::before{content:'';position:absolute;inset:0 -2px}", ".ownedit"),
+                       (".undo::before{content:'';position:absolute;inset:-2px 0}", ".undo"),
+                       (".sbtn.squiet::before{content:'';position:absolute;inset:-2px 0}", ".squiet"),
+                       ("min-width:44px;text-align:left", "the settings Save"),
+                       ("padding:22px 0 0;margin-top:1px", ".own"),
+                       ("padding-block:8px}", "the sub-360 sort capsule")):
+        if want not in src:
+            fails.append(f"app.py: {what} lost its 44px hit area (T187)")
+
+
 def comment_checks(fails):
     """Comments name what sits beside them: the reading rung is 14px, the gate
     card and the settings panel count are not pinned to a stale number, and
@@ -672,7 +687,7 @@ def main():
             # the tile's bottom space is the well's 10px, matching the scan's top, and the
             # chip's label sits on the name's edge, its rim in the gutter (T174)
             if (b"margin:8px 0 0 -8px;min-height:21px}" not in css
-                    or b"padding:11px 0 0;flex:1;" not in css
+                    or b"padding:22px 0 0;margin-top:1px;flex:1;" not in css
                     or b" .gc>.gr{margin:0}" not in css):
                 fails.append("GET /app.css: scan tile unbalanced or chip off the text column (T174)")
             # under 360 a tile is a list row, scan floated left of its text (T173)
@@ -894,6 +909,7 @@ def main():
         common_checks(fails)
         tracking_checks(fails)
         leading_checks(fails)
+        hit_checks(fails)
         comment_checks(fails)
         shot_checks(fails)
 

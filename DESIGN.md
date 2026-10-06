@@ -655,8 +655,8 @@ sheet — so the capsule stays the thin 38px control and the hit pseudo grows pa
 as on desktop (28px pill + 8px each way = the 44px floor). Only *below 360px* does the
 capsule become the horizontally scrolling strip: scrollbar hidden, `overscroll-behavior-x:
 contain`, a 22px shade riding whichever edge still has pills beyond it — and there the
-overflow box clips the pseudo back to the capsule's own height, the narrowest-screen trade
-(WCAG 2.5.8's 24px minimum still holds). Above 640px the capsule wraps (`flex-wrap: wrap`) —
+capsule takes 8px of vertical pad (46px tall) so the overflow box it clips at is 44px and the
+pills' pseudo survives whole (T187). Above 640px the capsule wraps (`flex-wrap: wrap`) —
 the sheet is wide enough that a second row is rare, and the pseudo is layered at
 `z-index: -1` precisely so a wrapped row cannot shadow the row above it.
 
@@ -988,6 +988,10 @@ Not a retrofit — a visible part of the system, and it has house styling.
   under the masthead `h1`. Row headings, not ten tab stops apiece. That heading is also the
   row's link (`.numlink`), so it takes the pills' hit pseudo — `::before` at `inset: -11px 0`,
   growing the 22px line to the 44px floor vertically only, never across to the pills.
+- **Narrow controls (T187):** the pencil (`.ownedit`, 40px, pseudo 2px each side), the undo
+  chip (`.undo`) and quiet settings buttons (`.squiet`, `min-width:44px`, text left so the label
+  stays on the inputs' edge) take the same invisible `::before`; the owner tag, an input with no
+  pseudo, swaps 11px of margin for 22px of top pad. All 44px at 390, painted pixels unchanged.
 - **Live region (`.vh #live`):** a visually-hidden `aria-live="polite"` region on every list
   page. Saves, save failures, search result counts, and a sort pill's reversal are announced
   there. Two of the three pills keep their label when re-clicked, so the flip is speech only.

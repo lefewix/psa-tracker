@@ -1425,11 +1425,15 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
- padding:11px 0 0;flex:1;min-width:0;transition:border-color var(--t1) var(--e1);touch-action:manipulation}
+ padding:22px 0 0;margin-top:1px;flex:1;min-width:0;transition:border-color var(--t1) var(--e1);touch-action:manipulation}
 /* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
-/* 22px top = the input's 12px margin + 11px pad less its 1px rule: the pencil centres on the name. */
+/* 22px top = the input's 1px margin + 22px pad less its 1px rule: the pencil centres on the name.
+   The input's 22px pad, not 11 under a 12px margin, makes it a 44px target at the same layout. */
 .ownedit{display:none;align-items:center;justify-content:center;width:40px;margin-right:-6px;
- align-self:stretch;border:0;background:transparent;color:var(--m1);padding:22px 0 0;cursor:pointer}
+ align-self:stretch;border:0;background:transparent;color:var(--m1);padding:22px 0 0;cursor:pointer;
+ position:relative}
+/* the hit pseudo (see .f::before): 40 + 2 each way = 44, painted size untouched (T187) */
+.ownedit::before{content:'';position:absolute;inset:0 -2px}
 /* mouse: a click visits, so the pencil shows on the tile's hover or focus; a filled tag keeps
    it faint at rest so the control is findable. Hidden while editing. (T134) */
 @media not all and (pointer:coarse){
@@ -1457,7 +1461,8 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
  color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;line-height:1.4;cursor:pointer;
- transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
+ transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1);position:relative}
+.undo::before{content:'';position:absolute;inset:-2px 0}  /* 40.8 + 4 = 44.8 (T187) */
 .undo.uerr{color:var(--err)}
 .footacts .undo{margin:-12px -6px}
 /* the owner chip sits in the row in the pencil's place, so saving never moves the grid (T136) */
@@ -1573,7 +1578,8 @@ button:disabled{opacity:.5;cursor:default}
 .sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
  border-radius:999px}
 .sbtn.sdel{color:var(--err)}
-.sbtn.squiet{color:var(--ac-pale)}
+.sbtn.squiet{color:var(--ac-pale);min-width:44px;text-align:left;position:relative}
+.sbtn.squiet::before{content:'';position:absolute;inset:-2px 0}  /* 40.2 + 4 = 44.2 (T187) */
 .srow .sbtn.sdel,.srow .sbtn.squiet{margin-top:0}
 .stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt)}
 .sblock .meta{margin-top:3px}
@@ -1759,11 +1765,12 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
     shouted over the 14px name. */
  .own:not([readonly]){font-size:16px}
  .gc .nm{min-height:0}}
-/* sub-360: pills plus the solo pill can exceed the sheet, so the capsule scrolls. The one
-   width where overflow clips the hit pseudo to 36px (past 2.5.8's 24px floor); overflow-y
-   hidden so the -8px pseudo cannot open a phantom scroll. */
+/* sub-360: pills plus the solo pill can exceed the sheet, so the capsule scrolls, and overflow
+   clips at the padding box. 8px vertical pad makes that box 44px, so the -8px hit pseudo
+   survives whole (T187); overflow-y hidden so it cannot open a phantom scroll. */
 @media(max-width:359px){
- .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
+ .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;
+  padding-block:8px}
  .filters::-webkit-scrollbar{display:none}
  .sync .ss{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
  /* one column of 292px tiles ran 600px each, not one whole card on a 320 screen: a tile turns
