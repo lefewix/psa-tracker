@@ -2189,9 +2189,11 @@ def settings_page(msg="", err="", only="", at=""):
         accts = {k: v for k, v in accts.items() if k == only}
     multi = len(accts) > 1
     achips, wchips, wpanes, schips, spanes, ochips, opanes = [], [], [], [], [], [], []
+    placed = []
     def ferr(key):  # the error under the form it came from
         if not (err and at == key):
             return ""
+        placed.append(key)
         return f'<div class="err" role="alert">{html.escape(err)}</div>'
     # an account PSA is asking about sorts first, so arming the second account
     # opens the page on it and not on the healthy one (audit ux-3). sorted() is
@@ -2290,7 +2292,7 @@ def settings_page(msg="", err="", only="", at=""):
  aria-label="Repeat new settings password" autocomplete="new-password">
 <button type="submit" class="sbtn squiet">Save</button></form>{ferr("setpw")}
 </div>"""
-    note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err and not at else
+    note = (f'<div class="snote serr" role="alert">{html.escape(err)}</div>' if err and not placed else
             (f'<div class="snote" role="status">{html.escape(msg)}</div>' if msg else ""))
     wbar = f'<div class="sbar">{"".join(wchips)}</div>' if multi else ""
     obar = f'<div class="sbar">{"".join(ochips)}</div>' if multi else ""

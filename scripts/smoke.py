@@ -1929,6 +1929,12 @@ def main():
             if (b'<div class="err" role="alert">Webhook must be' not in pane
                     or b'class="snote serr"' in body):
                 fails.append("POST /settings/account webhook: the error is not under its field (T212)")
+            # no code field on the page (PSA is not waiting): the error falls back to the top
+            _, _, h = call(url, "/settings/account", scookie,
+                           {"acct": "demo", "action": "otp_code", "value": "1"})
+            body = call(url, h.get("Location") or "/settings", scookie)[1] or b""
+            if b'class="snote serr" role="alert">Enter the code PSA texted' not in body:
+                fails.append("POST /settings/account otp_code: an error with no form to sit under vanished (T212)")
             if body.count(b'class="sbtn squiet">Save<') < 2 or b'placeholder="Webhook URL"' not in body:
                 fails.append("GET /settings: Save is not the quiet capsule secondary (T212)")
             code, _, h = site_pw(SITE_PW + "-rotated")

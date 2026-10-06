@@ -935,8 +935,8 @@ Not a retrofit — a visible part of the system, and it has house styling.
   row's link (`.numlink`), so it takes the pills' hit pseudo — `::before` at `inset: -11px 0`,
   growing the 22px line to the 44px floor vertically only, never across to the pills.
 - **Narrow controls (T187):** the pencil (`.ownedit`, 40px, pseudo 2px each side), the undo
-  chip (`.undo`) and quiet settings buttons (`.squiet`, `min-width:44px`, text left so the label
-  stays on the inputs' edge) take the same invisible `::before`; the owner tag, an input with no
+  chip (`.undo`) and quiet settings buttons (`.squiet`, `min-width:44px`, now the quiet capsule
+  secondary, T212) take the same invisible `::before`; the owner tag, an input with no
   pseudo, swaps 11px of margin for 22px of top pad. All 44px at 390, painted pixels unchanged.
 - **Live region (`.vh #live`):** a visually-hidden `aria-live="polite"` region on every list
   page. Saves, save failures, search result counts, and a sort pill's reversal are announced
