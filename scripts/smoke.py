@@ -591,6 +591,9 @@ def main():
             # a grid on the page ground takes the card plane, light's well is the ground (T119)
             if b".wrap>.grid .gc{background:var(--surface)}" not in css:
                 fails.append("GET /app.css: tiles on the page ground melt into it (T119)")
+            # under 360 a tile is a list row, scan floated left of its text (T173)
+            if b" .gc{display:flow-root;padding-left:78px}\n .gc>:first-child{float:left;width:56px;" not in css.split(b"@media(max-width:359px){", 1)[-1]:
+                fails.append("GET /app.css: the sub-360 card grid is not a list (T173)")
         # taps and submits show they are working: a guarded nav bar, one POST per
         # form, a busy submitter, all cleared on back/forward restore (T198)
         gate = check("GET / (gate nav bar)", "/", (200,), must_have="window.psaNav=function")

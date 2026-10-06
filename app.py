@@ -1757,7 +1757,17 @@ button:disabled{opacity:.5;cursor:default}
 @media(max-width:359px){
  .filters{overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none}
  .filters::-webkit-scrollbar{display:none}
- .sync .ss{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}}
+ .sync .ss{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+ /* one column of 292px tiles ran 600px each, not one whole card on a 320 screen: a tile turns
+    into a list row, scan left, text stacked right. The cert stays on the scan and the detail
+    page; an empty chip gives its line back. (T173) */
+ .grid{grid-template-columns:1fr;gap:8px}
+ .gc{display:flow-root;padding-left:78px}
+ .gc>:first-child{float:left;width:56px;margin-left:-68px}
+ .gc>.gr{margin-top:0}
+ .gc .own{margin-top:0;padding:6px 0 5px}
+ .gc .gr:empty,.gc .cn:not(.pre){display:none}
+ .gc .ph{font-size:0}}
 /* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
    this covers iPad portrait. */
 @media(pointer:coarse) and (min-width:641px){
