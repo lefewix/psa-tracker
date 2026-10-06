@@ -899,8 +899,10 @@ the search preview panel (14px, 6px padding, solid `--surface`) and the modal sh
 (`min(460px, 94vw)`, 14px, `24px 24px 26px`).
 
 **The attention line** (T150) is one `.hint.attn` card above the filter row, `--m1` text, one
-line: "1 on hold · 1 past due · 1 graded · 12 untagged". A count of one links its sub, several
-stay plain (no filtered view), untagged links `/cards?owner=unassigned`. Zeros drop out; all zero
+line: "1 on hold · 1 past due · 1 graded · 12 untagged". Every count links its filtered
+dashboard, `/?show=hold|late|graded` (T218, whitelisted, unknown values ignored), which keeps
+only the matching active rows under a plain `.showln` line, "Showing 2 on hold · Show all"
+(14px `--m1`, no pill); untagged links `/cards?owner=unassigned`. Zeros drop out; all zero
 renders no card. Every signed-in session sees it. No red, no pills.
 
 **Failure reuses the 404 card**: a read that fails (locked or unreadable db) answers 500 with the

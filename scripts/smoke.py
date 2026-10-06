@@ -1047,14 +1047,32 @@ def main():
                 fails.append("GET /?sort=sub&dir=asc: not oldest first (T152)")
             # one quiet attention line above the list, each count a link (T150)
             want = ('<div class="hint attn" id="attn">'
-                    '<a class="tlink" href="/sub/14900002">1 on hold</a> · '
-                    '<a class="tlink" href="/sub/14900003">1 past due</a> · '
-                    '<a class="tlink" href="/sub/14900001">1 graded</a> · '
+                    '<a class="tlink" href="/?show=hold">1 on hold</a> · '
+                    '<a class="tlink" href="/?show=late">1 past due</a> · '
+                    '<a class="tlink" href="/?show=graded">1 graded</a> · '
                     '<a class="tlink" href="/cards?owner=unassigned">12 untagged</a></div>')
             if want.encode() not in (body or b""):
                 fails.append("GET /: the attention card is missing or wrong (T150)")
             elif (body or b"").index(b'id="attn"') > (body or b"").index(b'id="list"'):
                 fails.append("GET /: the attention card is not above the list (T150)")
+            # every count links a filtered dashboard: two held subs show exactly
+            # those two and a way back; an unknown show= is ignored (T218)
+            hdb = sqlite3.connect(os.path.join(base, "accounts", "demo", "psa.db"))
+            hdb.execute("UPDATE subs SET on_hold = 1 WHERE sub_number = '14900003'")
+            hdb.commit()
+            two = check("GET /?show=hold", "/?show=hold", (200,), cookie) or b""
+            if (order(two) != [b"14900003", b"14900002"]
+                    or 'Showing 2 on hold · <a class="tlink" href="/">Show all</a>'.encode() not in two
+                    or b'<a class="tlink" href="/?show=hold">2 on hold</a>' not in two):
+                fails.append(f"GET /?show=hold: rows {order(two)}, want the two held subs and Show all (T218)")
+            junk = check("GET /?show=junk", "/?show=junk", (200,), cookie) or b""
+            if len(order(junk)) != 4 or b"showln" in junk:
+                fails.append("GET /?show=junk: an unknown show= was not ignored (T218)")
+            if order(check("GET /?show=late", "/?show=late", (200,), cookie) or b"") != [b"14900003"]:
+                fails.append("GET /?show=late: not just the past-due sub (T218)")
+            hdb.execute("UPDATE subs SET on_hold = 0 WHERE sub_number = '14900003'")
+            hdb.commit()
+            hdb.close()
             # strip scans decode off the main thread as well as load lazily (T181)
             imgs = re.findall(rb'<img [^>]*src="/img[^>]*>', body or b"")
             if not imgs or any(b'loading="lazy"' not in i or b'decoding="async"' not in i

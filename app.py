@@ -1240,6 +1240,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 .meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
 .tierhd{font-size:14px;font-weight:650;color:var(--m1);margin:22px 4px 8px}
 .tierhd:first-child{margin-top:4px}
+.showln{font-size:14px;line-height:1.5;color:var(--m1);margin:0 4px 12px}
 #list.archview .tierhd{display:none}
 #archhd{margin-top:4px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
@@ -3921,7 +3922,12 @@ def sort_pills(m, d):
         f'{"Oldest" if k == m == "sub" and d else label}</button>'
         for k, label in (("sub", "Newest"), ("svc", "Service"), ("eta", "Return")))
 
-def dash_page(a, subs, sort=("sub", False)):
+# ?show= on the dashboard (T218): the attention line's counts, whitelisted
+SHOW = {"hold": ("on hold", lambda s: s["on_hold"]),
+        "late": ("past due", lambda s: s["status"] != "Shipped" and eta_words(s)[2] == "late"),
+        "graded": ("graded", lambda s: s["grades_ready"] and stage_index(s["status"]) == 6)}
+
+def dash_page(a, subs, sort=("sub", False), show=""):
     arch = archived_set(a)
     active = sort_rows([s for s in subs if s["sub_number"] not in arch], *sort,
                        key=lambda s: (s["sub_number"], s["service"],
@@ -3935,6 +3941,13 @@ def dash_page(a, subs, sort=("sub", False)):
     active_nums = {s["sub_number"] for s in active}
     untag = sum(1 for sub_number, cert_id in (card_owner_keys(a) if subs else [])
                 if sub_number in active_nums and not owners.get(str(cert_id), ""))
+    shown = active
+    showing = ""
+    if show in SHOW:
+        word, keep = SHOW[show]
+        shown = [s for s in active if keep(s)]
+        showing = (f'<div class="showln" role="status">Showing {len(shown)} {word} · '
+                   f'<a class="tlink" href="/">Show all</a></div>')
     if subs:
         # ACTIVE ROWS ONLY. The archived ones used to ride along hidden with
         # display:none and were most of the page's bytes; the Archived pill
@@ -3944,7 +3957,7 @@ def dash_page(a, subs, sort=("sub", False)):
                                  vmiss=s["sub_number"] in vmiss,
                                  fronts=fronts.get(s["sub_number"]),
                                  price=service_price(a, s["service"]), i=i)
-                       for i, s in enumerate(active))
+                       for i, s in enumerate(shown))
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'
@@ -3998,18 +4011,13 @@ def dash_page(a, subs, sort=("sub", False)):
                f'<span class="archn"> · {len(gone)}</span></button>') if gone else ""
     archhd = (f'<div class="tierhd" id="archhd" hidden>Archived · {len(gone)} '
               f'submission{"" if len(gone) == 1 else "s"}</div>') if gone else ""
-    # T150: one quiet line of what needs a look. A count of one links its sub,
-    # several stay plain (no filtered view exists for them); zeros drop out.
-    def attn_part(rows, word):
-        if len(rows) == 1:
-            n = html.escape(rows[0]["sub_number"])
-            return f'<a class="tlink" href="/sub/{n}">1 {word}</a>'
-        return f"{len(rows)} {word}" if rows else ""
-    parts = [attn_part([s for s in active if s["on_hold"]], "on hold"),
-             attn_part([s for s in active if s["status"] != "Shipped"
-                        and eta_words(s)[2] == "late"], "past due"),
-             attn_part([s for s in active if s["grades_ready"]
-                        and stage_index(s["status"]) == 6], "graded"),
+    # T150: one quiet line of what needs a look; zeros drop out. Every count
+    # links its filtered dashboard (T218).
+    def attn_part(k):
+        word, keep = SHOW[k]
+        n = sum(1 for s in active if keep(s))
+        return f'<a class="tlink" href="/?show={k}">{n} {word}</a>' if n else ""
+    parts = [attn_part("hold"), attn_part("late"), attn_part("graded"),
              (f'<a class="tlink" href="/cards?owner=unassigned">{untag} untagged</a>'
               if untag else "")]
     attn = " · ".join(x for x in parts if x)
@@ -4030,7 +4038,7 @@ def dash_page(a, subs, sort=("sub", False)):
 <a class="skip" href="#list">Skip to submissions</a>
 {toolbar}
 {hint}{attn}
-{filterrow}{archhd}
+{filterrow}{archhd}{showing}
 <div id="list" tabindex="-1"{listrole}>{body}</div>
 <div class="vh" id="live" aria-live="polite"></div>
 </main>
@@ -4956,8 +4964,9 @@ class H(BaseHTTPRequestHandler):
         if path == "/":
             if urllib.parse.parse_qs(parsed.query).get("arch"):
                 return self.send(200, arch_rows(acct, load_subs(acct)))
-            return self.send(200, dash_page(acct, load_subs(acct),
-                                            sort_pick(urllib.parse.parse_qs(parsed.query))))
+            qs = urllib.parse.parse_qs(parsed.query)
+            return self.send(200, dash_page(acct, load_subs(acct), sort_pick(qs),
+                                            qs.get("show", [""])[0]))
         if path == "/cards":
             qs = urllib.parse.parse_qs(parsed.query)
             owner = qs.get("owner", [""])[0]
