@@ -1253,6 +1253,14 @@ def main():
                     not in sbody or b'class="lbl2"' in sbody):
                 fails.append("GET /cards?owner=Solo: the totals are not one row "
                              "with the footnote folded (T211)")
+            # each tile carries its share of the three figures, so a retag can
+            # re-sum them in place to what a reload prints (T217)
+            sh = [tuple(round(float(x or 0)) for x in m) for m in re.findall(
+                rb'class="gc" data-v="([^"]*)" data-g="[^"]*" data-dv="([^"]*)" data-p="([^"]*)"',
+                sbody)]
+            if (sh != [(204, 120, 109)] or not js or b"function _retot(" not in js
+                    or b"if(l)_retot(l);" not in js):
+                fails.append(f"GET /cards?owner=Solo: tiles do not carry the totals {sh} (T217)")
             # the CSV is a file, so the nav bar never starts on it (T198)
             if b'&amp;format=csv" download>' not in sbody:
                 fails.append("GET /cards?owner=Solo: Export CSV lacks download (T198)")

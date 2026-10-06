@@ -3144,6 +3144,28 @@ function _recount(){
   if(l)put(document.querySelector('.hrow h1+.sub'),/^\\d+ cards?/,n(l));
   document.querySelectorAll('.card.grp').forEach(function(g){ put(g.querySelector('.meta'),/\\d+ cards?$/,n(g)); });
   if(ag&&af)af.textContent=af.textContent.replace(/\\d+$/,n(ag));
+  if(l)_retot(l);
+}
+/* the header figures re-summed from the tiles still owned, as a reload would
+   print them; a + already on a figure stays only while a card still lacks one (T217) */
+var _tb=[].slice.call(document.querySelectorAll('.tots .trow>span')).map(function(sp){
+  var b=sp.querySelector('b'); return {sp:sp, b:b, pl:b.querySelector('.vh'),
+    cur:b.textContent.match(/ \\S+$/)[0], k:sp.firstChild.textContent.charAt(5)}; });
+function _retot(l){
+  var f={v:0,vm:0,c:0,cm:0,t:0,tm:0};
+  l.querySelectorAll('.own').forEach(function(o){
+    var d=o.closest('.gc').dataset; if(!_mine(o.value)||d.p===undefined)return;
+    if(d.v)f.v+=+d.v; else if(d.g)f.vm++;
+    if(d.dv)f.c+=+d.dv; else f.cm++;
+    if(d.p)f.t+=+d.p; else f.tm++;
+  });
+  _tb.forEach(function(x){
+    var n=x.k==='v'?f.v:x.k==='e'?f.c:f.t, m=x.k==='v'?f.vm:x.k==='e'?f.cm:f.tm;
+    x.sp.hidden=x.k==='v'?!f.v:x.k==='e'?!(f.c||f.cm):false;
+    x.b.textContent='$'+Math.round(n).toLocaleString('en-US');
+    if(m&&x.pl)x.b.append('+',x.pl);
+    x.b.append(x.cur);
+  });
 }
 document.querySelectorAll('.own').forEach(function(i){
   var prev=i.value, nav=null, row=i.parentNode, leave=null;
@@ -3742,7 +3764,7 @@ def split_name(name):
     return (" ".join(toks[i + 1:]), f"{' '.join(toks[:i])} · {toks[i]}")
 
 def card_tile(c, owners, show_sub=False, archived=False, service="", customer=False, statline="",
-              value=None, vcur="CAD"):
+              value=None, vcur="CAD", tot=""):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
     subject, setline = split_name(smart_title(c["name"] or ""))
@@ -3802,7 +3824,7 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
            f'target="_blank" rel="noopener" title="See PSA\'s estimate and recent sales">'
            f'${value:,.0f} <span>{vcur} · estimated</span></a>'
            if value is not None and not customer else "")
-    return (f'<div class="gc{" arch" if archived else ""}">{img}{grade}{head}'
+    return (f'<div class="gc{" arch" if archived else ""}"{tot}>{img}{grade}{head}'
             f'<h2 class="nm" title="{html.escape(smart_title(c["name"] or ""))}">{name}</h2>{nmset}'
             f'{val}{svc}{sub_link}'
             f'{own_input}'
@@ -4266,8 +4288,17 @@ def people_page(a, owner, sort=("sub", False)):
                 f'aria-label="View cards in #{html.escape(str(n))}">View cards</a>')
         tl = timeline_html(s["status"], aside=link, key=n) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
+        # each tile's share of the header totals, so OWNER_JS re-sums them after a retag (T217)
+        p = service_price(a, s["service"]) if s else None
+        def tot(c):
+            if unassigned:
+                return ""
+            v, dv = vals.get(c["cert_no"] or ""), c.get("declared_value")
+            return (f' data-v="{"" if v is None else v}" data-g="{1 if c.get("grade") else ""}"'
+                    f' data-dv="{"" if dv is None else dv}" data-p="{"" if p is None else p}"')
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
-                                    value=vals.get(c["cert_no"] or ""), vcur=vcur) for c in cs)
+                                    value=vals.get(c["cert_no"] or ""), vcur=vcur, tot=tot(c))
+                          for c in cs)
         note = status_note(s) if s else ""
         note = f'<div class="meta">{html.escape(note)}</div>' if note else ""
         # data-sub/svc/eta feed the sort pills, same attributes card_html writes
@@ -4275,7 +4306,6 @@ def people_page(a, owner, sort=("sub", False)):
         # not care that these children are submission groups. No data-arch: the
         # archived groups live in #archgrid, which SORT_JS never touches.
         eta = html.escape(sort_eta(s)) if s else ""
-        p = service_price(a, s["service"]) if s else None
         sortattr = (f' data-sub="{html.escape(str(n))}" data-svc="{svc}"'
                     f' data-price="{"" if p is None else p}" data-eta="{eta}"')
         return (f'<div class="card grp{" arch" if n in arch else ""}"{sortattr}>'
