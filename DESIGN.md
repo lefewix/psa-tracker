@@ -735,7 +735,7 @@ scrolled beneath it. Rest state is `0 1px 2px`; the full `0 10px 26px` is a stat
 a sentinel, transitioned over 0.25s.
 
 **The One-Card-Deep Rule** (supersedes the Bare-Content Rule, owner call 2026-08-08).
-Content sits exactly one card deep: the submission card, the timeline card, the hint, the
+Content sits exactly one card deep: the submission card, the hint, the
 gate. Nothing inside a card gets its own card, tint, border box, or shadow — nested cards
 are always wrong. Separation inside a card is proximity and gray level.
 
@@ -881,9 +881,9 @@ here is a *word*, not a control. The column scans on two gray levels plus one re
   saying PSA paused it (a code in `HOLD_LABELS`, e.g. a financial hold, names the submitter as
   the one who clears it; card owners are never asked to act), plus "PSA has not issued a new
   estimate." for a past-due date (T147, narrowing the 2026-09-09 ruling). The detail page
-  states the alarm at the value rung, a red "On hold" (`.synced b.holdb`) above an ETA that
-  reads "Paused" (late or not) with the old date demoted to an `.estnote`, and its stage bar
-  mutes like the dashboard row's; a held sub rendering a normal ETA badge is a bug.
+  states the alarm in its meta line, a red "On hold" (`b.holdb`) then "PSA ETA paused" (late or
+  not) and the old date ("Was Nov 20"), the note sits under the stage bar, and that bar
+  (`.dstage.hold`) mutes like the dashboard row's; a held sub printing a live ETA is a bug.
 Grades-ready is still not a pill and not a row footer line (the owner, 2026-08-08). Since T114
 (2026-09-16) it is not an `.estnote` under the detail badge either: `timeline_html` prints
 "Grades ready" as the stage word in place of "Completing" on the dashboard row and the detail
@@ -971,11 +971,14 @@ long walk otherwise; that walk is also why the dashboard has a skip link.
 
 ### Navigation
 Navigation is the sticky glass toolbar: brand/logo and the 26px large title on the left, sync
-status and controls on the right, search below. Back links are plain accent-as-text with a `←`
-character and are history-aware. A page-level action shares that row, right-aligned in the sub
-page's `.foot`/`.footacts` grammar: the person page's "Export CSV" is the one. The person page
-pairs Back with a plain `Home` link in the same left group, because Back is history and hopping
-person to person leaves it pointing at the previous person, not the dashboard.
+status and controls on the right, search below. Every inner page (detail, person, unassigned, search, settings) builds its header with one
+helper, `page_head` (T206): a top `.foot.footbare` row with "← Back" (`#backlk`, history-aware)
+on the left and the page's one action across from it (Archive, Export CSV, the theme toggle on
+settings, nothing on search), then an `.hrow` of the h1, one muted meta line, and at most one
+figure on the right. On the detail page the meta line carries service, cards and the return
+window, or the ship date and tracking, or the hold; the estimated value is the figure; the
+stage line and bar follow the header bare (`.dstage`, no card). The person page keeps its
+three-figure totals row (T211) as that right slot and has one back link, no Home.
 In dark the toolbar logo (30px, 26px on phones) takes `--logotb`, a contrast lift that keeps
 the fan's three card planes apart on graphite; light and the 72px gate mark are untouched.
 Under 640px the toolbar wraps, the logo drops to 26px, and
@@ -1170,8 +1173,8 @@ devices never inherit a stuck hover.
 the same string is rendered as static text, it takes `.sublink-static` — muted, 400 weight,
 default cursor, and excluded from every hover rule by `:not(.sublink-static)`. Styling hooks
 are classes; an inline `style` attribute is never one. For the same reason the two non-row
-card variants (`.card.grp`, `.card.tlcard`) explicitly refuse the row hover tint: they are
-layout containers wearing the row's class, not rows you can act on.
+card variant (`.card.grp`) explicitly refuses the row hover tint: it is a
+layout container wearing the row's class, not a row you can act on.
 
 **The Two-Emoji Rule.** 👋 (the new-visitor hint) and 🎉 (the all-tagged empty state) are the
 only emoji in the product. No emoji icons, no emoji in headings, no third emoji.

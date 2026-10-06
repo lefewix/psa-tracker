@@ -1101,7 +1101,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* a header figure is a data value: 17/650, the .num rung. 13 stays where .synced is chrome. */
 .hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
 .synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.4}
-.synced b.holdb{color:var(--holdtx)}
+b.holdb{color:var(--holdtx)}
 .synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
 .tots .trow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 24px}
@@ -1275,7 +1275,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 .bar i{display:block;height:100%;border-radius:2px;background:var(--bar);transform-origin:left;
  transition:transform var(--t3) var(--e2)}
 /* a held sub is not advancing and an archived one is done, so neither earns the accent fill. */
-.card.arch .bar i,.card.hold .bar i{background:var(--barmuted)}
+.card.arch .bar i,.card.hold .bar i,.dstage.hold .bar i{background:var(--barmuted)}
 /* the card's one link: a quiet capsule at the stage line's end, label --ac-hot (clamped 4.5:1
    on --surface3), baseline-aligned to the line. */
 .stage .view{flex-shrink:0;margin:0;padding:7px 14px;border-radius:999px;line-height:16px;
@@ -1627,7 +1627,7 @@ button:disabled{opacity:.5;cursor:default}
 .gc.arch{filter:grayscale(.55);transition:filter var(--t1) var(--e1)}
 .gc.arch:has(.own:focus){filter:none}
 .gc.arch a[href^="/img"]{opacity:.5;transition:opacity var(--t1) var(--e1)}
-.card.tlcard{padding:16px;margin:14px 0}
+.dstage{margin:18px 0}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
  white-space:nowrap;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* a 22px line, so it takes the sort pills' invisible hit pseudo: 22 + 11 each way = 44.
@@ -1661,7 +1661,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 .card:hover{background:color-mix(in srgb,var(--txt) 4%,var(--surface))}
 /* group wrappers and the timeline block are .card for the lift but are not targets; only
    the sub-number link is. */
-.card.grp:hover,.card.tlcard:hover{background:var(--surface)}
+.card.grp:hover{background:var(--surface)}
 .card.arch:hover{filter:none}
 .card.arch:has(.undo):hover{filter:grayscale(.55)}
 .gc.arch:hover{filter:none}
@@ -1762,7 +1762,6 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px;scroll-padding-inline:14px}
  .strip img,.strip a[href^="/img"],.morechip,.skt{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
- .card.tlcard{margin:14px 0}
  input,.searchbar{font-size:16px}
  /* 16px only while the tag is editable - the only moment iOS zooms on focus; readonly it
     shouted over the 14px name. */
@@ -2317,9 +2316,7 @@ def settings_page(msg="", err="", only=""):
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-<a class="view" href="/">← Back to the site</a>
-<div class="hrow" id="content" tabindex="-1"><div><h1>Settings</h1>
-<div class="sub">Changes apply at the next sync, within about 20 minutes.</div></div>{THEME_BTN}</div>
+{page_head("Settings", "Changes apply at the next sync, within about 20 minutes.", action=THEME_BTN)}
 {note}
 <div class="card sblock mt22">
 <h2 class="stitle">PSA accounts</h2>
@@ -4109,37 +4106,42 @@ def status_note(s):
         note += " PSA has not issued a new estimate."
     return note.strip()
 
-def eta_badge(s, extra=""):
-    """Top-right ETA badge for the sub detail page: expected return window, or
-    ship date + tracking once shipped. `extra` = additional lbl2/b lines
-    (e.g. the sub's estimated value) appended inside the same block."""
+def page_head(title, meta="", right="", back="/", action="", extra="", label="Back"):
+    """The one inner-page header (T206): back link left with the page's one action
+    across from it, then the title, one muted meta line, and at most one figure on
+    the right. Arguments are HTML, the caller escapes. #backlk is BACK_JS's
+    history-aware back."""
+    act = f'<span class="footacts">{action}</span>' if action else ""
+    return (f'<div class="foot footbare"><a class="view" id="backlk" href="{back}">← {label}</a>'
+            f'{act}</div>'
+            f'<div class="hrow" id="content" tabindex="-1"><div><h1>{title}</h1>'
+            f'<div class="sub">{meta}</div>{extra}</div>{right}</div>')
+
+def detail_meta(s):
+    """The detail page's one meta line: service, cards, then the ship date and
+    tracking, the hold, or the return window (T206, the old ETA badge's words)."""
+    nc = s["card_count"]
+    parts = [html.escape(s["service"]), f'{nc} card{"s" if nc != 1 else ""}']
     if s["status"] == "Shipped" and s["shipped"]:
-        note = (f'<span class="estnote">{tracking_html(s["carrier"], s["tracking"])}</span>'
-                if s["carrier"] and s["tracking"] else "")
-        return f'<div class="synced">Shipped<b>{html.escape(fmt_mdy(s["shipped"]))}</b>{note}{extra}</div>'
+        parts.append(f'Shipped {html.escape(fmt_mdy(s["shipped"]))}')
+        if s["carrier"] and s["tracking"]:
+            parts.append(tracking_html(s["carrier"], s["tracking"]))
+        return " · ".join(parts)
     label, val, muted = eta_words(s)
     if not muted and s["est_end"] and s["est_start"] and s["est_end"] != s["est_start"]:
         d1, d2 = short_date(s["est_start"]), short_date(s["est_end"])
         if "," in d1 and d1[-6:] == d2[-6:]:  # one year for the pair, on the end
             d1 = d1.split(",")[0]
         val = f"{d1} to {d2}"
-    if val == "ETA pending":
-        val = "Pending"  # the badge already says "PSA ETA" on the label rung
-    # no grades-ready note here: the stage line under this badge carries the
-    # news as its own stage word now (T114)
-    eta = f'{label}<b>{html.escape(val)}</b>'
     if s["on_hold"]:
-        # the hold leads, the ETA reads Paused (late or not) and the date it
-        # had demotes to a note under it (T147)
+        # the hold leads, the ETA reads paused and the date it had trails (T147)
         d = s["est_end"] or s["est_start"]
-        was = "" if not d else (f"Was due {short_date(d)}" if muted == "late" else f"Was {val}")
-        eta = (f'Status<b class="holdb">{hold_label(s.get("hold_reason"))}</b>'
-               f'<span class="lbl2">PSA ETA</span><b>Paused</b>'
-               + (f'<span class="estnote">{html.escape(was)}</span>' if was else ""))
-    note = status_note(s)
-    if note:
-        eta += f'<span class="estnote">{html.escape(note)}</span>'
-    return f'<div class="synced">{eta}{extra}</div>'
+        parts += [f'<b class="holdb">{hold_label(s.get("hold_reason"))}</b>', "PSA ETA paused"]
+        if d:
+            parts.append(f"Was due {short_date(d)}" if muted == "late" else f"Was {html.escape(val)}")
+    else:
+        parts.append(html.escape(val if muted else f"{label} {val}"))
+    return " · ".join(parts)
 
 def detail_page(a, sub):
     num = sub["sub_number"]
@@ -4148,11 +4150,12 @@ def detail_page(a, sub):
     owners = owners_map(a)
     vals, vas_of, vcur = load_values(a)
     vtotal = sum(vals.get(c["cert_no"] or "", 0) for c in cards)
-    vextra = ""
+    vfig = ""
     if vtotal:
         vmiss = sum(1 for c in cards if c.get("grade") and (c["cert_no"] or "") not in vals)
-        vextra = (f'<span class="lbl2">Est. value</span><b>${vtotal:,.0f}{plus(vmiss)} {vcur}</b>'
-                  f'<span class="estnote">PSA estimates · as of {html.escape(vas_of)}</span>')
+        vfig = f'<div class="synced">Est. value<b>${vtotal:,.0f}{plus(vmiss)} {vcur}</b></div>'
+    note = status_note(sub)
+    note = f'<div class="sub mt6">{html.escape(note)}</div>' if note else ""
     if cards:
         body = ('<div class="grid">'
                 + "".join(card_tile(c, owners, archived=archived,
@@ -4168,11 +4171,6 @@ def detail_page(a, sub):
     else:
         act = f'<button class="archbtn" data-sub="{html.escape(num)}" data-on="1" aria-label="Archive submission #{html.escape(num)}">Archive</button>'
         tag = '<div class="sub" id="archtag" hidden>Archived</div>'  # ARCH_JS flips it in place
-    nc = sub['card_count']
-    # the header rung and the stage line say the same word, so a grades-ready
-    # sub does not read "Completing" above a line that says "Grades ready" (T114)
-    stage_word = ("Grades ready" if sub["grades_ready"] and stage_index(sub["status"]) == 6
-                  else sub["status"])
     # Discord pings, opened on the owner's page (T137): one owner gets one link,
     # a mixed sub names each owner who has not turned pings on yet
     who = {owners.get(str(c["cert_id"]), "").lower(): owners.get(str(c["cert_id"]), "")
@@ -4192,11 +4190,8 @@ def detail_page(a, sub):
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-<div class="foot"><a class="view" id="backlk" href="/">← Back</a><span class="footacts">{act}</span></div>
-<div class="hrow" id="content" tabindex="-1"><div><h1>#{html.escape(num)}</h1>
-<div class="sub">{html.escape(sub['service'])} · {nc} card{"s" if nc != 1 else ""} · {html.escape(stage_word)}</div>{tag}{ping}</div>
-{eta_badge(sub, vextra)}</div>
-<div class="card tlcard{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}</div>
+{page_head(f"#{html.escape(num)}", detail_meta(sub), vfig, action=act, extra=tag + ping)}
+<div class="dstage{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}{note}</div>
 {body}{owner_datalist(owners) if cards else ""}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{APP_JS_TAG}</body></html>"""
@@ -4346,20 +4341,16 @@ def people_page(a, owner, sort=("sub", False)):
                '</details></div>') if act_cards else ""
     # back on the left, the export on the right: the sub page's own foot row,
     # with its 18px top margin dropped so the header sits where it always did
-    back = ('<div class="foot footbare">'
-            '<span class="footacts"><a class="view" id="backlk" href="/">← Back</a>'
-            '<a class="view" href="/">Home</a></span>'
-            f'<span class="footacts"><a class="view" href="/cards?owner='
-            f'{urllib.parse.quote(owner)}&amp;format=csv" download>Export CSV</a></span></div>')
+    csv = (f'<a class="view" href="/cards?owner={urllib.parse.quote(owner)}&amp;format=csv" '
+           f'download>Export CSV</a>')
     page_title = "Unassigned cards" if unassigned else f"{title}'s cards"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(page_title)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-{back}
-<div class="hrow" id="content" tabindex="-1"><div><h1>{html.escape(title)}</h1>
-<div class="sub">{html.escape(sub_line)}</div>{"" if unassigned else discord_widget(a, owner)}</div>{est}</div>
+{page_head(html.escape(title), html.escape(sub_line), est, action=csv,
+           extra="" if unassigned else discord_widget(a, owner))}
 <div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {filterrow}
 {grid}
@@ -4518,23 +4509,18 @@ def search_page(a, q, owner="", customer=False):
     title = f"Search: {html.escape(q.strip())} - {count}" if ql else "Search"
     if total > len(res):
         count += f" · showing the first {len(res)}, narrow the search"
+    back = "/"
     if customer:
         count += " · your cards only"
-        back = '<a class="view" href="/">← Your cards</a>'
     elif owner:
         count += f" · {html.escape(owner)}'s cards only"
-        back = (f'<a class="view" id="backlk" href="/cards?owner={urllib.parse.quote(owner)}">'
-                f'← Back</a>')
-    else:
-        back = '<a class="view" id="backlk" href="/">← Back</a>'
+        back = f"/cards?owner={urllib.parse.quote(owner)}"
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{title}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-{back}
-<h1 id="content" tabindex="-1">Search</h1>
-<div class="sub">{count}</div>
+{page_head("Search", count, back=back, label="Your cards" if customer else "Back")}
 <div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}{"" if customer else owner_datalist(owners)}
 <div class="vh" id="live" aria-live="polite"></div>

@@ -742,7 +742,7 @@ def main():
                 fails.append("GET /app.css: the row foot wraps mid tracking number again (T175)")
             # a held sub's bar drops to the muted grey, so it stops painting
             # full accent under the red hold pill (T75)
-            if b".card.arch .bar i,.card.hold .bar i{background:var(--barmuted)}" not in css:
+            if b".card.arch .bar i,.card.hold .bar i,.dstage.hold .bar i{background:var(--barmuted)}" not in css:
                 fails.append("GET /app.css: a held card still paints an accent stage bar")
             if b".gc.arch .ph" in css:
                 fails.append("GET /app.css: the archived no-scan placeholder is dimmed again")
@@ -1393,9 +1393,24 @@ def main():
                                               for c in browse["cards"]):
                 fails.append("GET /suggest?owner=Solo: the Cards half left that "
                              "person's cards (T103)")
-            if b'<a class="view" href="/">Home</a>' not in \
+            # every inner page wears one header: back link (history aware) with the
+            # page's one action across, title, one meta line, at most one figure (T206)
+            head = re.compile(rb'<div class="foot footbare"><a class="view" id="backlk" href="[^"]*">'
+                              + "\u2190".encode()
+                              + rb' [^<]*</a>(<span class="footacts">.*?</span>)?</div>'
+                              rb'<div class="hrow" id="content" tabindex="-1"><div><h1>[^<]+</h1>'
+                              rb'<div class="sub">', re.S)
+            for p in ("/sub/14900001", "/cards?owner=Solo", "/search?q=Charizard", "/settings"):
+                b = call(url, p, cookie)[1] or b""
+                if len(head.findall(b)) != 1 or b.count(b'id="backlk"') != 1:
+                    fails.append(f"GET {p}: not the one shared page header (T206)")
+            b = call(url, "/sub/14900001", cookie)[1] or b""
+            if b"tlcard" in b or b.count(b'class="synced"') != 1 or b"PSA estimates" in b:
+                fails.append("GET /sub/14900001: the header right column is not one figure (T206)")
+            # one back link, no Home beside it (T206, was T103)
+            if b'<a class="view" href="/">Home</a>' in \
                     (call(url, "/cards?owner=Solo", cookie)[1] or b""):
-                fails.append("GET /cards?owner=Solo: no Home link beside Back (T103)")
+                fails.append("GET /cards?owner=Solo: Home is back beside Back (T206)")
             # every owner field offers the names in use from one datalist (T135)
             for p in ("/sub/14900003", "/cards?owner=Solo", "/search?q=Charizard"):
                 b = call(url, p, cookie)[1] or b""
@@ -1552,7 +1567,7 @@ def main():
                               ("14900002", soon),
                               ("14900003", "Late · due " + eta_text(ETA_PAST))):
                 dbody = call(url, "/sub/" + num, cookie)[1] or b""
-                badge = re.search(rb'<div class="synced">.*?</div>', dbody, re.S)
+                badge = re.search(rb'<h1>#\d+</h1>\n?<div class="sub">.*?</div>', dbody, re.S)
                 badge = badge.group(0) if badge else b""
                 if want.encode() not in badge:
                     fails.append(f"GET /sub/{num}: the ETA badge does not say {want!r}")
@@ -1569,7 +1584,7 @@ def main():
             hnote = b"PSA paused this submission. It moves again once PSA lifts the hold."
             fnote = b"PSA paused this submission until the submitter clears a financial hold with them."
             lnote = b"PSA has not issued a new estimate."
-            if (b"PSA ETA</span><b>Paused</b>" not in hsub or b'class="card tlcard hold"' not in hsub
+            if (b"PSA ETA paused" not in hsub or b'class="dstage hold"' not in hsub
                     or hsub.count(hnote) != 1 or b"Was " + soon.encode() not in hsub):
                 fails.append("GET /sub/14900002: the hold does not read Paused with a muted bar and one note (T147)")
             if hnote in dash or lnote in dash:
@@ -1583,7 +1598,7 @@ def main():
             db.execute("UPDATE subs SET on_hold = 0, hold_reason = NULL WHERE sub_number = '14900003'")
             db.commit()
             db.close()
-            if (b"<b>Paused</b>" not in hl or "Late ·".encode() in hl or hl.count(fnote) != 1
+            if (b"PSA ETA paused" not in hl or "Late ·".encode() in hl or hl.count(fnote) != 1
                     or hnote in hl or b"Nothing is needed" in hl or lnote not in hl or b"Was due " + eta_text(ETA_PAST).encode() not in hl):
                 fails.append("GET /sub/14900003: a held late financial-hold sub does not read Paused with the submitter note (T147)")
 
