@@ -635,7 +635,7 @@ The dashboard masthead is sticky with a negative `top` (FX_JS measures the brand
 every width the brand row scrolls away and only the search field stays pinned (T209). Its
 words carry the old 👋 tip: the placeholder is "Type your name to find your cards", and no
 hint card sits above the list. Other toolbars stick at `top: 10px` (`z-index: 20`); each is
-preceded by a 1px sentinel that drives its scroll-edge elevation. A fixed 26px ground band
+preceded by a 1px server-rendered sentinel (`.tbsentinel`, so a late app.js shifts nothing, T202) that drives its scroll-edge elevation. A fixed 26px ground band
 (`html:has(.toolbar.raised)::before`, `z-index: 19`, the ambient layers sized to the viewport) masks
 the gap and the corners above it once the bar is stuck, so no slice of a row shows over the glass; 10px under the
 condensed masthead, whose glass already covers the top. The compact search bar on
@@ -1144,6 +1144,9 @@ Fetched lists never read empty: 120 ms into the Archived fetch `#list` gets up t
 `.skcard` rows (number line, meta line, five `.skt` tiles, bar line), and a closed search preview
 opens on three `.skrow` rows after 200 ms; an open one dims its stale rows with `.busy`. Skeletons
 are `.sk` blocks on `--sk` under the `pulse`, which stays under reduced motion. (T199)
+A wait the page already handles leads with `.waitdot`, a 7px `--ac-pale` dot on the same pulse:
+"Signing in now" while a PSA code is armed (Send code hides until the field arrives) and the
+empty dashboard's first sync, which also reloads itself every 30 s while psa-scan runs. (T202)
 
 ### Named Rules
 **The Opt-In Fill Rule.** Filled accent identity is opt-in, per element. It lives on

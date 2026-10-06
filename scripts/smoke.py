@@ -512,6 +512,28 @@ def setup_instance_checks(fails):
                                  "lost the sync cadence (T163)")
                 if b">No sync yet<" not in body:
                     fails.append("GET / (never synced): an empty account lost No sync yet (T162)")
+                # while psa-scan runs, the empty page pulses and reloads itself every
+                # 30 s instead of asking for a reload (T202); a fake systemctl says active
+                fake = os.path.join(base, "bin")
+                os.makedirs(fake, exist_ok=True)
+                with open(os.path.join(fake, "systemctl"), "w") as f:
+                    f.write("#!/bin/sh\necho active\n")
+                os.chmod(os.path.join(fake, "systemctl"), 0o755)
+                proc.send_signal(signal.SIGTERM)
+                proc.wait(5)
+                path, port = os.environ["PATH"], free_port()
+                url = f"http://127.0.0.1:{port}"
+                os.environ["PATH"] = fake + os.pathsep + path
+                try:
+                    proc = boot(base, port, log)
+                finally:
+                    os.environ["PATH"] = path
+                _, _, hdrs = call(url, "/login", form={"password": SITE_PW})
+                body = call(url, "/", (hdrs.get("Set-Cookie") or "").split(";")[0])[1] or b""
+                if (b'<meta http-equiv="refresh" content="30">' not in body
+                        or b'<span class="waitdot" aria-hidden="true"></span>First sync' not in body
+                        or b"Reload in a minute" in body):
+                    fails.append("GET / (first sync running): no wait dot or self refresh (T202)")
             proc.send_signal(signal.SIGTERM)
             proc.wait(5)
             proc = None
@@ -1407,6 +1429,21 @@ def main():
             b = call(url, "/sub/14900001", cookie)[1] or b""
             if b"tlcard" in b or b.count(b'class="synced"') != 1 or b"PSA estimates" in b:
                 fails.append("GET /sub/14900001: the header right column is not one figure (T206)")
+            # the sticky bar's sentinel ships in the markup, so a late app.js
+            # cannot shift the page by inserting it (T202)
+            b = call(url, "/", cookie)[1] or b""
+            if (b'<div class="tbsentinel" aria-hidden="true"></div><header class="toolbar">' not in b
+                    or (js and b"className='tbsentinel'" in js)):
+                fails.append("GET /: the toolbar sentinel is inserted by script again (T202)")
+            # Send code pressed: a pulsing dot on "Signing in now" and no second Send code (T202)
+            armf = os.path.join(base, "accounts", "demo", "otp.armed")
+            open(armf, "w").close()
+            b = call(url, "/settings", cookie)[1] or b""
+            os.remove(armf)
+            pane = b.split(b'class="spane sg-o"', 1)[-1].split(b'</div>\n</div>', 1)[0]
+            if (b'<span class="waitdot" aria-hidden="true"></span>Signing in now' not in pane
+                    or b">Send code<" in pane):
+                fails.append("GET /settings (armed): no wait dot, or Send code still offered (T202)")
             # one back link, no Home beside it (T206, was T103)
             if b'<a class="view" href="/">Home</a>' in \
                     (call(url, "/cards?owner=Solo", cookie)[1] or b""):

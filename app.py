@@ -1533,6 +1533,9 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
  animation:sweep 1.1s linear infinite}
 .busy{animation:pulse 1s ease-in-out infinite;pointer-events:none}
 @keyframes pulse{50%{opacity:.45}}
+/* a wait the page is already handling: first sync, the PSA code on its way (T202) */
+.waitdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ac-pale);
+ margin-right:8px;vertical-align:1px;animation:pulse 1s ease-in-out infinite}
 /* skeletons (T199): the loading ground, pulsing, and the pulse outlives reduced motion */
 .sk{display:block;background:var(--sk);border-radius:6px;animation:pulse 1s ease-in-out infinite}
 .skl{height:12px}
@@ -2244,7 +2247,8 @@ def settings_page(msg="", err="", only=""):
             ometa = "Code sent to the phone on this PSA account. Enter it within 10 minutes."
         elif ost["armed"]:
             # .spoll: the page polls this pane alone, so a code typed elsewhere survives
-            ometa = ("Signing in now. The code is on its way to the account’s phone; "
+            ometa = ('<span class="waitdot" aria-hidden="true"></span>'
+                     "Signing in now. The code is on its way to the account’s phone; "
                      "the field for it appears here as soon as PSA sends it. "
                      '<span class="spoll">Checking with PSA…</span>')
         elif ost["needed"]:
@@ -2257,6 +2261,8 @@ def settings_page(msg="", err="", only=""):
 <input name="value" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Verification code"
  aria-label="PSA verification code" maxlength="8">
 <button type="submit" class="fillbtn sbtn">Send</button></form>"""
+        elif ost["armed"]:
+            obody = ""  # already sent; the pane polls until the field arrives
         else:
             obody = f"""<form method="POST" action="/settings/account" class="srow">
 <input type="hidden" name="acct" value="{aid}"><input type="hidden" name="action" value="otp_send">
@@ -2561,7 +2567,8 @@ def first_sync_note(a):
     if env.get("PSA_COOKIE"):
         return ""
     if scan_active():
-        return "First sync with PSA is running. Reload in a minute or two."
+        return ('<span class="waitdot" aria-hidden="true"></span>'
+                'First sync with PSA is running. This page refreshes itself.')
     return ('Waiting for the first PSA sync. Changes apply at the next sync, within about 20 minutes. Start it now with '
             '<span class="mono">systemctl start psa-scan</span>. Wrong PSA login? '
             '<a href="/setup">Re-enter it</a>.')
@@ -3473,12 +3480,8 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
    (1px + the 16px margin that follows it), so the class flips on the exact
    frame the bar goes sticky. Pages with no toolbar simply return. */
 (function(){
-  var tb=document.querySelector('.toolbar');
-  if(!tb||!window.IntersectionObserver)return;
-  var s=document.createElement('div');
-  s.className='tbsentinel';
-  s.setAttribute('aria-hidden','true');
-  tb.parentNode.insertBefore(s,tb);
+  var tb=document.querySelector('.toolbar'),s=document.querySelector('.tbsentinel');
+  if(!tb||!s||!window.IntersectionObserver)return;
   new IntersectionObserver(function(e){
     tb.classList.toggle('raised',!e[0].isIntersecting);
   },{rootMargin:'6px 0px 0px 0px',threshold:0}).observe(s);
@@ -3946,7 +3949,7 @@ def dash_page(a, subs, sort=("sub", False)):
     # <header> because this one really is the page masthead; the .tbq bars on the
     # other pages stay <div> (they carry a search field, not a page header).
     # Every selector and the FX_JS query use the .toolbar class, so it's a swap.
-    toolbar = (f'<header class="toolbar"><div class="tbtop">'
+    toolbar = (f'<div class="tbsentinel" aria-hidden="true"></div><header class="toolbar"><div class="tbtop">'
                f'<div class="brand">{logo_tag()}<div><h1>{html.escape(SITE_TITLE)}</h1>'
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
                f'<div class="tbend">{sync_dot(stale, bool(subs))}{gear_html()}{THEME_BTN}'
@@ -4010,8 +4013,11 @@ def dash_page(a, subs, sort=("sub", False)):
     # role=list only when the rows are really there: with no subs the one child
     # is the .empty placeholder, and a list of one non-listitem is a lie.
     listrole = ' role="list"' if subs else ''
+    # the first sync is running: the empty page reloads itself until rows land (T202)
+    refresh = ('<meta http-equiv="refresh" content="30">'
+               if not subs and 'class="waitdot"' in body else "")
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>{html.escape(SITE_TITLE)}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">{refresh}<title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#list">Skip to submissions</a>
@@ -4351,7 +4357,7 @@ def people_page(a, owner, sort=("sub", False)):
 <a class="skip" href="#content">Skip to content</a>
 {page_head(html.escape(title), html.escape(sub_line), est, action=csv,
            extra="" if unassigned else discord_widget(a, owner))}
-<div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
+<div class="tbsentinel" aria-hidden="true"></div><div class="toolbar tbq">{search_box(owner="" if unassigned else owner)}</div>
 {filterrow}
 {grid}
 {archsec}{owner_datalist(owners)}
@@ -4453,7 +4459,7 @@ def customer_page(a, email):
 <div class="sub">{total} card{"s" if total != 1 else ""} · {html.escape(email)}</div>{discord_widget(a, email)}</div>
 <div class="synced custrow"><div class="custout">Last synced<b>{html.escape(stamp)}</b></div>
 <a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a></div></div>
-<div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
+<div class="tbsentinel" aria-hidden="true"></div><div class="toolbar tbq">{search_box(owner=email, ph="Search your cards…")}</div>
 {archpill}
 <div{"" if gone else ' class="mt28"'}>{body}</div>
 {archsec}
@@ -4521,7 +4527,7 @@ def search_page(a, q, owner="", customer=False):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
 {page_head("Search", count, back=back, label="Your cards" if customer else "Back")}
-<div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
+<div class="tbsentinel" aria-hidden="true"></div><div class="toolbar tbq">{search_box(q or '', owner=owner, ph="Search your cards…" if customer else None)}</div>
 {grid}{"" if customer else owner_datalist(owners)}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{APP_JS_TAG}</body></html>"""
