@@ -165,6 +165,9 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)", "barmuted": "#7e7e86",
  "chipfill": "#ffffff", "chippad": "5px 7px",
  "logofx": "brightness(0) invert(1)",
+ # toolbar-size mark: the mid and front cards merge on graphite at 30px; this spreads
+ # the three planes apart without a dark logo file (T177)
+ "logotb": "contrast(1.3) brightness(1.15) saturate(.8)",
  # Liquid Glass chrome: translucent ground, one soft cast shadow, and a LENS -
  # --rim is the specular catch along the top edge, --rimb the falloff along the
  # bottom. Both are felt, not seen: the pair is what separates a lens from a
@@ -188,7 +191,7 @@ _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  "txt": "#1d1d1f", "m1": "#6e6e73", "tert": "#86868b",
  "hair": "rgba(0,0,0,.1)", "hairh": "rgba(0,0,0,.28)",
  "hair2": "rgba(0,0,0,.07)", "track": "#ececef", "barmuted": "#8e8e93",
- "chipfill": "transparent", "chippad": "0", "logofx": "none",
+ "chipfill": "transparent", "chippad": "0", "logofx": "none", "logotb": "none",
  "glass": "rgba(255,255,255,.72)", "glasssolid": "#ffffff", "rim": "rgba(255,255,255,.85)",
  "rimb": "rgba(15,20,30,.06)",
  "segtrack": "rgba(0,0,0,.045)", "segon": "#ffffff",
@@ -1083,6 +1086,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:6px;
  box-sizing:content-box;height:26px}
 .logo.sil{filter:var(--logofx,none)}
+.toolbar .logo:not(.sil,.chip){filter:var(--logotb)}
 .brand{display:flex;align-items:center;gap:12px}
 .gbox .logo{height:72px;margin:0 auto 18px}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}

@@ -961,6 +961,8 @@ character and are history-aware. A page-level action shares that row, right-alig
 page's `.foot`/`.footacts` grammar: the person page's "Export CSV" is the one. The person page
 pairs Back with a plain `Home` link in the same left group, because Back is history and hopping
 person to person leaves it pointing at the previous person, not the dashboard.
+In dark the toolbar logo (30px, 26px on phones) takes `--logotb`, a contrast lift that keeps
+the fan's three card planes apart on graphite; light and the 72px gate mark are untouched.
 Under 640px the toolbar wraps, the logo drops to 26px, and
 the sync block collapses to a single inline 11px line. On any phone-sized viewport (640px wide
 or under, or 500px tall or under, so landscape counts) the masthead condenses on scroll: the

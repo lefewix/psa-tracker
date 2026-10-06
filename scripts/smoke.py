@@ -588,6 +588,12 @@ def main():
                     b"height:26px;z-index:19;" not in css
                     or b"html:has(header.toolbar.raised)::before{height:10px}" not in css):
                 fails.append("GET /app.css: the gap above the stuck toolbar is unmasked (T176)")
+            # dark lifts the toolbar mark so its card planes stay apart; light is a no-op (T177)
+            _, gate, _ = call(url, "/")
+            if (b".toolbar .logo:not(.sil,.chip){filter:var(--logotb)}" not in css
+                    or b'--logotb:none;' not in gate
+                    or b'--logotb:contrast(1.3) brightness(1.15) saturate(.8);' not in gate):
+                fails.append("GET /app.css: the dark toolbar logo loses a card plane (T177)")
             # a grid on the page ground takes the card plane, light's well is the ground (T119)
             if b".wrap>.grid .gc{background:var(--surface)}" not in css:
                 fails.append("GET /app.css: tiles on the page ground melt into it (T119)")
