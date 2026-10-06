@@ -1417,14 +1417,15 @@ def main():
                              "person's cards (T103)")
             # every inner page wears one header: back link (history aware) with the
             # page's one action across, title, one meta line, at most one figure (T206)
-            head = re.compile(rb'<div class="foot footbare"><a class="view" id="backlk" href="[^"]*">'
+            head = re.compile(rb'<div class="foot footbare"><a class="view"(?: id="backlk")? href="[^"]*">'
                               + "\u2190".encode()
                               + rb' [^<]*</a>(<span class="footacts">.*?</span>)?</div>'
                               rb'<div class="hrow" id="content" tabindex="-1"><div><h1>[^<]+</h1>'
                               rb'<div class="sub">', re.S)
             for p in ("/sub/14900001", "/cards?owner=Solo", "/search?q=Charizard", "/settings"):
                 b = call(url, p, cookie)[1] or b""
-                if len(head.findall(b)) != 1 or b.count(b'id="backlk"') != 1:
+                # settings saves 303 back to /settings, so its Back is a plain link home
+                if len(head.findall(b)) != 1 or b.count(b'id="backlk"') != (p != "/settings"):
                     fails.append(f"GET {p}: not the one shared page header (T206)")
             b = call(url, "/sub/14900001", cookie)[1] or b""
             if b"tlcard" in b or b.count(b'class="synced"') != 1 or b"PSA estimates" in b:

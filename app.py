@@ -1123,8 +1123,6 @@ b.holdb{color:var(--holdtx)}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
 /* the dual rim reads as a lens: light on the top edge (--rim), falling off at the bottom
    (--rimb). Both sub-threshold; the shadow carries elevation. */
-/* two classes on purpose: .f below zeroes background and border, and 0,2,0 lets the solo pill
-   keep its glass. */
 .toolbar,.sbar{
  background:var(--glass);
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
@@ -1191,7 +1189,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 .filters{isolation:isolate}
 .f.fsolo{background-color:var(--segtrack)}
 /* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule cannot
-   park it off-screen, own glass (.f.fsolo), in .rowend. */
+   park it off-screen, own quiet fill (.f.fsolo), in .rowend. */
 .filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
 .rowend{display:flex;align-items:center;gap:10px}
 .filterrow .filters{margin:0}
@@ -1475,8 +1473,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 .footacts .undo{margin:-12px -6px}
 /* the owner chip sits in the row in the pencil's place, so saving never moves the grid (T136) */
 .ownrow .undo{margin:-12px -6px -12px 6px;white-space:nowrap}
-/* touch: ARCH_JS lifts the archive chip into body, a 44px detached chip in the thumb zone on
-   the orbs' baseline, clear of them (T144) */
+/* touch: ARCH_JS lifts the archive chip into body, a 44px detached chip in the thumb zone (T144) */
 body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;
  margin:0;min-height:44px;padding:0 18px;border-radius:999px;font-size:13px;line-height:1.4;white-space:nowrap;
  background:var(--glasssolid);border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
@@ -2325,7 +2322,7 @@ def settings_page(msg="", err="", only=""):
 {HEAD_HTML}
 <style>{THEME_VARS}@view-transition{{navigation:none}}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
-{page_head("Settings", "Changes apply at the next sync, within about 20 minutes.", action=THEME_BTN)}
+{page_head("Settings", "Changes apply at the next sync, within about 20 minutes.", action=THEME_BTN, hist=False)}
 {note}
 <div class="card sblock mt22">
 <h2 class="stitle">PSA accounts</h2>
@@ -4115,13 +4112,14 @@ def status_note(s):
         note += " PSA has not issued a new estimate."
     return note.strip()
 
-def page_head(title, meta="", right="", back="/", action="", extra="", label="Back"):
+def page_head(title, meta="", right="", back="/", action="", extra="", label="Back", hist=True):
     """The one inner-page header (T206): back link left with the page's one action
     across from it, then the title, one muted meta line, and at most one figure on
     the right. Arguments are HTML, the caller escapes. #backlk is BACK_JS's
-    history-aware back."""
+    history-aware back; settings opts out, its saves stack /settings in history."""
     act = f'<span class="footacts">{action}</span>' if action else ""
-    return (f'<div class="foot footbare"><a class="view" id="backlk" href="{back}">← {label}</a>'
+    bid = ' id="backlk"' if hist else ""
+    return (f'<div class="foot footbare"><a class="view"{bid} href="{back}">← {label}</a>'
             f'{act}</div>'
             f'<div class="hrow" id="content" tabindex="-1"><div><h1>{title}</h1>'
             f'<div class="sub">{meta}</div>{extra}</div>{right}</div>')
@@ -4157,7 +4155,7 @@ def detail_page(a, sub):
     archived = num in archived_set(a)
     cards = load_cards(a, num)
     owners = owners_map(a)
-    vals, vas_of, vcur = load_values(a)
+    vals, _, vcur = load_values(a)
     vtotal = sum(vals.get(c["cert_no"] or "", 0) for c in cards)
     vfig = ""
     if vtotal:

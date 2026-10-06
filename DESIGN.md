@@ -1179,8 +1179,8 @@ are classes; an inline `style` attribute is never one. For the same reason the t
 card variant (`.card.grp`) explicitly refuses the row hover tint: it is a
 layout container wearing the row's class, not a row you can act on.
 
-**The Two-Emoji Rule.** 👋 (the new-visitor hint) and 🎉 (the all-tagged empty state) are the
-only emoji in the product. No emoji icons, no emoji in headings, no third emoji.
+**The One-Emoji Rule.** 🎉 (the all-tagged empty state) is the only emoji in the product; the
+👋 hint card retired with T209. No emoji icons, no emoji in headings, no second emoji.
 
 **The Inline-SVG Icon Rule.** Every icon is an inline stroked SVG at 12–17px with
 `stroke: currentColor`, so it inherits its context's color. No icon fonts, no glyph characters
