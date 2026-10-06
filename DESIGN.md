@@ -767,8 +767,9 @@ every overlay so "this is on top of that" still reads.
 Corner language runs from square to circle by role, not by size. Every **single-line control is
 a capsule** (999px): text inputs, the search bar, the filled button, the compact save button,
 the destructive text button, filter pills, the search-preview tag, and the quiet circular hover
-pills. Content-side surfaces stay square-ish on purpose. Ledger rows and settings blocks are
-**radius 0** — they are rules on a sheet, not objects. Images take 6px (scan tiles, covers,
+pills. Content-side surfaces stay square-ish on purpose. Submission cards, the empty and hint
+cards, and settings blocks are **16px raised cards** (the 2026-08-08 amendment retired the
+square ledger); scan tiles are 12px wells. Images take 6px (scan tiles, covers,
 logo chip) and preview thumbnails 4px; a lightbox image takes 12px because it is presented
 rather than listed. Preview rows and the quiet hover pill behind a text action take 8px. The
 search preview panel and the modal sheet take 14px; the full toolbar takes 16px and the compact
@@ -787,8 +788,8 @@ drops it to `--m1`, so grey agrees with the red hold pill instead of arguing wit
 entire system. A border that needs emphasis shifts to `--hairh` on hover, never to a thicker
 stroke.
 
-**The Square-Ledger Rule.** Rows, list containers, and settings blocks have zero radius.
-Rounding a row turns it into a card, and this world has no cards.
+**The Card Radius Rule.** Rows, list containers, and settings blocks are 16px raised cards;
+scan tiles inside them are 12px wells. Nothing content-side goes to a capsule.
 
 **The Capsule-Control Rule.** If it is a single-line control the user acts on, it is a 999px
 capsule and carries ~3px of extra side padding so text never crowds the round end. If it holds
@@ -1239,7 +1240,6 @@ standing in for icons, no raster icons.
 ### Don't:
 - **Don't** attach background, color, radius, width, or margin to the bare `button` selector,
   and never write a `button:hover` that paints.
-- **Don't** put a box, tint, fill, border, or shadow on a content row or scan tile.
 - **Don't** apply `backdrop-filter` to anything holding data.
 - **Don't** let a sticky surface cast its full shadow before content has scrolled under it.
 - **Don't** raise the ambient ground until you can name where it stops, and never build it from
@@ -1250,7 +1250,6 @@ standing in for icons, no raster icons.
 - **Don't** use red for anything but a landed grade, an alert, or a hold, or green for anything
   but a saved owner tag.
 - **Don't** add a second border weight or a colored border beyond the owner tag's focus underline.
-- **Don't** round a ledger row; rounding turns it into a card and this world has none.
 - **Don't** add a fourth type rung; a new size hangs off the caption tier or it does not ship.
 - **Don't** kill motion with a blanket `*{transition-duration:.01ms}`; enumerate the travel and
   keep the feedback.
