@@ -637,12 +637,17 @@ so graded and ungraded neighbours in one row share a baseline.
 Spacing rhythm runs on a coarse 2 / 4 / 7 / 10 / 14 / 18 / 24 ladder: 2px between a title
 and its subtitle, 7–10px inside chips, 12–14px between row elements, 18–24px between sections.
 
-**Breakpoints:** 640px, plus a 360px list fallback for the card grid. Under it the page-header `.synced` block goes full width and
+**Breakpoints:** 640px, plus a 360px list fallback for the card grid and a 1025px step that grows the strip and detail grid (T188). Under it the page-header `.synced` block goes full width and
 left aligned, so its `.estnote` drops the `margin-left: auto` that right-aligns the 34ch measure
 on desktop.
 Under 360px a one-column tile ran about 600px tall, so not one whole card fit a 320 screen: each
 `.gc` becomes a list row (56px scan floated left, grade chip, name, value and owner stacked right,
 cert hidden, empty chip collapsed), about 115-128px tall. CSS only, same markup; 360px and up is untouched. (T173)
+Under 640px the dashboard puts its first row straight under the masthead (10px top margin
+there) and the attention line and sort row after it, in thumb reach: `main.dash` is a flex
+column, `#list` goes `display:contents`, and `order` lifts the first visible row (and the
+archived header in the archived view). Visual order only; the skip link focuses the first
+row's link since a contents box takes no focus (T189).
 
 ### Named Rules
 **The Current-Stage-Only Rule.** Under 640px only the *current* stage is ever named. The

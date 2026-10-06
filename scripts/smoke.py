@@ -684,7 +684,7 @@ def main():
                 not p.strip().startswith(b"visibility") and not (b"var(--t" in p and b"var(--e" in p)
                 for p in re.split(rb",(?![^(]*\))", t))]
             if (re.search(rb"\bease\b(?!-)|ease-out|cubic-bezier", css) or loose
-                    or re.search(rb"\.card:nth-child\(\d", css)
+                    or re.search(rb"\.card:nth-child\(\d+\)", css)
                     or b"animation-delay:calc(var(--i,0)*.04s)" not in css
                     or b"transform-origin:left;\n transition:transform var(--t3) var(--e2)" not in css
                     and b"transform-origin:left; transition:transform var(--t3) var(--e2)" not in css
@@ -1041,6 +1041,14 @@ def main():
             fails.append("POST /login: the session cookie is not 180 days")
         if cookie:
             body = check("GET /", "/", (200,), cookie, must_have="14900001")
+            # phones: first row above the attention line and sort row (T189)
+            css189 = open(os.path.join(ROOT, "app.py"), encoding="utf-8").read().split(
+                "@media(max-width:640px){", 1)[-1]
+            if (b'<main class="wrap dash">' not in (body or b"")
+                    or " .dash>#list{display:contents}" not in css189
+                    or ".card:nth-child(1 of .card:not(.arch))" not in css189
+                    or " .dash>.attn,.dash>.filterrow,.dash>.showln{order:2}" not in css189):
+                fails.append("GET /: the phone filter row is not under the first card (T189)")
             # no .last_ok yet over a full dashboard is unknown, not never (T162)
             if (b"No sync yet" in (body or b"") or b">Last update unknown<" not in (body or b"")
                     or b">Sync unknown<" not in (body or b"")):

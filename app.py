@@ -1728,6 +1728,21 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .hrow:has(>.tots)>div:first-child{flex:1 0 100%;display:grid;grid-template-columns:1fr auto;align-items:center}
  .hrow:has(>.tots) .dbtn{grid-column:2;grid-row:1}
  .hrow:has(>.tots) h1+.sub{grid-column:1/-1}
+ /* dashboard: the first row sits under the masthead and the steering (attention line, sort
+    row) follows it, in thumb reach. Visual order only: #list goes display:contents so its
+    rows and the controls share one column (T189). */
+ .dash{display:flex;flex-direction:column}
+ .dash>.toolbar{margin-top:10px}
+ .dash>#list{display:contents}
+ .dash>#list>*{order:3}
+ .dash>#list:not(.archview)>.card:nth-child(1 of .card:not(.arch)),
+ .dash>#list.archview>.card:nth-child(1 of .card.arch),
+ .dash>#list>.tierhd:first-child{order:1;margin-top:8px}
+ .dash>#archhd{order:1}
+ .dash>.attn,.dash>.filterrow,.dash>.showln{order:2}
+ .dash>.attn{margin-top:2px}
+ .dash>.filterrow{margin-top:8px}
+ .dash>.attn+.filterrow{margin-top:20px}
  /* the segment never breaks to a second row, nor is it an overflow box to 360px: three pills
     measure ~247px, and staying un-clipped is what lets the hit pseudo work (28 + 8 each way
     = 44 on the 38px capsule). Under 360 it scrolls and clips. */
@@ -4046,7 +4061,7 @@ def dash_page(a, subs, sort=("sub", False), show=""):
     return f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">{refresh}<title>{html.escape(SITE_TITLE)}</title>
 {HEAD_HTML}
-<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
+<style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap dash">
 <a class="skip" href="#list">Skip to submissions</a>
 {toolbar}
 {hint}{attn}
@@ -4056,6 +4071,10 @@ def dash_page(a, subs, sort=("sub", False), show=""):
 </main>
 <script>
 var af=document.getElementById('archtoggle');
+// a phone's #list is display:contents and takes no focus: skip to the first row's link (T189)
+document.querySelector('.skip').addEventListener('click',function(e){{
+ var l=document.getElementById('list'),n=l&&l.querySelector('.numlink');
+ if(n&&!l.getClientRects().length){{e.preventDefault();n.focus();}}}});
 function say(m){{var l=document.getElementById('live');
  if(l){{l.textContent='';clearTimeout(l.st);l.st=setTimeout(function(){{l.textContent=m;}},30);}}}}
 function unsk(){{var l=document.getElementById('list');clearTimeout(af.skt);
