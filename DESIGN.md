@@ -47,6 +47,7 @@ colors:
   glass-rim-bottom: "rgba(15,20,30,.06)"
   glass-rim-bottom-dark: "rgba(0,0,0,.35)"
   scrim: "rgba(0,0,0,.4)"
+  scrim-dark: "rgba(0,0,0,.62)"
   segment-track: "rgba(0,0,0,.045)"
   segment-track-dark: "rgba(255,255,255,.05)"
   segment-on: "#ffffff"
@@ -466,8 +467,9 @@ glass, and a reserved red that appears only on a landed grade or an alert.
 - **Row Hover** (`--hovrow`): the only tint content ever receives, and only on pointer devices.
 - **Glass Rims** (`--rim` / `--rimb`): the top specular catch and the bottom falloff. Both are
   sub-threshold on purpose — felt as curvature, never seen as an outline.
-- **Scrim** (`--scrim`): the dim behind the lightbox and the modal sheets. One token, one
-  value, both overlays — an overlay never invents its own dim.
+- **Scrim** (`--scrim`): the dim behind the lightbox and the modal sheets. One token, both
+  overlays, an overlay never invents its own dim. Light 40% black, dark 62% so it still dims a
+  dark ground (T139).
 
 ### Named Rules
 **The Two-Color Store Rule.** A store picks exactly two colors (`PSA_ACCENT`,

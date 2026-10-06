@@ -174,7 +174,7 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "rimb": "rgba(0,0,0,.35)",
  "segtrack": "rgba(255,255,255,.05)", "segon": "rgba(255,255,255,.1)",
  "shc": "rgba(0,0,0,.34)", "shc2": "rgba(0,0,0,.5)", "shc3": "rgba(0,0,0,.28)",
- "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.4)",
+ "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.62)",
  "sk": "color-mix(in srgb,var(--txt) 7%,transparent)",
  "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff8779", "fhov": "#ffffff",
  "ok": "#43c383"}

@@ -314,6 +314,16 @@ def well_checks(fails):
             fails.append(f"app.py: {name} PSA 10 chip is {c:.2f}:1 on the well (T119)")
 
 
+def scrim_checks(fails):
+    """One --scrim token, two palette values: light .4, dark .62 (T139)."""
+    sys.path.insert(0, ROOT)
+    import app
+    for name, pal, want in (("light", app._LIGHT, "rgba(0,0,0,.4)"),
+                            ("dark", app._DARK, "rgba(0,0,0,.62)")):
+        if pal["scrim"] != want:
+            fails.append(f"app.py: {name} --scrim is {pal['scrim']}, want {want} (T139)")
+
+
 def common_checks(fails):
     """log, notify and env_set live in psa_common.py only, every caller imports
     them, and deploy.sh ships the file beside app.py (T86)."""
@@ -788,6 +798,7 @@ def main():
         barmuted_checks(fails)
         day_checks(fails)
         well_checks(fails)
+        scrim_checks(fails)
         common_checks(fails)
         tracking_checks(fails)
         comment_checks(fails)
