@@ -293,7 +293,7 @@ def fmt_local(iso):
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=timezone.utc)
         loc = dt.astimezone(DISPLAY_TZ)
-        return f"{loc.strftime('%b %d')}, {loc.strftime('%I:%M %p').lstrip('0')} {loc.strftime('%Z')}"
+        return f"{loc:%b} {loc.day}, {loc.strftime('%I:%M %p').lstrip('0')} {loc.strftime('%Z')}"
     except (ValueError, TypeError):
         return iso[:16].replace("T", " ")
 
@@ -306,13 +306,14 @@ def short_date(iso):
     except (ValueError, TypeError):
         return iso
     year = f", {d.year}" if d.year != datetime.now(DISPLAY_TZ).year else ""
-    return d.strftime("%b %d") + year
+    return f"{d:%b} {d.day}{year}"
 
 def fmt_mdy(mdy):
     """PSA's '07/21/26' -> 'Jul 21' (their arrived/shipped date format). An ISO
     date goes through short_date; anything else is a middle dot, never raw."""
     try:
-        return datetime.strptime(mdy, "%m/%d/%y").strftime("%b %d")
+        d = datetime.strptime(mdy, "%m/%d/%y")
+        return f"{d:%b} {d.day}"
     except (ValueError, TypeError):
         pass
     try:
@@ -1244,12 +1245,8 @@ html:has(header.toolbar.raised)::before{height:10px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
 .pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
 .pill.hold{color:var(--holdtx)}
-/* two gray levels: Shipped = ink, in flight = muted. A third, lighter gray cannot clear 4.5:1
-   at 14px, so pending keeps --m1 and a clock. No red status pill. */
-.pill.shipped{color:var(--txt)}
-.pill.shipped svg{color:var(--m1)}
 /* past due outranks an on-time date by weight and ink, not by a new colour */
-.pill.late{font-weight:650;color:var(--txt)}
+.stage .late{font-weight:650;color:var(--txt)}
 .ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt);white-space:nowrap}
 /* the caption drops to the small rung, so it must drop the value's tracking too - tracking
    inherits, size does not. */
@@ -1979,7 +1976,6 @@ def _pic(paths):
             f'stroke="currentColor" stroke-width="2" stroke-linecap="round" '
             f'stroke-linejoin="round">{paths}</svg>')
 
-ICON_CLOCK = _pic('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')
 ICON_OUT = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
             'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
             '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>'
@@ -1992,9 +1988,7 @@ ICON_OUT = ('<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke=
 ICON_X = ('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
           'stroke-width="2" stroke-linecap="round" style="vertical-align:middle">'
           '<path d="M6 6l12 12M18 6L6 18"/></svg>')
-ICON_CHECK = _pic('<path d="m5 13 4 4 10-10"/>')
 ICON_HOLD = _pic('<path d="M15 5v14M21 5v14"/>')
-ICON_LATE = _pic('<circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/>')
 
 # carrier tracking pages: substring-matched against the sub's carrier field so
 # tracking numbers become one-click instead of copy-paste
@@ -2033,19 +2027,10 @@ def eta_words(s):
     return "Back", short_date(d), ""
 
 def eta_pill(s):
-    """Status pill(s) for a sub: the hold, then shipped or the return ETA.
-    Shipped reads at ink level, everything in flight at muted, so the column
-    scans (the old .done class was emitted for two different states and had
-    no CSS rule at all - the column read as one gray).
-    A hold no longer swallows the date: both pills render, stacked by .pills."""
-    hold = (f'<span class="pill hold">{ICON_HOLD}{hold_label(s.get("hold_reason"))}</span>'
+    """The row's top-right pill: a hold and nothing else. The stage line carries
+    the date and the ship line, so a status is said once (T205)."""
+    return (f'<span class="pill hold">{ICON_HOLD}{hold_label(s.get("hold_reason"))}</span>'
             if s["on_hold"] else "")
-    if s["status"] == "Shipped":
-        return hold + f'<span class="pill shipped">{ICON_CHECK}Shipped</span>'
-    label, val, state = eta_words(s)
-    txt = html.escape(val if state else f"{label} {val}")
-    icon = ICON_LATE if state == "late" else ICON_CLOCK
-    return hold + f'<span class="pill{" " + state if state else ""}">{icon}{txt}</span>'
 
 # NO grades-landed pill and NO red announcement of grades arriving: shipped
 # briefly on 2026-08-01 (red "N grades landed" pill + a "Grades ready" sort)
@@ -2634,7 +2619,14 @@ def stage_dates(a, sub):
         d["Shipped"] = (fmt_mdy(sub["shipped"]), None)
     return d
 
-def timeline_html(status, dates=None, aside="", key="", ready=False):
+def eta_phrase(s):
+    """The stage line's date: 'back Oct 18', 'late, due Aug 22' or 'ETA pending'."""
+    label, val, state = eta_words(s)
+    if state == "late":
+        return f'<span class="late">late, due {html.escape(short_date(s["est_end"] or s["est_start"]))}</span>'
+    return f'<span>{html.escape(val if state else f"back {val}")}</span>'
+
+def timeline_html(s, dates=None, aside="", key=""):
     """Stage state as one text line (current stage, accent) above the 4px
     progress capsule. `dates` (stage -> ('Jul 20', date), from stage_dates)
     appends when the sub entered its current stage and how many days it has sat
@@ -2646,15 +2638,32 @@ def timeline_html(status, dates=None, aside="", key="", ready=False):
     `ready` is the sub's grades_ready flag: stage 7 is only ever "Completing"
     because the grades landed, so the stage word says so (T114). Still no pill,
     no badge, no colour.
+    One status line (T205): the stage word and one date. Without `dates` the date
+    is the return ETA (the row pill is gone); with them (the detail page, whose
+    meta line already holds the ETA) it is the since date. Shipped is the ship
+    line, no bar, and nothing at all with `dates` (the detail meta says it).
     A status STAGES does not know prints "Status unknown" and no bar at all."""
+    status = s["status"]
+    if status == "Shipped":
+        if dates is not None:
+            return ""
+        line = "<b>Shipped</b>"
+        if s["shipped"]:
+            line += f' · {html.escape(fmt_mdy(s["shipped"]))}'
+            if s["carrier"] and s["tracking"]:
+                line += f' · {tracking_html(s["carrier"], s["tracking"])}'
+        return f'<div class="stage nobar"><span>{line}</span>{aside}</div>'
     idx = stage_index(status)
     if idx is None:
         # PSA sent a step this build has never seen. It used to fall through to
         # stage 1 of 8, which read as "Arrived" for a sub that could be anywhere.
-        return f'<div class="stage nobar"><span>Status unknown</span>{aside}</div>'
+        tail = "" if dates is not None else f" · {eta_phrase(s)}"
+        return f'<div class="stage nobar"><span>Status unknown{tail}</span>{aside}</div>'
     pct = 100.0 * (idx + 1) / len(STAGES)
-    word = "Grades ready" if (ready and idx == 6) else STAGES[idx]
-    line = f'<b>{html.escape(word)}</b> · stage {idx + 1} of {len(STAGES)}'
+    word = "Grades ready" if (s["grades_ready"] and idx == 6) else STAGES[idx]
+    line = f'<b>{html.escape(word)}</b>'
+    if dates is None:
+        line += f" · {eta_phrase(s)}"
     since, day = (dates or {}).get(STAGES[idx], ("", None))
     n = (datetime.now(DISPLAY_TZ).date() - day).days if day else -1
     if n == 0:
@@ -2716,30 +2725,21 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
     # ~20px out of the active rows' rhythm.
     pill = "" if archived else eta_pill(s)
 
-    if s["status"] == "Shipped" and s["shipped"]:
-        foot = f'Shipped {html.escape(fmt_mdy(s["shipped"]))}'
-        if s["carrier"] and s["tracking"]:
-            foot += f' · {tracking_html(s["carrier"], s["tracking"])}'
-    else:
-        # no foot for holds (the owner, 2026-09-09: the pill is enough) or
-        # grades_ready (2026-08-08: "i dont need the grades ready tab";
-        # since T114 the stage line says "Grades ready" instead)
-        foot = ""
-
     strip = strip_html(s, fronts)
     sub = html.escape(s['sub_number'])
     ncards = s['card_count']
     # archiving is the operator's highest-frequency chore and it used to live
     # only on the detail page: four page loads per finished sub. A finished sub
-    # is a SHIPPED one, so the control rides the foot line those rows already
-    # print - no new band, no new grammar, and ARCH_JS is already bundled.
-    act = ""
+    # is a SHIPPED one, so the control rides the stage line beside View cards
+    # (the ship line is that line since T205) - no new band, ARCH_JS is bundled.
+    view = f'<a class="view" href="/sub/{sub}" aria-label="View cards in #{sub}">View cards</a>'
+    act = view
     # `or archived`: the detail page will archive a sub at ANY status, so an
     # in-flight sub archived by mistake had no way back from the dashboard
     if s["status"] == "Shipped" or archived:
         act = (f'<span class="footacts"><button class="archbtn" data-sub="{sub}" '
                f'data-on="{0 if archived else 1}" aria-label="{"Unarchive" if archived else "Archive"} submission #{sub}">'
-               f'{"Unarchive" if archived else "Archive"}</button></span>')
+               f'{"Unarchive" if archived else "Archive"}</button>{view}</span>')
     # --i staggers the row settle, capped at 12 so a long list never waits
     archattr = ' data-arch="1" style="display:none"' if archived else f' style="--i:{min(i, 12)}"'
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
@@ -2747,8 +2747,6 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
                 f' data-price="{"" if price is None else price}"'
                 f' data-eta="{html.escape(sort_eta(s))}"')
     led = (f'<div class="ledval">${value:,.0f}{plus(vmiss)}<span>{vcur} · estimated</span></div>') if value else ""
-    foot_h = (f'<div class="foot"><span class="est">{foot}</span>{act}</div>'
-              if (foot or act) else "")
     # role=listitem + the h2: every card_html row lands in the dashboard's
     # role=list #list, and the sub number is that row's heading. Zero visual
     # delta - the global reset zeroes h2 margins and .num supplies every type
@@ -2757,8 +2755,7 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
 <div class="top"><div class="hd"><div><a class="numlink" href="/sub/{sub}"><h2 class="num">#{sub}</h2></a>
 <div class="meta">{ncards} card{"s" if ncards != 1 else ""} · {html.escape(s['service'])}</div></div></div><div class="pills">{led}{pill}</div></div>
 {strip}
-{timeline_html(s['status'], aside=f'<a class="view" href="/sub/{sub}" aria-label="View cards in #{sub}">View cards</a>', key=sub, ready=s["grades_ready"])}
-{foot_h}</div>"""
+{timeline_html(s, aside=act, key=sub)}</div>"""
 
 def search_box(value="", owner="", ph=None):
     """Unified people+card search input with a live-preview dropdown (needs SEARCH_JS).
@@ -3854,7 +3851,7 @@ def sync_dot(stale, has_subs):
         title = f' title="Last sync {when}"'
         loc = seen.astimezone(DISPLAY_TZ)
         since = (loc.strftime("%I:%M %p").lstrip("0") if stale < 20
-                 else loc.strftime("%b %d"))
+                 else f"{loc:%b} {loc.day}")
         mins = int(stale * 60)
         if mins < 2:
             cls, word, short = " live", f"Updated just now · {since}", since
@@ -4195,7 +4192,7 @@ def detail_page(a, sub):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#content">Skip to content</a>
 {page_head(f"#{html.escape(num)}", detail_meta(sub), vfig, action=act, extra=tag + ping)}
-<div class="dstage{' hold' if sub['on_hold'] else ''}">{timeline_html(sub['status'], stage_dates(a, sub), key=num, ready=sub["grades_ready"])}{note}</div>
+<div class="dstage{' hold' if sub['on_hold'] else ''}">{timeline_html(sub, stage_dates(a, sub), key=num)}{note}</div>
 {body}{owner_datalist(owners) if cards else ""}
 <div class="vh" id="live" aria-live="polite"></div>
 </main>{APP_JS_TAG}</body></html>"""
@@ -4241,7 +4238,7 @@ def people_page(a, owner, sort=("sub", False)):
         pill = eta_pill(s) if s else ""
         link = (f'<a class="view" href="/sub/{html.escape(str(n))}" '
                 f'aria-label="View cards in #{html.escape(str(n))}">View cards</a>')
-        tl = timeline_html(s["status"], aside=link, key=n) if s else ""
+        tl = timeline_html(s, aside=link, key=n) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         # each tile's share of the header totals, so OWNER_JS re-sums them after a retag (T217)
         p = service_price(a, s["service"]) if s else None
@@ -4417,7 +4414,7 @@ def customer_page(a, email):
         pill = eta_pill(s) if s else ""
         # these groups ARE the customer's sub detail view (no /sub access), so
         # they get the entered-on stage dates the admin detail page has
-        tl = timeline_html(s["status"], stage_dates(a, s), key=n) if s else ""
+        tl = timeline_html(s, stage_dates(a, s), key=n) if s else ""
         cnt = f'{len(cs)} card{"s" if len(cs) != 1 else ""}'
         tiles = "".join(card_tile(c, owners, show_sub=False, archived=(n in arch), customer=True)
                         for c in cs)

@@ -31,7 +31,7 @@ ETA_PAST = TODAY - datetime.timedelta(days=45)
 
 def eta_text(d):
     """What short_date must print for a date: 'Sep 25', 'Jun 15, 2027'."""
-    return d.strftime("%b %d") + (f", {d.year}" if d.year != TODAY.year else "")
+    return f"{d:%b} {d.day}" + (f", {d.year}" if d.year != TODAY.year else "")
 # a pre-seeded proxy cache entry, so /img answers from disk and the run stays offline
 IMG_URL = "https://d1htnxwo4o0jhw.cloudfront.net/thumbnail/99000001.jpg"
 
@@ -1079,13 +1079,13 @@ def main():
                 # and draws no bar: one bar per sub the stage map knows (T19)
                 if b"Status unknown" not in body:
                     fails.append("GET /: the unmapped status does not read as unknown")
-                if body.count(b'<div class="bar">') != 3:
+                if body.count(b'<div class="bar">') != 2:
                     fails.append("GET /: the unmapped status still draws a stage bar")
 
                 # --- grades landing is the stage word itself on the dashboard
                 # row, in place of "Completing", and nothing else: no pill, no
                 # badge, no colour, no sort control (T114)
-                if "<b>Grades ready</b> · stage 7 of 8".encode() not in body:
+                if "<b>Grades ready</b> · <span>back ".encode() not in body:
                     fails.append("GET /: the grades-ready sub still reads as Completing")
                 if b"<b>Completing</b>" in body:
                     fails.append("GET /: a grades-ready row still prints the Completing "
@@ -1186,12 +1186,12 @@ def main():
             # phones read the short form so the toolbar stays one row. The clock
             # time is in plain sight, not a .vh span: the live phrase ends on it
             # and the live phone form is the clock alone (T169)
-            dot = re.compile(rb'<div class="sync( \w+)?" title="(Last sync [A-Z][a-z]{2} \d\d, '
+            dot = re.compile(rb'<div class="sync( \w+)?" title="(Last sync [A-Z][a-z]{2} \d{1,2}, '
                              rb'\d{1,2}:\d\d [AP]M [^"]*)"><i aria-hidden="true"></i>'
                              rb'<span class="sl">([^<]*)</span><span class="ss">([^<]*)</span></div>')
             clk = rb"\d{1,2}:\d\d [AP]M"
             for ago, cls, want, short in (
-                    (2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d\d", rb"Not updating"),
+                    (2 * 86400, b" stale", rb"Not updating since [A-Z][a-z]{2} \d{1,2}", rb"Not updating"),
                     (90 * 60, b" stale", rb"Not updating since " + clk, rb"Not updating"),
                     (48 * 60, b" live", rb"Updated 48 min ago \xc2\xb7 " + clk, clk),
                     (0, b" live", rb"Updated just now \xc2\xb7 " + clk, clk)):
@@ -1521,7 +1521,7 @@ def main():
                 fails.append("GET /sub/14900001: a tile scan lacks lazy loading or async decoding")
             # --- the detail page says the same word on the same rung, and the
             # old lowercase note under the ETA badge is gone (T114)
-            if "<b>Grades ready</b> · stage 7 of 8".encode() not in body:
+            if b"<b>Grades ready</b>" not in body or b" of 8" in body:
                 fails.append("GET /sub/14900001: the stage word is not Grades ready")
             if b'estnote">grades ready' in body:
                 fails.append("GET /sub/14900001: the redundant grades ready note is back")
@@ -1529,7 +1529,7 @@ def main():
                 fails.append("GET /sub/14900001: the header rung still says Completing")
             # an ISO ship date reads like every other date, never raw (T183)
             body = check("GET /sub/14900004", "/sub/14900004", (200,), cookie,
-                         must_have="Sep 06")
+                         must_have="Sep 6")
             if b"2026-09-06" in body:
                 fails.append("GET /sub/14900004: the ISO ship date prints raw (T183)")
             body = check("GET /sub/14900002", "/sub/14900002", (200,), cookie)
@@ -1563,7 +1563,7 @@ def main():
             # the detail page counts days in the current stage; shipped and the
             # dashboard rows do not (T130)
             n = (datetime.date.today() - datetime.date(2026, 8, 1)).days
-            if f"since Aug 01, {n} days</span></span>".encode() not in body:
+            if f"<b>Arrived</b> · <span>since Aug 1, {n} days</span></span>".encode() not in body:
                 fails.append(f"GET /sub/14900002: no '{n} days' on the current stage (T130)")
             if re.search(rb", \d+ days?</span>", check("GET /sub/14900004 (T130)", "/sub/14900004",
                                                       (200,), cookie)):
@@ -1594,10 +1594,10 @@ def main():
 
             if b"Back ~" in dash or b"Estimate pending" in dash:
                 fails.append("GET /: the old ETA wording is still on the dashboard")
-            if b"Back " + nextyr.encode() not in row(b"14900001"):
+            if b"back " + nextyr.encode() not in row(b"14900001"):
                 fails.append("GET /: a return date in another year prints no year")
             held = row(b"14900002")
-            if b'class="pill hold"' not in held or b"Back " + soon.encode() not in held:
+            if b'class="pill hold"' not in held or b"<b>Arrived</b> \xc2\xb7 <span>back " + soon.encode() not in held:
                 fails.append("GET /: a held sub does not show both the hold and its return date")
             # the row wears the hold class the muted-bar rule keys off (T75)
             if not held.startswith(b' hold"'):
@@ -1605,17 +1605,26 @@ def main():
             if row(b"14900001").startswith(b' hold"'):
                 fails.append("GET /: a live row is marked held, its bar is muted for nothing")
             late = row(b"14900003")
-            if (b'class="pill late"' not in late
-                    or "Late · due ".encode() + eta_text(ETA_PAST).encode() not in late):
-                fails.append("GET /: a blown ETA does not read as Late in the late pill (T117)")
-            if b'class="pill late"' in row(b"14900001") or b'class="pill late"' in held:
-                fails.append("GET /: an on-time ETA wears the late pill (T117)")
-            if css and b".pill.late{font-weight:650;color:var(--txt)}" not in css:
-                fails.append("GET /app.css: .pill.late lost its weight and ink (T117)")
+            if '<span class="late">late, due '.encode() + eta_text(ETA_PAST).encode() not in late:
+                fails.append("GET /: a blown ETA does not read as late on the stage line (T117)")
+            if b'class="late"' in row(b"14900001") or b'class="late"' in held:
+                fails.append("GET /: an on-time ETA reads late (T117)")
+            if css and b".stage .late{font-weight:650;color:var(--txt)}" not in css:
+                fails.append("GET /app.css: .stage .late lost its weight and ink (T117)")
+            # one status line per row: no stage N of 8, no ETA or Shipped pill,
+            # a shipped row has no bar and one ship line (T205)
+            if b" of 8" in dash or b'class="pill"' in dash or b"pill shipped" in dash:
+                fails.append("GET /: a row still states its status twice (T205)")
+            ship = row(b"14900004")
+            if (b'<div class="bar">' in ship or ship.count(b"Sep 6") != 1
+                    or b'<div class="stage nobar"><span><b>Shipped</b> \xc2\xb7 Sep 6' not in ship):
+                fails.append("GET /: the shipped row is not one ship line without a bar (T205)")
+            if b'class="pill hold"' in row(b"14900001") or b"pill hold" in late:
+                fails.append("GET /: a pill shows on a row that is not held (T205)")
 
             # a window inside one year prints that year once, on the end
             for num, want in (("14900001", (ETA_NEXT_YEAR - datetime.timedelta(days=7))
-                               .strftime("%b %d") + " to " + nextyr),
+                               .strftime("%b ") + str((ETA_NEXT_YEAR - datetime.timedelta(days=7)).day) + " to " + nextyr),
                               ("14900002", soon),
                               ("14900003", "Late · due " + eta_text(ETA_PAST))):
                 dbody = call(url, "/sub/" + num, cookie)[1] or b""
@@ -1658,7 +1667,7 @@ def main():
             call(url, "/owner", cookie, {"cert_id": "spec:14900002:1", "owner": "Etaperson"})
             pbody = check("GET /cards?owner=Etaperson", "/cards?owner=Etaperson",
                           (200,), cookie) or b""
-            if b'class="pill hold"' not in pbody or b"Back " + soon.encode() not in pbody:
+            if b'class="pill hold"' not in pbody or b"back " + soon.encode() not in pbody:
                 fails.append("GET /cards?owner=Etaperson: the held sub loses its return date")
             if pbody.count(hnote) != 1:
                 fails.append("GET /cards?owner=Etaperson: the held sub carries no hold note (T147)")
@@ -2006,7 +2015,7 @@ def main():
                     fails.append("GET /: the submission rows are not list items")
                 if dash.count(b'<h2 class="num">') != 4:
                     fails.append("GET /: a submission row has no heading")
-                if b"Shipped Sep 06" not in dash or b"2026-09-06" in dash:
+                if b"Shipped</b> \xc2\xb7 Sep 6" not in dash or b"2026-09-06" in dash:
                     fails.append("GET /: the ISO ship date prints raw (T183)")
                 # the row settle staggers off a served --i, not an nth-child list (T178)
                 if b'style="--i:0"' not in dash or b'style="--i:3"' not in dash:

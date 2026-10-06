@@ -294,13 +294,7 @@ components:
     typography: "{typography.body}"
     rounded: "{rounded.none}"
     padding: "0"
-  status-pill-shipped:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink}"
-  status-pill-pending:
-    backgroundColor: "transparent"
-    textColor: "{colors.muted}"
-  status-pill-late:
+  stage-late:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
     fontWeight: 650
@@ -658,7 +652,7 @@ cert hidden, empty chip collapsed), about 115-128px tall. CSS only, same markup;
 
 ### Named Rules
 **The Current-Stage-Only Rule.** Under 640px only the *current* stage is ever named. The
-stage line is one sentence ("Grading · stage 4 of 8") above the capsule bar; the system never
+stage line is one sentence ("Grading · back Oct 18") above the capsule bar; the system never
 renders an eight-label stepper on a phone.
 
 **The No-Wrap Segment Rule.** *Below 640px* the filter capsule never breaks to a second row.
@@ -860,20 +854,11 @@ content — a panel, a sheet, an image, a row — it is not.
 - **Press:** `scale(.97)`.
 
 ### Status Pills
-The right-hand column of a dashboard row, right-aligned under the value, stacked at 3px. All
-are 14px text with a 5px gap to an inline stroked SVG — no fill, no border, no capsule; a pill
-here is a *word*, not a control. The column scans on two gray levels plus one red:
-- **Dated ETA (`.pill`)**, muted: the default, "Back Sep 25". One vocabulary on every
-  surface (`eta_words`): "Back" plus a short date, carrying the year whenever it is not this
-  one ("Back Jan 20, 2027").
-- **Shipped (`.pill.shipped`)**, ink with a muted icon: done, and real. The icon stays muted so
-  the row's only ink outside the lot number is the fact itself.
-- **Late (`.pill.late`)**, ink at 650 with an overdue glyph: "Late · due Aug 20" once PSA has
-  blown through the date (T117). Weight and ink carry it, no new colour, so past due outranks
-  an on-time date without competing with the red hold.
-- **Pending (`.pill.pending`)**, muted: "ETA pending", no date at all. The class is a semantic hook only — a third, lighter status gray cannot
-  clear 4.5:1 at 14px on the white sheet, so the clock icon and the label carry the
-  difference, not a color step.
+One status line per sub (T205): the ETA, Shipped, Late and Pending pills are gone. The date
+rides the stage line ("Grading · back Oct 18", "late, due Aug 22" in `.stage .late`, ink at
+650, T117; "ETA pending"), short dates never zero padded ("Oct 3"). A shipped row has no bar:
+its stage line is the ship line, "Shipped · Sep 6 · UPS 1Z…", with Archive beside View cards.
+The right-hand column of a dashboard row holds the value and, only for a hold, one pill:
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
   see the Reserved Red Rule for the grades pill that was tried here and removed. The dashboard
   pill stands alone; the detail and person pages carry one muted sentence (`status_note`)
@@ -889,7 +874,7 @@ Grades-ready is still not a pill and not a row footer line (the owner, 2026-08-0
 page, and that is the whole treatment.
 
 **The Hold Rule.** A hold never hides the return date: the dashboard row prints the hold pill
-beside the return pill, and the detail badge leads with "On hold" above "Paused" and a muted
+and the stage line keeps its date, and the detail badge leads with "On hold" above "Paused" and a muted
 "Was <date>" note (T65, T147). The dashboard pill stands alone; the detail and person pages
 carry one muted sentence.
 
@@ -1033,9 +1018,10 @@ Not a retrofit — a visible part of the system, and it has house styling.
 
 ### Stage Bar (signature)
 The product's signature component: one text line — current stage in accent-as-text at the
-650 data weight, then "· stage N of 8" in muted — above a 4px capsule whose fill transitions
+650 data weight, then "· back Oct 18" in muted (T205: no "stage N of 8"; shipped drops the
+bar and reads the ship line) — above a 4px capsule whose fill transitions
 its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
-Detail pages add "· since Sep 12, 23 days" (days in the current stage, none once shipped),
+Detail pages print "· since Sep 12, 23 days" in place of the ETA, which their meta line holds (days in the current stage, none once shipped),
 kept on one line by `.stage span span{white-space:nowrap}`; dashboard rows never carry it (T130).
 
 **An unknown status draws no bar.** A step the stage map does not carry prints "Status
