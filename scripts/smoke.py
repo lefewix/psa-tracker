@@ -897,6 +897,9 @@ def main():
             _, _, h2 = call(url, "/login", form={"password": SITE_PW + "-2"})
             c2 = (h2.get("Set-Cookie") or "").split(";")[0]
             b_un = check("GET / (unlinked)", "/", (200,), c2 or None) if c2 else b""
+            # an account with nothing to look at renders no attention card (T150)
+            if b_un and b'id="attn"' in b_un:
+                fails.append("GET / (empty account): an all-zero attention card renders (T150)")
             if (b"This account is unlinked" not in b_un
                     or b'password in <a class="tlink" href="/settings">settings</a> to relink' not in b_un):
                 fails.append("GET / (unlinked): the banner's settings is not a link (T125)")
@@ -921,6 +924,16 @@ def main():
                     or b'data-sort="svc" aria-pressed="false">Service<' not in (body or b"")
                     or b'data-svc="Regular" data-price="109.0"' not in (body or b"")):
                 fails.append("GET /: not three sort pills, or Service rows lack the tier price (T151)")
+            # one quiet attention line above the list, each count a link (T150)
+            want = ('<div class="hint attn" id="attn">'
+                    '<a class="tlink" href="/sub/14900002">1 on hold</a> · '
+                    '<a class="tlink" href="/sub/14900003">1 past due</a> · '
+                    '<a class="tlink" href="/sub/14900001">1 graded</a> · '
+                    '<a class="tlink" href="/cards?owner=unassigned">12 untagged</a></div>')
+            if want.encode() not in (body or b""):
+                fails.append("GET /: the attention card is missing or wrong (T150)")
+            elif (body or b"").index(b'id="attn"') > (body or b"").index(b'id="list"'):
+                fails.append("GET /: the attention card is not above the list (T150)")
             # strip scans decode off the main thread as well as load lazily (T181)
             imgs = re.findall(rb'<img [^>]*src="/img[^>]*>', body or b"")
             if not imgs or any(b'loading="lazy"' not in i or b'decoding="async"' not in i

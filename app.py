@@ -1317,6 +1317,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  box-shadow:0 4px 14px var(--shc3)}
 .hint.warn{color:var(--txt);background:color-mix(in srgb,var(--holdtx) 9%,var(--surface));
  border-color:color-mix(in srgb,var(--holdtx) 45%,transparent);box-shadow:none}
+.hint.attn{display:block;line-height:1.45}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
  color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
  transition:color .15s,background-color .15s}
@@ -3831,6 +3832,22 @@ def dash_page(a, subs):
                f'<span class="archn"> · {len(gone)}</span></button>') if gone else ""
     archhd = (f'<div class="tierhd" id="archhd" hidden>Archived · {len(gone)} '
               f'submission{"" if len(gone) == 1 else "s"}</div>') if gone else ""
+    # T150: one quiet line of what needs a look. A count of one links its sub,
+    # several stay plain (no filtered view exists for them); zeros drop out.
+    def attn_part(rows, word):
+        if len(rows) == 1:
+            n = html.escape(rows[0]["sub_number"])
+            return f'<a class="tlink" href="/sub/{n}">1 {word}</a>'
+        return f"{len(rows)} {word}" if rows else ""
+    parts = [attn_part([s for s in active if s["on_hold"]], "on hold"),
+             attn_part([s for s in active if s["status"] != "Shipped"
+                        and eta_words(s)[2] == "late"], "past due"),
+             attn_part([s for s in active if s["grades_ready"]
+                        and stage_index(s["status"]) == 6], "graded"),
+             (f'<a class="tlink" href="/cards?owner=unassigned">{untag} untagged</a>'
+              if untag else "")]
+    attn = " · ".join(x for x in parts if x)
+    attn = f'<div class="hint attn" id="attn">{attn}</div>' if attn else ""
     rowend = (f'<div class="rowend">{needlink}{archpill}</div>'
               if (needlink or archpill) else "")
     filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'
@@ -3844,7 +3861,7 @@ def dash_page(a, subs):
 <style>{THEME_VARS}</style>{APP_CSS_TAG}</head><body><main class="wrap">
 <a class="skip" href="#list">Skip to submissions</a>
 {gear_html()}{toolbar}
-{hint}
+{hint}{attn}
 {filterrow}{archhd}
 <div id="list" tabindex="-1"{listrole}>{body}</div>
 <div class="vh" id="live" aria-live="polite"></div>

@@ -886,6 +886,11 @@ the grey. The only true containers are detached surfaces —
 the search preview panel (14px, 6px padding, solid `--surface`) and the modal sheet
 (`min(460px, 94vw)`, 14px, `24px 24px 26px`).
 
+**The attention line** (T150) is one `.hint.attn` card above the filter row, `--m1` text, one
+line: "1 on hold · 1 past due · 1 graded · 12 untagged". A count of one links its sub, several
+stay plain (no filtered view), untagged links `/cards?owner=unassigned`. Zeros drop out; all zero
+renders no card. Every signed-in session sees it. No red, no pills.
+
 **Failure reuses the 404 card**: a read that fails (locked or unreadable db) answers 500 with the
 same gate box, titled "Something went wrong", never an empty dashboard.
 
