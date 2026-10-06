@@ -1288,6 +1288,9 @@ html:has(header.toolbar.raised)::before{height:10px}
 .foot{padding:0;border:0;margin-top:18px;display:flex;justify-content:space-between;
  align-items:baseline;gap:12px;flex-wrap:wrap}
 .foot.footbare{margin:0}
+/* the settings theme toggle rides the back row without growing it (T206) */
+.foot .lgout{margin-block:-15px}
+.foot>.footacts:has(>.lgout){align-self:center}
 .footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .est{font-size:14px;font-weight:400;color:var(--m1);flex:1 1 0}
 /* bare 14px text actions: pad the hit box to ~43px, cancel it with an equal negative margin,
