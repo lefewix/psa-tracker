@@ -1366,10 +1366,11 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  background:var(--sk);display:flex;align-items:center;justify-content:center;
  color:var(--m1);font-size:12px}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
+/* -8px = 7px pad + 1px rim: the rim hangs into the gutter, the label sits on the name's edge. (T174) */
 /* 500, not 600, and a tighter 1px 7px: the chip still reads as the news, it just stops
    shouting over the five lines under it. Border and the 21px reserved box are untouched. */
 .gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:500;line-height:17px;
- padding:1px 7px;border:1px solid transparent;border-radius:999px;margin-top:8px;min-height:21px}
+ padding:1px 7px;border:1px solid transparent;border-radius:999px;margin:8px 0 0 -8px;min-height:21px}
 .gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade);
  border-color:color-mix(in srgb,var(--grade) 45%,transparent)}
 /* the neutral tiers took --surface3 when the tile was bare; the well IS --surface3 now, so
@@ -1411,10 +1412,11 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 /* a real class, not "has any inline style": [style] repainted unrelated inline styles. */
 .sublink.sublink-static{color:var(--m1);font-weight:400;cursor:default}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
+/* no bottom pad: the well's 10px is the tile's bottom space, matching the scan's 10px top. (T174) */
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
- padding:11px 0 10px;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
+ padding:11px 0 0;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
 /* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
 .ownedit{display:none;align-items:center;justify-content:center;width:40px;margin-right:-6px;
  align-self:stretch;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
@@ -1764,7 +1766,7 @@ button:disabled{opacity:.5;cursor:default}
  .grid{grid-template-columns:1fr;gap:8px}
  .gc{display:flow-root;padding-left:78px}
  .gc>:first-child{float:left;width:56px;margin-left:-68px}
- .gc>.gr{margin-top:0}
+ .gc>.gr{margin:0}
  .gc .own{margin-top:0;padding:6px 0 5px}
  .gc .gr:empty,.gc .cn:not(.pre){display:none}
  .gc .ph{font-size:0}}

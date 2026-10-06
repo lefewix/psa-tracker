@@ -1096,7 +1096,9 @@ not afford, and in Accent as Text because the value is the tile's **second revea
 grade: six greys in one well read as a single block (the owner, 2026-09-16: "still too uniform,
 needs another color"). It measures 4.84:1 light and 7.16:1 dark on the well; the `CAD` caption
 stays `--m1` and the owner tag stays `--txt`, so the accent lands once. Then
-the owner tag pinned to the bottom via `margin-top: auto`. The rhythm between them is tight
+the owner tag pinned to the bottom via `margin-top: auto`, with no bottom pad of its own so the
+well's 10px matches the 10px above the scan. The chip takes `margin-left: -8px` (pad plus rim), so
+its rim hangs into the gutter and its label sits on the name's first glyph (360px and up). (T174) The rhythm between them is tight
 by intent: 8px above the chip, 4px above the cert and the value. the owner, 2026-09-16, on the
 first pass: "better, but within each card pill it's still a bit much." Tiles
 carry **no `content-visibility`** — its paint containment clipped everything that reaches past

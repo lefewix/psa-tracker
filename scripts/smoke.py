@@ -591,6 +591,12 @@ def main():
             # a grid on the page ground takes the card plane, light's well is the ground (T119)
             if b".wrap>.grid .gc{background:var(--surface)}" not in css:
                 fails.append("GET /app.css: tiles on the page ground melt into it (T119)")
+            # the tile's bottom space is the well's 10px, matching the scan's top, and the
+            # chip's label sits on the name's edge, its rim in the gutter (T174)
+            if (b"margin:8px 0 0 -8px;min-height:21px}" not in css
+                    or b"padding:11px 0 0;flex:1;" not in css
+                    or b" .gc>.gr{margin:0}" not in css):
+                fails.append("GET /app.css: scan tile unbalanced or chip off the text column (T174)")
             # under 360 a tile is a list row, scan floated left of its text (T173)
             if b" .gc{display:flow-root;padding-left:78px}\n .gc>:first-child{float:left;width:56px;" not in css.split(b"@media(max-width:359px){", 1)[-1]:
                 fails.append("GET /app.css: the sub-360 card grid is not a list (T173)")
