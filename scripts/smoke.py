@@ -313,7 +313,7 @@ def well_checks(fails):
         if not pal["surface3"].startswith("#"):
             fails.append(f"app.py: {name} --surface3 is translucent again (T119)")
             continue
-        g = app._rgb(pal["grade"])
+        g = app._rgb(pal["err"])
         c = app._contrast(g, app._over(g, 0.14, app._rgb(pal["surface3"])))
         if c < 4.5:
             fails.append(f"app.py: {name} PSA 10 chip is {c:.2f}:1 on the well (T119)")
@@ -379,7 +379,8 @@ def leading_checks(fails):
         fails.append("app.py: line-height:normal is back (T179)")
     for rule in re.findall(r"[^{}]*\{[^{}]*font-size:14px[^{}]*\}", src):
         lh = re.search(r"line-height:([^;}]+)", rule)
-        if lh and lh.group(1).strip() != "1.5":
+        # a single-line control pins its box in px for the height math (T210)
+        if lh and lh.group(1).strip() != "1.5" and not lh.group(1).strip().endswith("px"):
             fails.append(f"app.py: a 14px rule leads at {lh.group(1)}, not 1.5 (T179): "
                          f"{rule.strip()[:60]!r}")
     for sel in ("input{", "button{"):
@@ -412,6 +413,29 @@ def desk_checks(fails):
     blk = src.split("@media(min-width:1025px){", 1)[-1].split("}}", 1)[0]
     if "width:110px;height:153px" not in blk or "minmax(240px,1fr)" not in blk:
         fails.append("app.py: the desktop strip or detail grid did not grow (T188)")
+
+
+def token_checks(fails):
+    """The stylesheet runs on the collapsed token set (T210): sizes 12, 14, 16,
+    18, 26; weights 400, 600, 700; radii 999, 16, 6; three shadows; no ambient
+    ground; one danger red."""
+    sys.path.insert(0, ROOT)
+    import app
+    css = app.CSS
+    for prop, ok in (("font-size", {"12px", "14px", "16px", "18px", "26px"}),
+                     ("font-weight", {"400", "600", "700"}),
+                     ("border-radius", {"999px", "16px", "6px"})):
+        got = set(v.strip() for v in re.findall(rf"(?<![-\w]){prop}:([^;}}]+)", css))
+        if got - ok:
+            fails.append(f"app.py CSS: {prop} off the token set: {sorted(got - ok)} (T210)")
+    sh = set(p.strip() for v in re.findall(r"box-shadow:([^;}]+)", css)
+             for p in re.split(r",(?![^(]*\))", v) if not p.strip().startswith("inset"))
+    sh -= {"none", "0 4px 14px var(--shc3)", "0 10px 26px var(--shc)", "0 24px 60px var(--shc2)"}
+    if sh:
+        fails.append(f"app.py CSS: shadows off rest/raised/overlay: {sorted(sh)} (T210)")
+    for gone in ("--amb", "--holdtx", "--grade", "--fhov"):
+        if gone in css or gone[2:] in app._LIGHT:
+            fails.append(f"app.py: {gone} is back (T210)")
 
 
 def comment_checks(fails):
@@ -662,7 +686,7 @@ def main():
                 fails.append("GET /app.css: the calm loading ground or sweep is gone (T197)")
             # the compact bar bleeds its 8px padding + 1px border, so the field sits
             # on the h1's edge; the dashboard header keeps its own inset (T143)
-            if (b".toolbar.tbq{padding:7px 8px;border-radius:14px;margin-inline:-9px}" not in css
+            if (b".toolbar.tbq{padding:7px 8px;border-radius:16px;margin-inline:-9px}" not in css
                     or b"margin:16px 0 4px;padding:12px 14px;" not in css):
                 fails.append("GET /app.css: the search field is off the page margin (T143)")
             # a ground band under the stuck bar hides the row in the gap and corners;
@@ -808,12 +832,12 @@ def main():
             emp = css.split(b".empty{")[-1].split(b"}")[0]
             if b"background:var(--surface)" not in emp or b"border-radius:16px" not in emp:
                 fails.append("GET /app.css: the empty state sits bare on the ground again")
-            # a page-header figure is a data value: 17/650, the same rung as the
-            # card values under it. The toolbar freshness stamp stays 13 (T76)
-            if b".hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650" not in css:
-                fails.append("GET /app.css: the header figure is off the 17/650 data rung")
-            if b".synced b{display:block;font-size:13px" not in css:
-                fails.append("GET /app.css: the toolbar freshness stamp left 13px")
+            # a page-header figure is a data value: 18/600, the same rung as the
+            # card values under it. The toolbar freshness stamp stays 14 (T76, T210)
+            if b".hrow>.synced:not(.custrow) b{font-size:18px;font-weight:600" not in css:
+                fails.append("GET /app.css: the header figure is off the 18/600 data rung")
+            if b".synced b{display:block;font-size:14px" not in css:
+                fails.append("GET /app.css: the toolbar freshness stamp left 14px")
             # phones swap to the short sync phrase, under 360 the dot alone (T162)
             if (b".sync .ss{display:none}" not in css
                     or b" .sync .sl{display:none}\n .sync .ss{display:inline}" not in css
@@ -922,6 +946,7 @@ def main():
         leading_checks(fails)
         hit_checks(fails)
         desk_checks(fails)
+        token_checks(fails)
         comment_checks(fails)
         shot_checks(fails)
 
@@ -1669,7 +1694,7 @@ def main():
                 fails.append("GET /: a blown ETA does not read as late on the stage line (T117)")
             if b'class="late"' in row(b"14900001") or b'class="late"' in held:
                 fails.append("GET /: an on-time ETA reads late (T117)")
-            if css and b".stage .late{font-weight:650;color:var(--txt)}" not in css:
+            if css and b".stage .late{font-weight:600;color:var(--txt)}" not in css:
                 fails.append("GET /app.css: .stage .late lost its weight and ink (T117)")
             # one status line per row: no stage N of 8, no ETA or Shipped pill,
             # a shipped row has no bar and one ship line (T205)

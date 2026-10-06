@@ -5,7 +5,6 @@ colors:
   # every share below is clamped per accent by _share() in app.py and emitted in
   # THEME_VARS; these are the values for the default #3a6fd8.
   accent: "#3a6fd8"
-  accent-ambient: "#5b8def"
   accent-text-light: "color-mix(in srgb,var(--ac) 92%,black)"
   accent-text-dark: "color-mix(in srgb,var(--ac) 45%,white)"
   accent-hot-light: "color-mix(in srgb,var(--ac) 82%,black)"
@@ -52,13 +51,12 @@ colors:
   segment-track-dark: "rgba(255,255,255,.05)"
   segment-on: "#ffffff"
   segment-on-dark: "rgba(255,255,255,.1)"
-  grade-red: "#b12b2b"
-  grade-red-dark: "#ff8779"
-  alert: "#b03a2e"
+  alert: "#b12b2b"  # --err: hold text, grade red and errors are one danger ink (T210)
   alert-dark: "#ff8a7a"
   saved-green: "#2f9e68"
   saved-green-dark: "#43c383"
 typography:
+  # T210: five sizes (12, 14, 16, 18, 26), three weights (400, 600, 700)
   large-title:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "26px"
@@ -67,29 +65,11 @@ typography:
     letterSpacing: "-0.021em"
   figure:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "17px"
-    fontWeight: 650
+    fontSize: "18px"
+    fontWeight: 600
     lineHeight: 1.3
     letterSpacing: "-0.012em"
-  large-title-compact:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "22px"
-    fontWeight: 700
-    lineHeight: 1.15
-    letterSpacing: "-0.017em"
-  gate-title:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "24px"
-    fontWeight: 700
-    lineHeight: 1.15
-    letterSpacing: "-0.02em"
   field:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "15px"
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: "normal"
-  field-mobile:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "16px"
     fontWeight: 400
@@ -104,8 +84,8 @@ typography:
     fontFeature: "tabular-nums"
   control:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "13px"
-    fontWeight: 500
+    fontSize: "14px"
+    fontWeight: 400
     lineHeight: "16px"
     letterSpacing: "normal"
   caption:
@@ -114,32 +94,31 @@ typography:
     fontWeight: 400
     lineHeight: 1.4
     letterSpacing: "normal"
-  micro:
+  tag:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
     fontSize: "12px"
     fontWeight: 400
-    lineHeight: 1.4
-    letterSpacing: "normal"
-  tag:
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
-    fontSize: "11px"
-    fontWeight: 500
     lineHeight: 1
     letterSpacing: "normal"
   mono:
     fontFamily: "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace"
 rounded:
+  # T210: three radii. 999 controls (and bars, dots), 16 containers, 6 images
   none: "0"
-  bar: "2px"
-  xs: "4px"
+  bar: "999px"
+  xs: "6px"
   sm: "6px"
-  md: "8px"
-  lg: "12px"
-  xl: "14px"
+  md: "6px"
+  lg: "16px"
+  xl: "16px"
   xxl: "16px"
-  gate: "20px"
+  gate: "16px"
   capsule: "999px"
-  orb: "50%"
+  orb: "999px"
+shadows:
+  rest: "0 4px 14px var(--shc3)"
+  raised: "0 10px 26px var(--shc)"
+  overlay: "0 24px 60px var(--shc2)"
 spacing:
   hair: "2px"
   xs: "4px"
@@ -251,7 +230,7 @@ components:
     rounded: "{rounded.xxl}"
     padding: "18px 16px"
     border: "1px solid {colors.hairline-soft}"
-    shadow: "0 2px 10px rgba(20,25,35,.08)"
+    shadow: "0 4px 14px rgba(20,25,35,.08)"
     gap: "14px"
   submission-card-hover:
     backgroundColor: "color-mix(in srgb,{colors.ink} 4%,#ffffff)"
@@ -293,7 +272,7 @@ components:
   stage-late:
     backgroundColor: "transparent"
     textColor: "{colors.ink}"
-    fontWeight: 650
+    fontWeight: 600
   status-pill-hold:
     backgroundColor: "transparent"
     textColor: "{colors.alert}"
@@ -345,9 +324,8 @@ call in favor of playing the category canon straight.
 Depth exists in one place only: the chrome. The sticky toolbar and the settings segmented
 bar are translucent, blurred, saturated, and **lensed** —
 rimmed with a specular catch along the top edge and a falloff along the bottom, so they read
-as curved glass rather than as frosted rectangles. Under them, and only visible through them,
-sits an ambient ground: two very wide accent-derived radials pooled in the top corners that
-give the lens something to refract. Depth otherwise lives in exactly one more
+as curved glass rather than as frosted rectangles. The ground under them is flat (the ambient
+radials were dropped in T210). Depth otherwise lives in exactly one more
 place: the content card — 16px radius, hairline-soft edge, one quiet cast shadow, separated
 by gaps rather than rules. Inside a card everything stays flat: scans, values, stage bars
 carry no fill, no tint, no shadow of their own. The material story is glass floats and
@@ -376,8 +354,8 @@ no icon packages, no framework runtime.
 **Key Characteristics:**
 - Grouped ground carrying raised 16px-radius content cards, gap-separated (App Store grammar)
 - One env-supplied accent (steel blue by default) as text plus one opt-in filled capsule
-- Liquid Glass on chrome only — dual-rimmed, over an accent-derived ambient ground
-- Three type rungs only: 26/700 masthead, 17/650 data, 14/400 body
+- Liquid Glass on chrome only, dual-rimmed, over a flat ground
+- Five sizes (12, 14, 16, 18, 26), three weights, three radii, three shadows (T210)
 - Single-line controls are capsules (999px); content-side surfaces stay square-ish
 - Both palettes always emitted; every accent shade derived by `color-mix` and contrast-clamped
 - A visible accessibility layer: skip link, live region, real dialog semantics, keyboard paths
@@ -385,18 +363,17 @@ no icon packages, no framework runtime.
 ## Colors
 
 A near-neutral system — white or graphite ground, gray text ramp, no tinted surfaces — with
-a single chromatic accent that a store owns, a whisper of that accent as room air behind the
-glass, and a reserved red that appears only on a landed grade or an alert.
+a single chromatic accent that a store owns, and a reserved red that appears only on a landed grade or an alert.
 
 ### Primary
 - **Steel Blue** (`--ac`, env `PSA_ACCENT`): the store's brand accent. It is a *source*, not
-  a paint: the only place raw `var(--ac)` reaches a pixel is the ambient ground's radial. Every
+  a paint: raw `var(--ac)` reaches a pixel only in the attention dot. Every
   shade the user actually sees — text, fill, bar, ring — is derived from it and clamped.
 - **Accent as Text** (`--ac-pale`): the accent deepened toward black on the white sheet and
   lightened toward white on the graphite one. This is what links, active filter labels, the
   current stage name, search-preview tags, and inline actions actually use.
-- **Accent Hover** (`--ac-hot`): the text accent's hover — deeper on light, brighter on dark,
-  always further from the ground.
+- **Accent Hover** (`--ac-hot`): the text accent's hover state only, deeper on light, brighter
+  on dark. Resting text is four colours: ink, muted, accent (`--ac-pale`), danger (`--err`) (T210).
 - **Accent Fill** (`--ac-fill` / `--ac-fill-hot`): the one filled surface. Unlike the text
   shades it does **not** flip with theme — it is darkened in both themes so white label text
   stays legible even when a store supplies a very light brand color.
@@ -410,13 +387,11 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   everywhere the ring is actually painted.
 
 ### Secondary
-- **Ambient Blue** (`--ac2`, env `PSA_ACCENT_2`): the store's second brand color. It never
-  appears as ink or as a fill; its whole job is the ambient ground, where it is mixed to
-  6% (light) / 11% (dark) into the wider top-right radial. Unset, it follows `PSA_ACCENT`
-  (the default steel blue pair stays `#3a6fd8` / `#5b8def`).
+- **Second accent** (`--ac2`, env `PSA_ACCENT_2`): still emitted, painted nowhere since the
+  ambient ground went (T210).
 
 ### Tertiary
-- **Grade Red** (`--grade`): the color of a grade landing. **One place only: the grade line of
+- **Grade Red** (`--err`, one danger ink since T210): the color of a grade landing. **One place only: the grade line of
   a scan tile.** A red "N grades landed" status pill and a red detail-page badge shipped
   briefly on 2026-08-01 and were removed the next day by owner ruling — see the Reserved Red
   Rule. It is the emotional payoff of the product; its scarcity is why it lands. And only a
@@ -426,8 +401,9 @@ glass, and a reserved red that appears only on a landed grade or an alert.
   Grade Red ink; every other grade, non-numeric included, one neutral chip with body ink (T204). A tint, never a solid red block: a solid fill would be the badge the
   Reserved Red Rule already rejected. Chip size and its 21px line box never change, so the tier
   reads as a step down in temperature, not in importance.
-- **Alert Red** (`--err` / `--holdtx`): form errors, destructive text actions, and the hold
-  pill, which names PSA's reason when known ("Financial hold") and says "On hold" otherwise. Same family as Grade Red, distinct token, distinct job.
+- **Alert Red** (`--err`): form errors, destructive text actions, and the hold
+  pill, which names PSA's reason when known ("Financial hold") and says "On hold" otherwise. The
+  same token as Grade Red (T210); light is `#b12b2b` so the 10 chip clears 4.5:1 on its tint.
 - **Saved Green** (`--ok`): one use only — the owner tag's underline flashing on a successful
   save. It is confirmation, never decoration, and never a status color anywhere else.
 
@@ -494,13 +470,10 @@ grades-ready is no longer a lowercase detail note, it is the stage word itself. 
 reads "Grades ready" instead of "Completing" on the dashboard row and the detail page. Still no
 pill, no badge, no colour, no sort control.
 Red is never a heading color, a hover state, an emphasis device, or an event announcement.
-The PSA outage banner (`.hint.warn`, T128) is that alert: a 9% `--holdtx` tint and a 45% border
+The PSA outage banner (`.hint.warn`, T128) is that alert: a 9% `--err` tint and a 45% border
 on the hint card. It says the cause in one plain sentence and links settings.
 
-**The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
-`color-mix`, so a white-label swap re-tints it for free. Never hardcode an ambient hue, never
-raise it past 6%/4% (light) or 11%/8% (dark), and never let it reach mid-viewport — if you can
-name where it stops, it is too strong.
+**The Flat-Ground Rule.** The page ground is `--bg` alone; no radial, no tint (T210).
 
 ## Typography
 
@@ -508,72 +481,46 @@ name where it stops, it is too strong.
 **Body Font:** the same stack — there is no second family
 **Label/Mono Font:** `ui-monospace` / `SF Mono` / `Menlo` / `Consolas`, for the one shell command in the first-sync note only (no tile shows a cert since T207)
 
-**Character:** One family, three rungs, tracking scaled to size. The type does no expressive
-work at all; hierarchy is weight + size + leading as a *set*, never size alone. The masthead
-takes 700 because at 26px extra weight — not extra size — is what separates it from the data
-rung; data values take 650, a real optical weight on SF that degrades gracefully to 600/700
-on Segoe and Roboto.
+**Character:** One family, five sizes, three weights (T210). The type does no expressive
+work at all; hierarchy is weight + size + leading as a *set*, never size alone.
 
 ### Hierarchy
-- **Large Title** (700, 26px, 1.15, −0.021em): the page name in the glass toolbar
-  ("Submissions", "Settings"). One per page. Drops to 22px/−0.017em under 640px so the
-  masthead stays on one row; the 300px password gate sets its own 24px/−0.02em and does
-  **not** change at the breakpoint.
-- **Figure** (650, 17px, 1.3, −0.012em): the data rung — lot number, ledger value, card value,
-  settings panel titles, the current stage name, and the page-header figures (the detail ETA,
-  the person page's estimated cost). The operator sweeps these columns; they all sit on one
-  weight. The toolbar states sync in chrome instead of a figure: `.sync`, one 6px dot
-  (`--ok` under an hour, `--holdtx` an hour or more, `--m1` unknown) and one phrase at
-  12.5/500 in one grammar, "Updated just now", "Updated 48 min ago", "Not updating since
-  9:16 PM"; a live phrase ends on the clock time in plain sight ("Updated 48 min ago · 8:52
-  PM", T169), the full date and time in its title. Phones show the short form (the clock
-  alone when live, "Not updating" when stale) so the toolbar stays one row, under 360 the dot alone. No marker
-  reads "Last update unknown" over submissions, "No sync yet" only on an empty account (T162).
-- **Field** (400, 15px, 1.5): inputs, search, and the bare button reset (which sets 15/600).
-- **Body** (400, 14px, 1.5): the default reading layer. Metadata lines, stage line, status
-  pills, links, owner tags, card names, empty states. The stage name sits here too, at body
-  size with the data rung's 650 weight (`.stage b`), the one place the two rungs cross.
-  (Lifted from 13/1.45 on 2026-08-08 — owner found the sheet claustrophobic and the text small.)
-- **Control** (500, 13px, 16px line box): control labels only — filter pills and the View
-  pill. Stays at 13 because the capsule height arithmetic (38px at both
-  breakpoints) is stated in the CSS and depends on the 16px line box. A 13px control without
-  that arithmetic (the settings buttons, the skip link, the undo toast) leads at 1.4.
-- **Caption** (400, 12px, 1.4): subtitles under a title, sync notes, service line, helper text.
-  The masthead subtitle alone runs 12.5px — half a pixel is all it needs to stop reading as a
-  caption under a 26px title.
-- **Micro** (400, 12px, 1.4): the sub-figure line under a value, preview-row secondaries,
-  section labels inside the search preview. Merged up from 11.5 (2026-08-08); the caption
-  tier is now a single 12px rung.
-- **Tag** (500, 11px, 1.0): the search-preview category chip. `line-height: 1` keeps its 3px
-  of vertical padding from growing the row.
+The whole ramp is five sizes, each with one leading (T179's ladder, absorbed by T210):
+- **Title** (700, 26px, 1.15, −0.021em): the page name, at every width, the gate card included.
+  One per page.
+- **Figure** (600, 18px, 1.3, −0.012em): the data rung. Lot number, ledger value, settings
+  panel titles, the page-header figures. The operator sweeps these columns; they all sit on
+  one weight. The toolbar states sync in chrome instead of a figure: `.sync`, one dot (`--ok`
+  under an hour, `--err` an hour or more, `--m1` unknown) and one 12/400 phrase, "Updated just
+  now", "Updated 48 min ago · 8:52 PM", "Not updating since 9:16 PM" (T162, T169), the full
+  date and time in its title. Phones show the short form, under 360 the dot alone.
+- **Field** (400, 16px, 1.5): inputs and search, at every width (no iOS focus zoom).
+- **Body** (400 or 600, 14px, 1.5): the reading layer and every control label. Metadata,
+  stage line, links, owner tags, names, buttons (the bare reset sets 14/600), pills, chips,
+  the tile value (14/600 accent). 600 marks the pressed pill, a stage name, a capsule action.
+  Single-line controls whose capsule height is arithmetic keep a px line box (pills and the
+  View pill 16px, the grade chip 17px).
+- **Caption** (400, 12px, 1.4): subtitles, sync phrase, helper text, sub-figure lines,
+  preview secondaries, the search-preview tag (line-height 1 there).
 
 ### Named Rules
-**The Three-Rung Rule.** There are exactly three hierarchy rungs: 26/700 masthead, 17/650
-data, 14/400 body. Everything else (13 controls, 12 captions, 11 tags) hangs off the body
-rung. A new size does not create a new rung.
+**The Five-Size Rule.** Sizes are 12, 14, 16 (inputs), 18, 26; weights 400, 600, 700. A new
+size or weight does not ship; smoke greps the CSS for anything else (T210).
 
 **The Optical Tracking Rule.** Tracking is a function of size, never a style: 26px = −0.021em,
-24px = −0.020em, 22px = −0.017em, 17px = −0.012em, 14px and below = 0. Nothing in this system
-ever tracks positive. When a caption sits inside a tracked value (`.ledval span`), it resets
-letter-spacing to normal, because tracking inherits and size does not.
+18px = −0.012em, 14px and below = 0. Nothing ever tracks positive. A caption inside a tracked
+value (`.ledval span`) resets letter-spacing to normal, because tracking inherits and size does not.
 
-**The Leading Ladder Rule.** Leading is a function of the rung, like tracking, and every rule
-that sets a size states it (no `line-height: normal`, and `input`/`button` state theirs so the UA
-default never leaks in): display 26/24/22px = 1.15, figure 17px (and the 15px tile value) = 1.3,
-body and field 14-16px = 1.5, micro and caption 11-13px = 1.4, tag 11px = 1.0. Every 14px rule
-leads at 1.5, the two-line tile name included (min-height 42px). Pixel line boxes are allowed
-only where a capsule's height arithmetic depends on them (filter pills and the View pill 16px,
-the grade chip 17px). The one documented exception to the size ramp is the 12.5px toolbar
-subtitle and sync phrase (`.toolbar .sub`, `.sync`); it leads at the micro 1.4.
+**The Leading Ladder Rule.** Every rule that sets a size states its leading (no `line-height:
+normal`, and `input`/`button` state theirs): 26 = 1.15, 18 = 1.3, 14 and 16 = 1.5, 12 = 1.4.
+Pixel line boxes only where a capsule's height arithmetic depends on them.
 
 **The Px Ramp Rule.** Every size is px on purpose: the capsule arithmetic is stated in px, so
 browser text-only zoom is a no-op here while page zoom works. If text-size settings are ever
 wanted, the fix is a rem migration of the whole ramp, not a per-rule patch.
 
-**The Accepted Small Text Rule.** These sit under 14px by decision and are not audit findings:
-the 13px sort pills, filter chips and settings buttons, the 12px `.estnote` header notes
-("PSA estimates · as of"), the "CAD · estimated" sub-figure line, captions, Prelim and
-person-page labels, and the 12.5px phone sync line.
+**The Accepted Small Text Rule.** The 12px caption rung (header notes, "CAD · estimated",
+sync phrase, helpers) is small by decision and not an audit finding.
 
 **The Incomplete Total Rule.** Every money total (dashboard row value, sub page value, person
 page cost, coverage and value) gets a trailing "+" iff at least one card that should count has
@@ -609,7 +556,7 @@ persists per browser (`psa_theme`); the gate, setup and 404 pages carry no toggl
 
 Content sits in **raised cards flush with the column**: each submission is a card at
 `padding: 18px 16px`, `margin: 0 0 14px` (`16px 14px` / `12px` gap under 640px), 16px
-radius, `--hair2` edge and a `0 2px 10px` cast shadow. The gap between cards is the
+radius, `--hair2` edge and the rest shadow (`0 4px 14px`). The gap between cards is the
 separator — no hairlines between or around the list, no closing rule. An empty state takes
 the same card (`48px 20px` padding, `14px` top margin), never bare text on the ground.
 Inside a card, the mobile filmstrip still bleeds to the card's own padding edge
@@ -623,7 +570,7 @@ every width the brand row scrolls away and only the search field stays pinned (T
 words carry the old 👋 tip: the placeholder is "Type your name to find your cards", and no
 hint card sits above the list. Other toolbars stick at `top: 10px` (`z-index: 20`); each is
 preceded by a 1px server-rendered sentinel (`.tbsentinel`, so a late app.js shifts nothing, T202) that drives its scroll-edge elevation. A fixed 26px ground band
-(`html:has(.toolbar.raised)::before`, `z-index: 19`, the ambient layers sized to the viewport) masks
+(`html:has(.toolbar.raised)::before`, `z-index: 19`, flat `--bg`) masks
 the gap and the corners above it once the bar is stuck, so no slice of a row shows over the glass; 10px under the
 condensed masthead, whose glass already covers the top. The compact search bar on
 /cards and /search bleeds 9px each side (padding plus border) so its field lines up with the
@@ -634,8 +581,8 @@ aspect ratio — a card's proportions — so the grid never reflows as images lo
 The grade line is always present on a tile, empty at its 21px line box on an ungraded card,
 so graded and ungraded neighbours in one row share a baseline.
 
-Spacing rhythm runs on a coarse 2 / 4 / 7 / 10 / 14 / 18 / 24 ladder: 2px between a title
-and its subtitle, 7–10px inside chips, 12–14px between row elements, 18–24px between sections.
+Flex and grid `gap`s run on a 4px scale (4, 8, 12, 16, 24; T210). Margins and padding keep
+their measured values: 2px between a title and its subtitle, 18–24px between sections.
 
 **Breakpoints:** 640px, plus a 360px list fallback for the card grid and a 1025px step that grows the strip and detail grid (T188). Under it the page-header `.synced` block goes full width and
 left aligned, so its `.estnote` drops the `margin-left: auto` that right-aligns the 34ch measure
@@ -679,9 +626,7 @@ enter the dashboard row.
 Hybrid, split strictly by role. **Chrome is lensed glass; content is flat.** The toolbar and
 the settings segmented bar share one material:
 translucent ground, `blur(16px) saturate(170%)`, a hairline border, an inset specular top rim,
-an inset bottom falloff rim, and one soft cast shadow. Beneath them the ambient ground
-(`body::before`, `position: fixed`, `z-index: -1`) lays two accent-derived radials in the top
-corners — the layer that makes the glass read as a lens instead of a frosted rectangle.
+an inset bottom falloff rim, and one soft cast shadow, over the flat ground.
 Content lives in raised cards (16px radius, `--hair2` edge, one quiet cast shadow); inside a
 card, elements — scan tiles, values, bars — carry no fill, tint, or shadow of their own.
 Depth inside a card is expressed only by gray level.
@@ -696,16 +641,12 @@ shadow rather than glass. They materialize together — the scrim fades, its bac
 0 → 8px, and the sheet lands from `scale(.97)` — and exit faster than they enter.
 
 ### Shadow Vocabulary
-- **Glass Lens** (`box-shadow: inset 0 1px 1px var(--rim), inset 0 -1px 1px var(--rimb), 0 10px 26px var(--shc)`):
-  the chrome material. Both rims and the cast shadow, always together.
-- **Toolbar At Rest** (`box-shadow: inset 0 1px 1px var(--rim), inset 0 -1px 1px var(--rimb), 0 1px 2px var(--shc3)`):
-  the same lens with a whisper cast, for a bar that nothing has scrolled under yet.
-- **Segment Lift** (`box-shadow: 0 1px 2px var(--shc3)`): the active pill inside a capsule.
-  The smallest shadow in the system.
-- **Popover** (`box-shadow: 0 14px 40px var(--shc2)`): the search preview.
-- **Modal** (`box-shadow: 0 24px 60px var(--shc2)`): the settings and Discord sheets.
-- **Lightbox** (`box-shadow: 0 24px 70px rgba(0,0,0,.45)`): the enlarged scan; the only
-  fixed-value shadow, because it always sits on a dimmed backdrop.
+Three shadows, nothing else (T210). Glass adds its two inset rims on top.
+- **Rest** (`0 4px 14px var(--shc3)`): content cards, empty and hint cards, the gate, the
+  pressed sort pill, and the toolbar before anything scrolls under it.
+- **Raised** (`0 10px 26px var(--shc)`): the stuck toolbar, the skip link, the undo chip, the
+  pressed Archived pill.
+- **Overlay** (`0 24px 60px var(--shc2)`): the search preview, the modal sheets, the lightbox scan.
 
 ### Named Rules
 **The Glass-Is-Chrome Rule.** `backdrop-filter` appears on the toolbar, the settings segment
@@ -723,7 +664,7 @@ so the box geometry, and the height match against the sort pills, is untouched. 
 surface may drop its rims only when it is *becoming* a filled control, never to simplify.
 
 **The Earned-Elevation Rule.** A sticky surface may not cast a full shadow while nothing has
-scrolled beneath it. Rest state is `0 1px 2px`; the full `0 10px 26px` is a state, flipped by
+scrolled beneath it. Rest state is the rest shadow; raised is a state, flipped by
 a sentinel, transitioned over 0.25s.
 
 **The One-Card-Deep Rule** (supersedes the Bare-Content Rule, owner call 2026-08-08).
@@ -735,8 +676,7 @@ are always wrong. Separation inside a card is proximity and gray level.
 `@supports not (backdrop-filter)` and `prefers-reduced-transparency: reduce` both swap to
 `--glasssolid` via `background-color` only (never the shorthand, which would wipe the capsule's
 track layer), the reduced-transparency branch drops overlay scrims to an opaque 72% black, and
-the ambient ground is killed under reduced transparency, `prefers-contrast: more`, and
-`@supports not (color-mix)`. Under `forced-colors: active` the stage bar keeps a CanvasText
+there is no ambient ground left to kill. Under `forced-colors: active` the stage bar keeps a CanvasText
 outline on a Canvas track and a Highlight fill (`forced-color-adjust: none`).
 
 **The Named-Reduce Rule.** `prefers-reduced-motion: reduce` is a scoped, enumerated block, not
@@ -747,22 +687,19 @@ every overlay so "this is on top of that" still reads.
 
 ## Shapes
 
-Corner language runs from square to circle by role, not by size. Every **single-line control is
-a capsule** (999px): text inputs, the search bar, the filled button, the compact save button,
-the destructive text button, filter pills, the search-preview tag, and the quiet circular hover
-pills. Content-side surfaces stay square-ish on purpose. Submission cards, the empty and hint
-cards, and settings blocks are **16px raised cards** (the 2026-08-08 amendment retired the
-square ledger); scan tiles are 12px wells. Images take 6px (scans on tiles, covers,
-logo chip) and preview thumbnails 4px; a lightbox image takes 12px because it is presented
-rather than listed. Preview rows and the quiet hover pill behind a text action take 8px. The
-search preview panel and the modal sheet take 14px; the full toolbar takes 16px and the compact
-search bar 14px.
+Three radii (T210). Every **single-line control is a capsule** (999px): inputs, the search bar,
+buttons, pills, chips, the search-preview tag, hover pills, progress bars and status dots.
+Every container is **16px**: cards, hint and empty cards, settings blocks, scan-tile wells, the
+toolbar (full and compact), the search preview, the modal sheets, the gate and 404 cards.
+Every image is **6px**: scans on tiles, strip tiles, preview thumbnails, the lightbox scan,
+the logo chip, preview row highlights. The owner tag is the one input with no radius, an
+underline only.
 
 Borders are always exactly 1px and always `--hair` (or `--hair2` in a settings danger zone).
 There is no second border weight and no colored border except the owner tag's focus underline
 and its transient save states.
 
-Every progress bar is a 4px capsule (2px radius) — track plus fill, nothing else. The fill is
+Every progress bar is a 4px capsule (999px radius) — track plus fill, nothing else. The fill is
 `--bar` only while the sub is moving: an archived (`.card.arch`) or held (`.card.hold`) row
 drops it to `--m1`, so grey agrees with the red hold pill instead of arguing with it.
 
@@ -771,8 +708,7 @@ drops it to `--m1`, so grey agrees with the red hold pill instead of arguing wit
 entire system. A border that needs emphasis shifts to `--hairh` on hover, never to a thicker
 stroke.
 
-**The Card Radius Rule.** Rows, list containers, and settings blocks are 16px raised cards;
-scan tiles inside them are 12px wells. Nothing content-side goes to a capsule except the
+**The Card Radius Rule.** Rows, list containers, settings blocks and scan-tile wells are 16px. Nothing content-side goes to a capsule except the
 grade chip.
 
 **The Capsule-Control Rule.** If it is a single-line control the user acts on, it is a 999px
@@ -785,11 +721,11 @@ content — a panel, a sheet, an image, a row — it is not.
 - **Shape:** the filled primary and every pill-shaped control are capsules (999px); text
   actions are unshaped until hovered.
 - **Bare element:** `button` is a **neutral reset only** — transparent, no color, no radius,
-  no width, no margin; it keeps typography (inherited family, 15px/600) and the cursor. It
+  no width, no margin; it keeps typography (inherited family, 14px/600) and the cursor. It
   carries no visual identity whatsoever.
 - **Primary (`.fillbtn`):** the accent fill with a `#fff` label, capsule, full width, 12px
   padding, 12px top margin. Exactly one per form. The compact variant (`.sbtn`) is `auto`
-  width, `11px 18px`, 13px.
+  width, `11px 18px`, 14px.
 - **Hover / Focus:** background deepens to `--ac-fill-hot` over 180ms; focus takes the global
   2px accent outline at 2px offset (inputs take it at zero offset).
 - **Press:** `scale(.97)` over `--t1` `--e1`, set element-level because it carries no
@@ -802,7 +738,7 @@ content — a panel, a sheet, an image, a row — it is not.
   calls 2026-08-08).
 - **Archive undo chip:** "Archived · Undo" holds 10s, paused while hovered or keyboard focused. On
   touch it leaves the row for the thumb zone: fixed bottom-left, 20px off the edges, 44px,
-  13px, a solid detached capsule (`--glasssolid`, hairline, `0 10px 26px` cast) (T144).
+  14px, a solid detached capsule (`--glasssolid`, hairline, `0 10px 26px` cast) (T144).
 - **Stage-line pill (`.stage .view`):** the exception — the row's one link sits at the far
   end of the stage line as a visible quiet capsule (App Store's row action; a bar-row
   placement was tried and reverted same day, 2026-08-08). `--surface3` fill, `--ac-hot`
@@ -826,7 +762,7 @@ content — a panel, a sheet, an image, a row — it is not.
   a transparent 1px border, no glass, no rims (T209).
 - **Solo pill (`.fsolo`):** the standalone Archived toggle is its own capsule — it carries the
   same quiet `--segtrack` fill itself rather than riding in a wrapper, because a single pill inside a capsule prints
-  a ring around nothing. It reads one rung quieter than the sort pills (12px/500 vs 13px) and
+  a ring around nothing. It reads one rung quieter than the sort pills (12px vs 14px) and
   lands at exactly 38px, the sort capsule's outer height at both breakpoints. It is the
   archived disclosure on all three list pages. The dashboard's untagged count lives in the
   attention line (T150), not a pill.
@@ -839,7 +775,7 @@ content — a panel, a sheet, an image, a row — it is not.
 - **Sort pills:** Newest, Service, Return. Three, always the same three — a "Grades ready"
   fourth pill shipped briefly and was removed with the rest of the grades promotion
   (2026-08-02 owner ruling). Service sorts by tier fee, priciest first (unpriced last), and
-  heads each tier with a `.tierhd` line at 14/650 `--m1`; other sorts drop the headers (T151).
+  heads each tier with a `.tierhd` line at 14/600 `--m1`; other sorts drop the headers (T151).
   The active pill ends in a 5px `currentColor` chevron that turns up on reversal (`.rev`); the
   choice rides `?sort=&dir=` and the server renders it. Shipped rows sort last under Return (T152).
 - **State:** inactive is muted 500-weight on transparent; active takes the `--segon` fill,
@@ -866,7 +802,7 @@ content — a panel, a sheet, an image, a row — it is not.
 ### Status Pills
 One status line per sub (T205): the ETA, Shipped, Late and Pending pills are gone. The date
 rides the stage line ("Grading · back Oct 18", "late, due Aug 22" in `.stage .late`, ink at
-650, T117; "ETA pending"), short dates never zero padded ("Oct 3"). A shipped row has no bar:
+600, T117; "ETA pending"), short dates never zero padded ("Oct 3"). A shipped row has no bar:
 its stage line is the ship line, "Shipped · Sep 6 · UPS 1Z…", with Archive beside View cards.
 The right-hand column of a dashboard row holds the value and, only for a hold, one pill:
 - **Hold (`.pill.hold`)**, alert red: the queue has stopped. **The only red in the column** —
@@ -902,7 +838,7 @@ the person page and search alike) take the same whole-tile `grayscale(.55)`, so 
 read past with the scan; only the scan also dims to .5. Hover, or editing the owner tag, lifts
 the grey. The only true containers are detached surfaces —
 the search preview panel (14px, 6px padding, solid `--surface`) and the modal sheet
-(`min(460px, 94vw)`, 14px, `24px 24px 26px`).
+(`min(460px, 94vw)`, 16px, `24px 24px 26px`).
 
 **The attention line** (T150) is one `.hint.attn` card above the filter row, `--m1` text, one
 line: "1 on hold · 1 past due · 1 graded · 12 untagged". Every count links its filtered
@@ -927,7 +863,7 @@ page then rewrites its URL to `/`, so a reload shows the plain gate.
 
 ### Filmstrip (signature)
 Every dashboard row carries its own contact sheet: up to eight card fronts (`STRIP_MAX = 8`)
-in line order, 84×117px at 6px radius with a hairline and a quiet-fill ground, 10px apart,
+in line order, 84×117px at 6px radius with a hairline and a quiet-fill ground, 8px apart,
 12px under the identity band. Past eight, the last tile becomes a **"+N" chip** — same box,
 same radius, quiet placeholder ground, muted 14px/600 numeral — linking into the detail page,
 so the strip is always one fixed-width run and never wraps. A sub with no imaged cards falls
@@ -952,7 +888,7 @@ subject, trimmed the same way the grid trims it — because eight focusable link
 long walk otherwise; that walk is also why the dashboard has a skip link.
 
 ### Inputs / Fields
-- **Style:** quiet gray fill, **no border**, capsule radius, 15px/400, `11px 16px`.
+- **Style:** quiet gray fill, **no border**, capsule radius, 16px/400, `11px 16px`.
 - **Focus:** a 2px accent outline at zero offset — the fill does not change.
 - **Search:** the same capsule inset 36px on the left for an inline stroked SVG glyph in
   tertiary gray positioned 14px from the edge, clear of the curve. It lives inside the glass
@@ -1036,7 +972,7 @@ Not a retrofit — a visible part of the system, and it has house styling.
 
 ### Stage Bar (signature)
 The product's signature component: one text line — current stage in accent-as-text at the
-650 data weight, then "· back Oct 18" in muted (T205: no "stage N of 8"; shipped drops the
+600 data weight, then "· back Oct 18" in muted (T205: no "stage N of 8"; shipped drops the
 bar and reads the ship line) — above a 4px capsule whose fill transitions
 its width over 550ms on `cubic-bezier(.23, 1, .32, 1)`.
 Detail pages print "· since Sep 12, 23 days" in place of the ETA, which their meta line holds (days in the current stage, none once shipped),
@@ -1097,7 +1033,7 @@ offers existing people; the picker arrow is hidden in Chrome and Safari (T135).
 
 ### Scan Tile (signature)
 Each tile is an **inset well**: `--surface3` (opaque `#2e2f32` in dark, one colour on any ground)
-under a 1px `--hair`, 12px radius, 10px padding. A grid straight on the page ground (`/sub`, `/search`)
+under a 1px `--hair`, 16px radius, 10px padding. A grid straight on the page ground (`/sub`, `/search`)
 paints the tile `--surface` and its neutral chips `--surface3`, as light `--surface3` is the ground's grey (T119).
 Tiles carry **no shadow** — a well inside a raised card is still one card deep, and a second shadow
 would make it a nested card. Inside it the image sits in one fixed **380/635 box** — the ratio of a
@@ -1113,15 +1049,15 @@ the owner saw on 2026-09-16 — "the page is a bit too flat, and cards get visua
 grid gap dropped to 12px, the track grew by the well's padding to hold the image width, and
 `.card` stepped its shadow one notch to `0 4px 14px`. The neutral grade chips moved off
 `--surface3` to `--surface` for the same reason: the well wears their old ground. Below the
-image: the grade as a small filled chip (13px/500, 1px 7px, fully rounded, a 1px
+image: the grade as a small filled chip (14px/400, 1px 7px, fully rounded, a 1px
 border) in two tiers (T204) — a 14% Grade Red tint for any 10 behind a 45% Grade Red border, one
 neutral `--surface` chip with `--txt` and a `--hairh` border for every other grade — hugging its own text and sitting in a
 reserved 21px line box, which an ungraded card still emits empty so a grid row keeps one
 baseline — card name
 clamped to two lines with a reserved **`min-height`** (40px — never a fixed height, which
 clips the second line mid-glyph under text-only zoom), **no set line** (the name carries the
-subject; the set is read on the detail header, not scanned in a grid), value at 15/600 in
-**`--ac-pale`** — one step below the 17/650 data rung, which a well holding six things could
+subject; the set is read on the detail header, not scanned in a grid), value at 14/600 in
+**`--ac-pale`** — one step below the 18/600 data rung, which a well holding six things could
 not afford, and in Accent as Text because the value is the tile's **second reveal** after the
 grade: six greys in one well read as a single block (the owner, 2026-09-16: "still too uniform,
 needs another color"). It measures 4.84:1 light and 7.16:1 dark on the well; the `CAD` caption
@@ -1195,7 +1131,7 @@ standing in for icons, no raster icons.
 
 ### Do:
 - **Do** derive every accent shade with `color-mix(in srgb, var(--ac) …)` so a store's two env
-  colors propagate everywhere, ambient ground included.
+  colors propagate everywhere.
 - **Do** clamp a derived token against the ground it is actually painted on, not the ground
   behind that one.
 - **Do** keep a row on screen, in its new state, while its Undo chip is up — a chip that lives
@@ -1220,12 +1156,12 @@ standing in for icons, no raster icons.
 - **Do** give every glass surface both rims (`--rim` top, `--rimb` bottom) plus its cast shadow.
 - **Do** keep Liquid Glass on the toolbar and the segmented capsules only.
 - **Do** ship the `@supports not (backdrop-filter)`, `prefers-reduced-transparency`, and
-  `@supports not (color-mix)` fallbacks with every new glass or ambient surface.
+  `@supports not (color-mix)` fallbacks with every new glass surface.
 - **Do** put the filled identity on `.fillbtn` and leave the bare `button` selector a reset.
 - **Do** reveal a padded text action's hit area on hover as a quiet `--surface3` fill.
 - **Do** enumerate reduced-motion exemptions by name, keeping opacity fades on overlays.
 - **Do** make a single-line control a 999px capsule and leave panels, sheets, and rows square-ish.
-- **Do** scale tracking to size (−0.021em at 26px down to 0 at 13px) and reset it when a caption
+- **Do** scale tracking to size (−0.021em at 26px down to 0 at 14px) and reset it when a caption
   sits inside a tracked value.
 - **Do** keep monospace for shell commands only and keep tabular numerals everywhere else.
 - **Do** name only the current stage under 640px.
@@ -1245,8 +1181,7 @@ standing in for icons, no raster icons.
   and never write a `button:hover` that paints.
 - **Don't** apply `backdrop-filter` to anything holding data.
 - **Don't** let a sticky surface cast its full shadow before content has scrolled under it.
-- **Don't** raise the ambient ground until you can name where it stops, and never build it from
-  anything but `--ac` / `--ac2`.
+- **Don't** bring back an ambient ground; the page ground is flat `--bg` (T210).
 - **Don't** load a webfont or add one to the repo; the system stack is the face.
 - **Don't** use tracked uppercase, kickers, or eyebrow labels anywhere.
 - **Don't** introduce a third brand color or a hand-picked accent shade outside `color-mix`.

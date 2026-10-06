@@ -151,15 +151,6 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  # search-preview tag chip: dark grounds swallow a low-alpha accent wash, so the
  # same chip needs a heavier mix here than in light to read at all.
  "tagmix": "18%",
- # AMBIENT GROUND (see body::before): two soft radials pooled at the top edge,
- # behind the sticky glass toolbar, so the lens has something to refract. Dark
- # needs more alpha (11/8 vs 6/4) because #17181a eats it - but the ellipses are
- # SHORTER and stop sooner (55%/52%) so the tint stays a halo at the top and the
- # field below stays neutral graphite. Never blue-gray the whole sheet.
- "amb": ("radial-gradient(110% 54% at 84% -20%,color-mix(in srgb,var(--ac2) 11%,transparent),"
-         "transparent 55%),"
-         "radial-gradient(88% 46% at -14% -6%,color-mix(in srgb,var(--ac) 8%,transparent),"
-         "transparent 52%)"),
  "txt": "#f2f2f4", "m1": "#98989f", "tert": "#8a8a92",
  "hair": "rgba(255,255,255,.12)", "hairh": "rgba(255,255,255,.3)",
  "hair2": "rgba(255,255,255,.08)", "track": "rgba(255,255,255,.14)", "barmuted": "#7e7e86",
@@ -179,15 +170,11 @@ _DARK = {"bg": "#101113", "surface": "#1c1d20",
  "shc": "rgba(0,0,0,.34)", "shc2": "rgba(0,0,0,.5)", "shc3": "rgba(0,0,0,.28)",
  "sh2": "rgba(255,255,255,.11)", "scrim": "rgba(0,0,0,.62)",
  "sk": "color-mix(in srgb,var(--txt) 7%,transparent)",
- "err": "#ff8a7a", "holdtx": "#ff8a7a", "grade": "#ff8779", "fhov": "#ffffff",
+ "err": "#ff8a7a",
  "ok": "#43c383"}
 _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  "surface3": "#f2f2f4", "inp": "#f2f2f4",
  "hovrow": "rgba(0,0,0,.05)", "tagmix": "12%",
- "amb": ("radial-gradient(120% 62% at 84% -22%,color-mix(in srgb,var(--ac2) 6%,transparent),"
-         "transparent 60%),"
-         "radial-gradient(96% 52% at -14% -6%,color-mix(in srgb,var(--ac) 4%,transparent),"
-         "transparent 56%)"),
  "txt": "#1d1d1f", "m1": "#6e6e73", "tert": "#86868b",
  "hair": "rgba(0,0,0,.1)", "hairh": "rgba(0,0,0,.28)",
  "hair2": "rgba(0,0,0,.07)", "track": "#ececef", "barmuted": "#8e8e93",
@@ -198,7 +185,7 @@ _LIGHT = {"bg": "#f2f2f7", "surface": "#ffffff",
  "shc": "rgba(20,25,35,.1)", "shc2": "rgba(20,25,35,.18)", "shc3": "rgba(20,25,35,.08)",
  "sh2": "rgba(255,255,255,.75)", "scrim": "rgba(0,0,0,.4)",
  "sk": "color-mix(in srgb,var(--txt) 7%,transparent)",
- "err": "#b03a2e", "holdtx": "#b03a2e", "grade": "#b12b2b", "fhov": "#1d1d1f",
+ "err": "#b12b2b",
  "ok": "#2f9e68"}
 # The accent ramp is clamped above; the NEUTRAL ramp is hand-picked, and the
 # build's one shipped contrast failure lived exactly there. This doesn't
@@ -211,14 +198,13 @@ def _check_neutrals():
         # surface (lighter than the near-black page)
         bg = _rgb(pal["bg"] if name == "light" else pal["surface"])
         for tok, target in (("txt", 4.5), ("m1", 4.5), ("err", 4.5),
-                            ("holdtx", 4.5), ("grade", 4.5),
                             ("tert", 3.0), ("ok", 3.0)):  # tert/ok are non-text
             v = pal[tok]
             if not v.startswith("#"):
                 continue
-            # the 10 chip's ink sits on its own 14% tint over the scan well (T119)
+            # --err is also the 10 chip's ink, on its own 14% tint over the scan well (T119, T210)
             c = _contrast(_rgb(v), _over(_rgb(v), 0.14, _rgb(pal["surface3"]))
-                          if tok == "grade" else bg)
+                          if tok == "err" else bg)
             if c < target:
                 print(f"WARNING: --{tok} {v} on {name} bg is {c:.2f}:1 "
                       f"(target {target}:1)", flush=True)
@@ -1059,11 +1045,6 @@ CSS = """
 html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;background:var(--bg);
  touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 @view-transition{navigation:auto}
-/* ---- ambient ground ------------------------------------------------------ */
-/* ambient accent radials for the glass to refract. Fixed pseudo, not background-attachment
-   (iOS Safari repaints that every frame); z-index:-1. */
-body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;
- background:var(--amb)}
 body{background:transparent;min-height:100vh;color:var(--txt);
  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
  -webkit-font-smoothing:antialiased;padding:18px 20px calc(96px + env(safe-area-inset-bottom,0px));
@@ -1076,19 +1057,19 @@ body{background:transparent;min-height:100vh;color:var(--txt);
  clip-path:inset(50%);white-space:nowrap}
 /* skip link: first tab stop, visible only on focus. */
 .skip{position:fixed;left:-9999px;top:14px;z-index:100;padding:10px 16px;border-radius:999px;
- background:var(--glasssolid);color:var(--ac-pale);font-size:13px;font-weight:500;
- text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc);line-height:1.4}
+ background:var(--glasssolid);color:var(--ac-pale);font-size:14px;font-weight:600;
+ text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc);line-height:1.5}
 .skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
-/* Three rungs: 26/700 title, 17/650 data + section titles, 14/400 body; 13 on control labels
-   only. Tracking scales with size (26=-.021em, 24=-.020, 22=-.017, 17=-.012, <=14 = 0) and is
-   never positive. */
+/* Five sizes, three weights (T210): 26/700 title, 18/600 data + section titles, 16 inputs,
+   14/400 body and controls, 12 captions. Tracking scales with size (26=-.021em, 18=-.012,
+   <=14 = 0) and is never positive. */
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px;line-height:1.4}
 .sub.mt6{margin-top:6px}
 .wrap>h1{margin-top:14px}
 .mt28{margin-top:28px}
-.toolbar .sub{font-size:12.5px}
+.toolbar .sub{font-size:12px}
 .logo{display:block;height:30px;width:auto}
 .logo.chip{background:var(--chipfill);padding:var(--chippad);border-radius:6px;
  box-sizing:content-box;height:26px}
@@ -1098,11 +1079,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .gbox .logo{height:72px;margin:0 auto 18px}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:14px}
 .synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.4}
-.synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
-/* a header figure is a data value: 17/650, the .num rung. 13 stays where .synced is chrome. */
-.hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
+.synced b{display:block;font-size:14px;font-weight:600;color:var(--txt)}
+/* a header figure is a data value: 18/600, the .num rung. 14 stays where .synced is chrome. */
+.hrow>.synced:not(.custrow) b{font-size:18px;font-weight:600;letter-spacing:-.012em;line-height:1.3}
 .synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.4}
-b.holdb{color:var(--holdtx)}
+b.holdb{color:var(--err)}
 .synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
 .tots .trow{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:4px 24px}
@@ -1113,11 +1094,11 @@ b.holdb{color:var(--holdtx)}
 .synced.custrow .custout{text-align:right}
 /* sync state: one dot and one phrase (T162) that names the clock time in plain sight (T169),
    .ss the phone form. The dot is 6px of non-text, so --ok's 3:1 check covers it. */
-.sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
- font-weight:500;color:var(--m1);line-height:1.4;white-space:nowrap}
-.sync i{width:6px;height:6px;border-radius:50%;background:var(--m1);flex-shrink:0}
+.sync{display:inline-flex;align-items:center;gap:8px;flex-shrink:0;font-size:12px;
+ font-weight:400;color:var(--m1);line-height:1.4;white-space:nowrap}
+.sync i{width:6px;height:6px;border-radius:999px;background:var(--m1);flex-shrink:0}
 .sync.live i{background:var(--ok)}
-.sync.stale i{background:var(--holdtx)}
+.sync.stale i{background:var(--err)}
 .sync .ss{display:none}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
@@ -1129,26 +1110,25 @@ b.holdb{color:var(--holdtx)}
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
  border:1px solid var(--hair);
  box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 10px 26px var(--shc)}
-.toolbar{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:10px;
+.toolbar{position:sticky;top:10px;z-index:20;display:flex;flex-direction:column;gap:8px;
  margin:16px 0 4px;padding:12px 14px;border-radius:16px}
 /* NO view-transition-name on glass: a named backdrop-filter panel floats through the nav
    as a blurred rectangle when the far page lacks its twin. */
 /* elevation is earned: FX_JS flips .raised off a 1px sentinel. Named apart from the masthead
    bar so a compact bar never morphs into a tall one. */
-.toolbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 1px 2px var(--shc3);
+.toolbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 4px 14px var(--shc3);
  transition:box-shadow var(--t2) var(--e1)}
 .toolbar.raised{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),
  0 10px 26px var(--shc)}
 /* bleeds by padding + border so the field, not the glass, sits on the page margin (T143) */
-.toolbar.tbq{padding:7px 8px;border-radius:14px;margin-inline:-9px}
+.toolbar.tbq{padding:7px 8px;border-radius:16px;margin-inline:-9px}
 /* the gap above the stuck bar is ground, not a slice of the row sliding under it (T176).
-   Same layers as body::before, sized to the viewport; over content, under the bar. Only once
+   The flat ground; over content, under the bar. Only once
    .raised (stuck), so the links above a resting bar stay whole. 26 = the
    10px offset plus the corner radius, so the corners don't show the row either. A condensed
    masthead already covers the top with glass; past 10px the band would seam through it. */
 html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0;height:26px;z-index:19;
- pointer-events:none;background-color:var(--bg);background-image:var(--amb);
- background-size:100% 100vh;background-repeat:no-repeat}
+ pointer-events:none;background-color:var(--bg)}
 html:has(header.toolbar.raised)::before{height:10px}
 .tbsentinel{height:1px;pointer-events:none}
 .tbtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
@@ -1158,30 +1138,30 @@ html:has(header.toolbar.raised)::before{height:10px}
  color:var(--tert);pointer-events:none}
 /* capsule: chrome and controls are pills here. The icon moves out with the left inset to clear
    the curve. */
-.searchbar{width:100%;margin:0;padding:10px 16px 10px 36px;font-size:15px;font-weight:400;
+.searchbar{width:100%;margin:0;padding:10px 16px 10px 36px;font-size:16px;font-weight:400;
  border-radius:999px}
 .preview{position:absolute;z-index:30;top:calc(100% + 8px);left:0;right:0;background:var(--surface);
- border:1px solid var(--hair);border-radius:14px;padding:6px;max-height:64vh;overflow:auto;
- overscroll-behavior:contain;box-shadow:0 14px 40px var(--shc2);
+ border:1px solid var(--hair);border-radius:16px;padding:6px;max-height:64vh;overflow:auto;
+ overscroll-behavior:contain;box-shadow:0 24px 60px var(--shc2);
  opacity:0;visibility:hidden;transform:scale(.985) translateY(-4px);transform-origin:top center;
  transition:opacity var(--t1) var(--e1),transform var(--t1) var(--e2),visibility 0s var(--t1)}
 .preview.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
 .pvsec{font-size:12px;font-weight:400;color:var(--m1);padding:9px 10px 5px;line-height:1.4}
-.pvrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
- text-decoration:none;color:var(--txt);font-size:14px;font-weight:500}
+.pvrow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px;
+ text-decoration:none;color:var(--txt);font-size:14px;font-weight:600}
 .pvrow small{display:block;color:var(--m1);font-size:12px;font-weight:400;margin-top:1px;line-height:1.4}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
 /* the tag is a category, not a sentence, so a quiet capsule demotes it. Fill mixes from
    --ac-pale so white-label swaps re-tint it; line-height:1 holds the row. */
-.pvtag{font-size:11px;font-weight:500;line-height:1;color:var(--ac-pale);flex-shrink:0;
+.pvtag{font-size:12px;font-weight:400;line-height:1;color:var(--ac-pale);flex-shrink:0;
  padding:3px 9px;border-radius:999px;
  background:color-mix(in srgb,var(--ac-pale) var(--tagmix),transparent)}
-.pvimg{width:26px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--hair);
+.pvimg{width:26px;height:36px;object-fit:cover;border-radius:6px;border:1px solid var(--hair);
  flex-shrink:0;background:var(--surface3)}
 .pvempty{padding:14px 10px;color:var(--m1);font-size:14px}
 /* ---- filter capsule: floating segmented glass; active = solid pill --------- */
-.filters,.sbar{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;
+.filters,.sbar{display:inline-flex;gap:4px;flex-wrap:wrap;padding:3px;border-radius:999px;
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:20px 0 12px}
 /* the sort segment and the solo pills are a plain quiet fill, no glass, no rim (T209). The
@@ -1191,8 +1171,8 @@ html:has(header.toolbar.raised)::before{height:10px}
 .f.fsolo{background-color:var(--segtrack)}
 /* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule cannot
    park it off-screen, own quiet fill (.f.fsolo), in .rowend. */
-.filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
-.rowend{display:flex;align-items:center;gap:10px}
+.filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin:20px 0 12px}
+.rowend{display:flex;align-items:center;gap:8px}
 .filterrow .filters{margin:0}
 .sbar{margin-top:12px}
 /* user-select:none on controls only - names, lot numbers, tags, values and inputs stay
@@ -1201,7 +1181,7 @@ html:has(header.toolbar.raised)::before{height:10px}
    one <a class="f"> measured differently. 16px makes every pill one box, .fsolo too. */
 /* 6/8, not 7/7: no descenders in these labels, so -1/+1 rides the x-height to optical centre
    at the same height. */
-.f{font-size:13px;font-weight:500;color:var(--m1);background:transparent;border:0;line-height:16px;
+.f{font-size:14px;font-weight:400;color:var(--m1);background:transparent;border:0;line-height:16px;
  padding:6px 14px 8px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;
  width:auto;margin:0;font-family:inherit;letter-spacing:0;position:relative;
  -webkit-user-select:none;user-select:none;
@@ -1209,7 +1189,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 /* the pill looks 30px tall; the hit area grows invisibly past the capsule (30 + 14 = 44, the
    HIG floor). Vertical only; z-index:-1 keeps it behind real boxes. Under 360px clips. */
 .f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
-.f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
+.f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 4px 14px var(--shc3)}
 .fsort.on::after{content:"";display:inline-block;width:5px;height:5px;margin:0 1px 0 6px;
  border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-3px) rotate(45deg);
  transition:transform var(--t1) var(--e1)}
@@ -1217,7 +1197,7 @@ html:has(header.toolbar.raised)::before{height:10px}
 /* Archived pressed borrows .fillbtn's grammar (--ac-fill + #fff), not the segment's --segon
    wash: it is a view switch, not a fourth sort. */
 .f.farch.on{background:var(--ac-fill);color:#fff}
-/* the solo Archived pill is its own capsule, one rung quieter (12/500). The 20px vertical pad
+/* the solo Archived pill is its own capsule, one rung quieter (12px). The 20px vertical pad
    is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both widths.
    inline-block, NOT inline-flex, or the count reads "Archived· 18". */
 .fsolo{font-size:12px;line-height:1.4;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
@@ -1232,51 +1212,50 @@ html:has(header.toolbar.raised)::before{height:10px}
 .card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  padding:18px 16px;margin:0 0 14px;box-shadow:0 4px 14px var(--shc3);
  transition:background var(--t1) var(--e1),opacity var(--t1) var(--e1),filter var(--t1) var(--e1)}
-.top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
-/* the data rung: 17/650. Segoe/Roboto snap 650 to 600 or 700, both fine - it only has to
-   out-weigh 14/400. */
-.num{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
+/* the data rung: 18/600, out-weighing 14/400. */
+.num{font-size:18px;font-weight:600;letter-spacing:-.012em;line-height:1.3}
 .meta{font-size:14px;font-weight:400;color:var(--m1);margin-top:3px}
-.tierhd{font-size:14px;font-weight:650;color:var(--m1);margin:22px 4px 8px}
+.tierhd{font-size:14px;font-weight:600;color:var(--m1);margin:22px 4px 8px}
 .tierhd:first-child{margin-top:4px}
 .showln{font-size:14px;line-height:1.5;color:var(--m1);margin:0 4px 12px}
 main:has(#list.archview) .showln{display:none}  /* the filter is active rows only (T218) */
 #list.archview .tierhd{display:none}
 #archhd{margin-top:4px}
 .pills{display:flex;flex-direction:column;gap:4px;align-items:flex-end;text-align:right;flex-shrink:0}
-.pill{display:inline-flex;align-items:center;gap:5px;font-size:14px;color:var(--m1);white-space:nowrap}
-.pill.hold{color:var(--holdtx)}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:14px;color:var(--m1);white-space:nowrap}
+.pill.hold{color:var(--err)}
 /* past due outranks an on-time date by weight and ink, not by a new colour */
-.stage .late{font-weight:650;color:var(--txt)}
-.ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt);white-space:nowrap}
+.stage .late{font-weight:600;color:var(--txt)}
+.ledval{font-size:18px;font-weight:600;letter-spacing:-.012em;line-height:1.3;color:var(--txt);white-space:nowrap}
 /* the caption drops to the small rung, so it must drop the value's tracking too - tracking
    inherits, size does not. */
 .ledval span{display:block;font-size:12px;font-weight:400;letter-spacing:normal;line-height:1.4;color:var(--m1)}
 /* ---- stage: one text line above a 4px capsule bar ------------------------- */
 /* 16/10, not 15/8: the 30px View pill hangs about 6px below the line, so 8px read as
    pill-touching-bar. */
-.stage{display:flex;justify-content:space-between;align-items:baseline;gap:14px;
+.stage{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
  font-size:14px;color:var(--m1);margin:16px 0 10px}
 .stage>span{min-width:0}
 .stage span span{white-space:nowrap}
 /* no bar under an unknown status, so the stage line is last and its margin would double the
    card pad. */
 .stage.nobar{margin-bottom:0}
-/* 650, matching .num: a stage name is a data value swept as a column, not emphasis. */
-.stage b{color:var(--ac-pale);font-weight:650}
-.bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
+/* 600, matching .num: a stage name is a data value swept as a column, not emphasis. */
+.stage b{color:var(--ac-pale);font-weight:600}
+.bar{height:4px;border-radius:999px;background:var(--track);overflow:hidden}
 /* the one considered moment: FX_JS runs each bar out from 0 on load. --bar, not --ac - the
    fill is clamped server-side to 3:1 on the track. Width is served inline and the run-out is
    scaleX only, so it never lays out. */
-.bar i{display:block;height:100%;border-radius:2px;background:var(--bar);transform-origin:left;
+.bar i{display:block;height:100%;border-radius:999px;background:var(--bar);transform-origin:left;
  transition:transform var(--t3) var(--e2)}
 /* a held sub is not advancing and an archived one is done, so neither earns the accent fill. */
 .card.arch .bar i,.card.hold .bar i,.dstage.hold .bar i{background:var(--barmuted)}
 /* the card's one link: a quiet capsule at the stage line's end, label --ac-hot (clamped 4.5:1
    on --surface3), baseline-aligned to the line. */
 .stage .view{flex-shrink:0;margin:0;padding:7px 14px;border-radius:999px;line-height:16px;
- font-size:13px;font-weight:600;color:var(--ac-hot);background:var(--surface3);position:relative}
+ font-size:14px;font-weight:600;color:var(--ac-pale);background:var(--surface3);position:relative}
 /* reads 30px tall, hit area grows invisibly past it (30 + 14 = 44). Vertical only, so it never
    steals the stage text's tap. */
 .stage .view::before{content:'';position:absolute;inset:-7px 0}
@@ -1288,14 +1267,14 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 /* the settings theme toggle rides the back row without growing it (T206) */
 .foot .lgout{margin-block:-15px}
 .foot>.footacts:has(>.lgout){align-self:center}
-.footacts{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.footacts{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
 .est{font-size:14px;font-weight:400;color:var(--m1);flex:1 1 0}
 /* bare 14px text actions: pad the hit box to ~43px, cancel it with an equal negative margin,
    so the resting layout is byte-identical. */
-.view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
+.view{font-size:14px;font-weight:400;color:var(--ac-pale);text-decoration:none;
  padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
-.archbtn{font-size:14px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
+.archbtn{font-size:14px;font-weight:400;color:var(--ac-pale);background:transparent;border:0;
  padding:12px 8px;cursor:pointer;width:auto;margin:-12px -8px;font-family:inherit;
  -webkit-user-select:none;user-select:none;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1),transform var(--t1) var(--e1)}
@@ -1306,9 +1285,9 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 .empty span{font-size:12px;line-height:1.4}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* up to 8 tiles, the 8th a "+N" chip when the sub has more imaged cards than fit. */
-/* the strip scrolls at every width: 8 tiles = 742px, so a sheet under ~782px would scroll the
+/* the strip scrolls at every width: 8 tiles = 728px, so a sheet under ~768px would scroll the
    page sideways. */
-.strip{display:flex;gap:10px;margin-top:14px;overflow-x:auto;
+.strip{display:flex;gap:8px;margin-top:14px;overflow-x:auto;
  overscroll-behavior-x:contain;scrollbar-width:none}
 .strip::-webkit-scrollbar{display:none}
 /* the strip clips vertically too, so a tile's focus ring draws inside the tile. */
@@ -1342,7 +1321,7 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 @media(min-width:641px){
  /* person page: sub groups sit in two equal columns, in date order; a group of 3+ cards spans
     both. Tiles keep .grid's auto-fill, so a half column runs them 2-up. */
- #list:has(>.grp),#archgrid:has(>.grp){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+ #list:has(>.grp),#archgrid:has(>.grp){display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
  .grp:has(>.grid>:nth-child(3)){grid-column:1/-1}
  /* the status note runs under both header columns, so a half-column header is no ribbon */
  .grp>.top{display:grid;grid-template-columns:1fr auto;row-gap:0}
@@ -1350,11 +1329,11 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
  .grp>.top>div>*{grid-column:1}
  .grp>.top .pills{grid-column:2;grid-row:1/3}
  .grp>.top .meta+.meta{grid-column:1/-1}}
-.hint{display:flex;align-items:center;gap:10px;margin:14px 0 0;padding:12px 16px;font-size:14px;
+.hint{display:flex;align-items:center;gap:8px;margin:14px 0 0;padding:12px 16px;font-size:14px;
  color:var(--m1);background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 4px 14px var(--shc3)}
-.hint.warn{color:var(--txt);background:color-mix(in srgb,var(--holdtx) 9%,var(--surface));
- border-color:color-mix(in srgb,var(--holdtx) 45%,transparent);box-shadow:none}
+.hint.warn{color:var(--txt);background:color-mix(in srgb,var(--err) 9%,var(--surface));
+ border-color:color-mix(in srgb,var(--err) 45%,transparent);box-shadow:none}
 .hint.attn{display:block}
 /* ---- scans: each tile is a well, image 6px, no shadow --------------------- */
 /* a grid of bare images on the card's own surface muddled together (the owner, 2026-09-16:
@@ -1378,7 +1357,7 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
  aspect-ratio:380/635;object-fit:contain;display:block}
 /* NO content-visibility: its paint containment clips focus rings and .sublink's
    negative-margin bleed. FX_JS handles the off-screen sweep instead. */
-.gc{background:var(--surface3);border:1px solid var(--hair);border-radius:12px;padding:10px;
+.gc{background:var(--surface3);border:1px solid var(--hair);border-radius:16px;padding:10px;
  display:flex;flex-direction:column}
 /* a grid straight on the page ground (/sub, /search): light --surface3 is the ground's own
    grey, so the tile takes the card plane and the neutral chips take the well. (T119) */
@@ -1391,12 +1370,12 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
  color:var(--m1);font-size:12px;line-height:1.4}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
 /* -8px = 7px pad + 1px rim: the rim hangs into the gutter, the label sits on the name's edge. (T174) */
-/* 500, not 600, and a tighter 1px 7px: the chip still reads as the news, it just stops
+/* 400, not 600, and a tighter 1px 7px: the chip still reads as the news, it just stops
    shouting over the five lines under it. Border and the 21px reserved box are untouched. */
-.gc .gr{display:inline-block;align-self:flex-start;font-size:13px;font-weight:500;line-height:17px;
+.gc .gr{display:inline-block;align-self:flex-start;font-size:14px;font-weight:400;line-height:17px;
  padding:1px 7px;border:1px solid transparent;border-radius:999px;margin:8px 0 0 -8px;min-height:21px}
-.gc .g10{background:color-mix(in srgb,var(--grade) 14%,transparent);color:var(--grade);
- border-color:color-mix(in srgb,var(--grade) 45%,transparent)}
+.gc .g10{background:color-mix(in srgb,var(--err) 14%,transparent);color:var(--err);
+ border-color:color-mix(in srgb,var(--err) 45%,transparent)}
 /* the neutral tiers took --surface3 when the tile was bare; the well IS --surface3 now, so
    they would paint their own ground. --surface - the card plane showing through the well -
    separates in both palettes (white on the grey well in light, the dark card under the lifted
@@ -1409,7 +1388,7 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 /* the set line is off the tile: the well already frames six things and the name carries the
    subject, so the set stays on the detail header where it is read, not scanned. (T112) */
 .gc .nmset{display:none}
-/* 15/600 on a tile, not the 17/650 data rung: in a well beside a grade chip, a cert line, a
+/* 14/600 on a tile, not the 18/600 data rung: in a well beside a grade chip, a cert line, a
    two-line name and an owner tag, the full rung was one loud thing too many. The rung itself
    is unchanged wherever it carries a page's headline figure.
    Accent, not --txt: with the set line gone the well ran six greys and read as one block
@@ -1417,11 +1396,11 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
    second reveal after the grade, so it takes --ac-pale, the Accent-as-Text token .sublink
    and .tlink already use - measured on the well at the default accent it is 4.84:1 light and
    7.16:1 dark, both past 4.5. The "CAD" caption stays --m1. (T112) */
-.gc .cval{display:block;width:fit-content;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-.012em;line-height:1.3;color:var(--ac-pale);margin-top:4px}
+.gc .cval{display:block;width:fit-content;text-decoration:none;font-size:14px;font-weight:600;line-height:1.5;color:var(--ac-pale);margin-top:4px}
 .gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;line-height:1.4;color:var(--m1)}
 .gc .cval:hover{text-decoration:underline;text-underline-offset:3px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
-.sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
+.sublink{display:block;font-size:14px;font-weight:400;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* a real class, not "has any inline style": [style] repainted unrelated inline styles. */
 .sublink.sublink-static{color:var(--m1);font-weight:400;cursor:default}
@@ -1429,7 +1408,7 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 /* no bottom pad: the well's 10px is the tile's bottom space, matching the scan's 10px top. (T174) */
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
- border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
+ color:var(--txt);font:inherit;font-size:14px;font-weight:400;
  padding:22px 0 0;margin-top:1px;flex:1;min-width:0;transition:border-color var(--t1) var(--e1);touch-action:manipulation}
 /* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
 /* 22px top = the input's 1px margin + 22px pad less its 1px rule: the pencil centres on the name.
@@ -1465,7 +1444,7 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 .own.saved{border-bottom-color:var(--ok)}
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
- color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;line-height:1.4;cursor:pointer;
+ color:var(--ac-pale);font-size:12px;font-weight:400;font-family:inherit;line-height:1.4;cursor:pointer;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1);position:relative}
 .undo::before{content:'';position:absolute;inset:-2px 0}  /* 40.8 + 4 = 44.8 (T187) */
 .undo.uerr{color:var(--err)}
@@ -1474,7 +1453,7 @@ main:has(#list.archview) .showln{display:none}  /* the filter is active rows onl
 .ownrow .undo{margin:-12px -6px -12px 6px;white-space:nowrap}
 /* touch: ARCH_JS lifts the archive chip into body, a 44px detached chip in the thumb zone (T144) */
 body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;
- margin:0;min-height:44px;padding:0 18px;border-radius:999px;font-size:13px;line-height:1.4;white-space:nowrap;
+ margin:0;min-height:44px;padding:0 18px;border-radius:999px;font-size:14px;line-height:1.5;white-space:nowrap;
  background:var(--glasssolid);border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
 .ownrow:has(.undo){align-items:baseline}
 .ownrow:has(.undo) .ownedit{display:none}
@@ -1492,14 +1471,14 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
    small scan until the large one lands. (T200) */
 /* the scan fills the field, short of the caption line and never wider than 92vw (T157) */
 .lb img{height:min(calc(92vh - 44px),900px,calc(92vw*635/380));width:auto;aspect-ratio:380/635;object-fit:contain;
- border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
+ border-radius:6px;box-shadow:0 24px 60px var(--shc2);
  transform:scale(.97);transition:transform var(--t2) var(--e2),filter var(--t2) var(--e1);
  cursor:default}
 .lb.open img{transform:none}
 .lb.wait img{filter:blur(6px)}
 /* the scan is inert, the scrim and this orb close. Fixed values, not tokens - it always sits
    on the dimmed scrim. */
-.lbx{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
+.lbx{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:999px;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  color:#fff;background:rgba(0,0,0,.35);border:0;cursor:pointer;
  transition:background var(--t1) var(--e1),transform var(--t1) var(--e1)}
@@ -1533,7 +1512,7 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
 .busy{animation:pulse 1s ease-in-out infinite;pointer-events:none}
 @keyframes pulse{50%{opacity:.45}}
 /* a wait the page is already handling: first sync, the PSA code on its way (T202) */
-.waitdot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--ac-pale);
+.waitdot{display:inline-block;width:7px;height:7px;border-radius:999px;background:var(--ac-pale);
  margin-right:8px;vertical-align:1px;animation:pulse 1s ease-in-out infinite}
 /* skeletons (T199): the loading ground, pulsing, and the pulse outlives reduced motion */
 .sk{display:block;background:var(--sk);border-radius:6px;animation:pulse 1s ease-in-out infinite}
@@ -1545,22 +1524,23 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
 .skrow .skl{width:55%}
 .skrow .skl+.skl{width:30%}
 .skt{flex-shrink:0;width:84px;height:117px}
-.skb{height:4px;border-radius:2px;margin-top:30px}
+.skb{height:4px;border-radius:999px;margin-top:30px}
 .skcard,.skrow{pointer-events:none}
 .skrow>span:last-child{flex:1}
 .view:active,.numlink:active{opacity:.6}
 /* ---- forms --------------------------------------------------------------- */
 /* every single-line control is a capsule; 3px extra side padding buys the curve back.
    Content-side radii stay square-ish. */
-input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:999px;
- color:var(--txt);font-size:15px;font-weight:400;line-height:1.5;text-align:left;padding:11px 16px;
+input{width:100%;margin-top:12px;background:var(--inp);border:0;
+ color:var(--txt);font-size:16px;font-weight:400;line-height:1.5;text-align:left;padding:11px 16px;
  font-family:inherit;outline:none}
+input:not(.own){border-radius:999px}
 input:focus,input:focus-visible{outline:2px solid var(--ring);outline-offset:0}
 input::placeholder{color:var(--m1)}
 /* BUTTONS ARE NOT FILLED BY DEFAULT: fill is opt-in via .fillbtn, the element rule keeps
    neutral resets only. Typography stays - a reset, not an identity. */
 button{background:transparent;border:0;color:inherit;
- font-family:inherit;font-size:15px;font-weight:600;line-height:1.5;cursor:pointer}
+ font-family:inherit;font-size:14px;font-weight:600;line-height:1.5;cursor:pointer}
 /* filled primary: form submits and modal saves. Carries the width:100% and margin-top:12px
    the element rule used to hand out. */
 .fillbtn{width:100%;margin-top:12px;background:var(--ac-fill);border-radius:999px;color:#fff;
@@ -1568,27 +1548,27 @@ button{background:transparent;border:0;color:inherit;
 /* press-scale stays element-level: it sets no colour, so it cannot leak a fill. */
 button:active{transform:scale(.97)}
 button:disabled{opacity:.5;cursor:default}
-.err{color:var(--err);font-size:12px;font-weight:500;line-height:1.4;margin-top:12px;min-height:18px}
+.err{color:var(--err);font-size:12px;font-weight:400;line-height:1.4;margin-top:12px;min-height:18px}
 /* ---- settings ------------------------------------------------------------ */
 .card.sblock{margin:0 0 14px;padding:22px 20px 24px}
 .card.sblock.mt22{margin-top:22px}
 .sblock .sform{max-width:430px}
 .sform button{margin-top:14px}
-.srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
+.srow{display:flex;gap:12px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
 .srow.mt16{margin-top:16px}
 .srow input{flex:1;min-width:150px;margin-top:0}
-.sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;line-height:1.4;flex-shrink:0}
+.sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:14px;line-height:1.5;flex-shrink:0}
 /* three tiers (T212): .fillbtn primary, .squiet the quiet capsule secondary (the View cards
    grammar), .sdel a plain destructive text action. */
 .sbtn.sdel,.sbtn.squiet{margin-top:10px;border-radius:999px}
 .sbtn.sdel{background:transparent;padding:11px 0;color:var(--err)}
-.sbtn.squiet{background:var(--surface3);color:var(--ac-hot);min-width:44px;position:relative}
+.sbtn.squiet{background:var(--surface3);color:var(--ac-pale);min-width:44px;position:relative}
 .sbtn.squiet::before{content:'';position:absolute;inset:-2px 0}  /* 40.2 + 4 = 44.2 (T187) */
 .srow .sbtn.sdel,.srow .sbtn.squiet{margin-top:0}
-.stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt)}
+.stitle{font-size:18px;font-weight:600;letter-spacing:-.012em;line-height:1.3;color:var(--txt)}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
-.snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
+.snote{display:inline-block;font-size:14px;font-weight:400;color:var(--ac-pale);margin-top:16px}
 .snote.serr{color:var(--err)}
 /* a settings error sits under the form that caused it (T212) */
 .spane>.err,.sblock>.err{min-height:0}
@@ -1597,7 +1577,7 @@ button:disabled{opacity:.5;cursor:default}
 /* attention dot: the account PSA wants verified. Accent, not red - red is grades and the
    hold pill. The label rides in a .vh span. */
 .schip.att::after,.card.moved .num::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
- border-radius:50%;background:var(--ac);vertical-align:1px}
+ border-radius:999px;background:var(--ac);vertical-align:1px}
 .spane{margin-top:16px}
 /* sheets materialize like the lightbox: scrim fades up with blur(8px), sheet lands from .97,
    exit quicker. */
@@ -1610,17 +1590,17 @@ button:disabled{opacity:.5;cursor:default}
  transition:opacity var(--t2) var(--e1),backdrop-filter var(--t2) var(--e1),
   -webkit-backdrop-filter var(--t2) var(--e1),visibility 0s}
 .smodal .card{width:min(460px,94vw);margin:0;background:var(--surface);border:1px solid var(--hair);
- border-radius:14px;padding:24px 24px 26px;box-shadow:0 24px 60px var(--shc2);
+ border-radius:16px;padding:24px 24px 26px;box-shadow:0 24px 60px var(--shc2);
  animation:none;transform:scale(.97);
  transition:background var(--t1) var(--e1),opacity var(--t1) var(--e1),filter var(--t1) var(--e1),transform var(--t1) var(--e1)}
 .smodal.on .card{transform:none;
  transition:background var(--t1) var(--e1),opacity var(--t1) var(--e1),filter var(--t1) var(--e1),transform var(--t2) var(--e2)}
-.sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:15px;cursor:pointer;
+.sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:14px;cursor:pointer;
  width:auto;margin:-10px -12px;padding:12px 18px;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 .dbtn{width:auto;margin:-1px -8px -11px;padding:11px 8px;background:transparent;color:var(--ac-pale);
- font-size:14px;font-weight:500}
+ font-size:14px;font-weight:400}
 .dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
-.dstate{font-size:14px;font-weight:500;color:var(--txt);flex:1}
+.dstate{font-size:14px;font-weight:600;color:var(--txt);flex:1}
 .dhint{font-size:12px;color:var(--m1);line-height:1.4;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
 /* no wash on an archived card: the .5 dim put its text at 2.0 to 3.4 on white (1.4.3). "Past"
@@ -1649,16 +1629,13 @@ button:disabled{opacity:.5;cursor:default}
    box, so an error never grows the card), so its bottom pad gives that back (T169); the 404
    has no .err and keeps the full pad. */
 .gbox{width:min(340px,100%);text-align:center;background:var(--surface);
- border:1px solid var(--hair2);border-radius:20px;padding:28px 22px;
- box-shadow:0 2px 10px var(--shc3)}
+ border:1px solid var(--hair2);border-radius:16px;padding:28px 22px;
+ box-shadow:0 4px 14px var(--shc3)}
 .gbox:has(>.err){padding-bottom:14px}
-/* the gate is a narrow card, not a page: a title sized for an 820px sheet wraps a two-word
-   name. One step down, unchanged on phones. */
-.gbox h1{font-size:24px;letter-spacing:-.02em}
 .gbox input{text-align:center}
 .gbox .sub{margin-top:6px}
 .gbox .view{display:inline-block;margin-top:10px}
-a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
+a.fillbtn{display:block;text-decoration:none;font-size:14px;font-weight:600}
 /* ---- hover: pointer devices only ----------------------------------------- */
 @media(hover:hover){
 /* the hover tint layers on the card surface - background replaces, so a bare alpha wash would
@@ -1671,7 +1648,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 .card.arch:has(.undo):hover{filter:grayscale(.55)}
 .gc.arch:hover{filter:none}
 .gc.arch:hover a[href^="/img"]{opacity:.78}
-.f:hover{color:var(--fhov)}
+.f:hover{color:var(--txt)}
 .f.on:hover{color:var(--ac-pale)}
 /* after .f.on:hover and at 4 classes so the pressed Archived pill keeps its fill text colour. */
 .f.farch.on:hover{color:#fff;background:var(--ac-fill-hot)}
@@ -1705,12 +1682,9 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
     quarter second, which reads as lag. */
  :root{view-transition-name:none}
  body{padding:16px 14px calc(88px + env(safe-area-inset-bottom,0px))}
- .tbtop{flex-wrap:wrap;gap:10px}
- .brand{gap:10px;min-width:0}
+ .tbtop{flex-wrap:wrap;gap:8px}
+ .brand{gap:8px;min-width:0}
  .logo{height:26px}
- /* the large title tracks the sheet, not the type scale: at 26px beside the logo it pushes
-    .tbend to a second line at 347px. .gbox h1 stays untouched. */
- h1{font-size:22px;letter-spacing:-.017em}
  .tbend{gap:8px;margin-left:auto}
  /* the short sync phrase keeps the toolbar one row (T162); under 360 only the dot shows */
  .sync .sl{display:none}
@@ -1782,7 +1756,6 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .strip{gap:8px;margin:12px -14px 0;padding:0 14px;scroll-padding-inline:14px}
  .strip img,.strip a[href^="/img"],.morechip,.skt{width:64px;height:89px}
  .card{padding:16px 14px;margin:0 0 12px}
- input,.searchbar{font-size:16px}
  /* 16px only while the tag is editable - the only moment iOS zooms on focus; readonly it
     shouted over the 14px name. */
  .own:not([readonly]){font-size:16px}
@@ -1805,13 +1778,12 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .gc .own{margin-top:0;padding:6px 0 5px}
  .gc .ownedit{padding:0}
  .gc .gr:empty{display:none}
- .gc .ph{font-size:0}}
+ .gc .ph{color:transparent}}
 /* settings fields stack on a phone so no placeholder clips (T212) */
 @media(max-width:419px){.srow input{flex-basis:100%}}
 /* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
    this covers iPad portrait. */
 @media(pointer:coarse) and (min-width:641px){
- input,.searchbar{font-size:16px}
  .own:not([readonly]){font-size:16px}}
 /* ---- reduced motion: named, not blanket ---------------------------------- */
 /* kill the travel, keep the feedback: hover tints, focus rings and overlay fades still land.
@@ -1848,18 +1820,12 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  /* backdrop-filter made the capsule a stacking context; without it the pills' z-index:-1
     pseudo falls behind the opaque background. */
  .filters,.sbar{isolation:isolate}}
-/* no color-mix, no ambient: the pseudo goes empty and the flat --bg on <html> shows through. */
-@supports not (background:color-mix(in srgb,red 5%,transparent)){
- body::before{background:none}}
 @media(prefers-reduced-transparency:reduce){
  .toolbar,.sbar{backdrop-filter:none;-webkit-backdrop-filter:none;
   background-color:var(--glasssolid)}
  .filters,.sbar{isolation:isolate}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
-  background:rgba(0,0,0,.72)}
- body::before,html:has(.toolbar.raised)::before{background-image:none}}
-@media(prefers-contrast:more){
- body::before,html:has(.toolbar.raised)::before{background-image:none}}
+  background:rgba(0,0,0,.72)}}
 """
 
 # favicon: accent-colored card-fan mark (three cards, opacity steps for depth),
