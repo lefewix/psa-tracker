@@ -769,7 +769,7 @@ a capsule** (999px): text inputs, the search bar, the filled button, the compact
 the destructive text button, filter pills, the search-preview tag, and the quiet circular hover
 pills. Content-side surfaces stay square-ish on purpose. Submission cards, the empty and hint
 cards, and settings blocks are **16px raised cards** (the 2026-08-08 amendment retired the
-square ledger); scan tiles are 12px wells. Images take 6px (scan tiles, covers,
+square ledger); scan tiles are 12px wells. Images take 6px (scans on tiles, covers,
 logo chip) and preview thumbnails 4px; a lightbox image takes 12px because it is presented
 rather than listed. Preview rows and the quiet hover pill behind a text action take 8px. The
 search preview panel and the modal sheet take 14px; the full toolbar takes 16px and the compact
@@ -789,7 +789,8 @@ entire system. A border that needs emphasis shifts to `--hairh` on hover, never 
 stroke.
 
 **The Card Radius Rule.** Rows, list containers, and settings blocks are 16px raised cards;
-scan tiles inside them are 12px wells. Nothing content-side goes to a capsule.
+scan tiles inside them are 12px wells. Nothing content-side goes to a capsule except the
+grade chip.
 
 **The Capsule-Control Rule.** If it is a single-line control the user acts on, it is a 999px
 capsule and carries ~3px of extra side padding so text never crowds the round end. If it holds
