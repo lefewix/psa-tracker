@@ -594,6 +594,21 @@ def main():
                     or b'--logotb:none;' not in gate
                     or b'--logotb:contrast(1.3) brightness(1.15) saturate(.8);' not in gate):
                 fails.append("GET /app.css: the dark toolbar logo loses a card plane (T177)")
+            # motion runs on three durations and two easings, every transition names
+            # both; the row stagger is --i, and the bar runs out on scaleX (T178)
+            trans = re.findall(rb"transition:([^;}]*)", css)
+            loose = [t for t in trans if t != b"none" and any(
+                not p.strip().startswith(b"visibility") and not (b"var(--t" in p and b"var(--e" in p)
+                for p in re.split(rb",(?![^(]*\))", t))]
+            if (re.search(rb"\bease\b(?!-)|ease-out|cubic-bezier", css) or loose
+                    or re.search(rb"\.card:nth-child\(\d", css)
+                    or b"animation-delay:calc(var(--i,0)*.04s)" not in css
+                    or b"transform-origin:left;\n transition:transform var(--t3) var(--e2)" not in css
+                    and b"transform-origin:left; transition:transform var(--t3) var(--e2)" not in css
+                    or b"--t1:.15s;--t2:.25s;--t3:.55s;--e1:ease-out;" not in gate):
+                fails.append(f"GET /app.css: motion is off its tokens or the bar lays out (T178) {loose[:2]}")
+            if js and (b"style.transform='scaleX(0)'" not in js or b"style.width='0%'" in js):
+                fails.append("GET /app.js: the stage bar run-out animates width again (T178)")
             # a grid on the page ground takes the card plane, light's well is the ground (T119)
             if b".wrap>.grid .gc{background:var(--surface)}" not in css:
                 fails.append("GET /app.css: tiles on the page ground melt into it (T119)")
@@ -1871,6 +1886,9 @@ def main():
                     fails.append("GET /: a submission row has no heading")
                 if b"Shipped Sep 06" not in dash or b"2026-09-06" in dash:
                     fails.append("GET /: the ISO ship date prints raw (T183)")
+                # the row settle staggers off a served --i, not an nth-child list (T178)
+                if b'style="--i:0"' not in dash or b'style="--i:3"' not in dash:
+                    fails.append("GET /: rows carry no --i stagger index (T178)")
 
             # --- an open lightbox locks the page: the drag must not chain to
             # the dashboard 900px behind the scrim, and close must give it back (T57)

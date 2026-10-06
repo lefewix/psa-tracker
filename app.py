@@ -235,9 +235,12 @@ def _theme_vars(mode):
     return ("".join(f"{k}:color-mix(in srgb,var(--ac) {v});" for k, v in acmix.items())
             + "".join(f"--{k}:{v};" for k, v in neut.items()))
 
+# motion: three durations (state, overlay, the bar run-out), two easings (fade, travel)
+_MOTION = "--t1:.15s;--t2:.25s;--t3:.55s;--e1:ease-out;--e2:cubic-bezier(.23,1,.32,1);"
+
 # The store's PSA_THEME is the default; both palettes are emitted so the
 # client-side day/night toggle can flip instantly (data-theme on <html>).
-THEME_VARS = (f":root{{--ac:{ACCENT};--ac2:{ACCENT_2};{_theme_vars(THEME)}}}"
+THEME_VARS = (f":root{{--ac:{ACCENT};--ac2:{ACCENT_2};{_MOTION}{_theme_vars(THEME)}}}"
               f':root[data-theme="dark"]{{{_theme_vars("dark")}}}'
               f':root[data-theme="light"]{{{_theme_vars("light")}}}')
 # prefers-contrast: hairlines and secondary text step up hard. Emitted in the
@@ -1110,7 +1113,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .sync.stale i{background:var(--holdtx)}
 .sync .ss{display:none}
 .lgout{color:var(--m1);display:inline-flex;padding:15px;margin:-11px;border-radius:999px;
- transition:color .15s,background-color .15s}
+ transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* ---- Liquid Glass: chrome only, never content ----------------------------- */
 /* the dual rim reads as a lens: light on the top edge (--rim), falling off at the bottom
    (--rimb). Both sub-threshold; the shadow carries elevation. */
@@ -1128,7 +1131,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* elevation is earned: FX_JS flips .raised off a 1px sentinel. Named apart from the masthead
    bar so a compact bar never morphs into a tall one. */
 .toolbar{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),0 1px 2px var(--shc3);
- transition:box-shadow .25s ease-out}
+ transition:box-shadow var(--t2) var(--e1)}
 .toolbar.raised{box-shadow:inset 0 1px 1px var(--rim),inset 0 -1px 1px var(--rimb),
  0 10px 26px var(--shc)}
 /* bleeds by padding + border so the field, not the glass, sits on the page margin (T143) */
@@ -1156,7 +1159,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  border:1px solid var(--hair);border-radius:14px;padding:6px;max-height:64vh;overflow:auto;
  overscroll-behavior:contain;box-shadow:0 14px 40px var(--shc2);
  opacity:0;visibility:hidden;transform:scale(.985) translateY(-4px);transform-origin:top center;
- transition:opacity .18s ease-out,transform .18s cubic-bezier(.23,1,.32,1),visibility 0s .18s}
+ transition:opacity var(--t1) var(--e1),transform var(--t1) var(--e2),visibility 0s var(--t1)}
 .preview.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
 .pvsec{font-size:12px;font-weight:400;color:var(--m1);padding:9px 10px 5px}
 .pvrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
@@ -1192,14 +1195,14 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  padding:6px 14px 8px;border-radius:999px;cursor:pointer;text-decoration:none;display:inline-block;
  width:auto;margin:0;font-family:inherit;letter-spacing:0;position:relative;
  -webkit-user-select:none;user-select:none;
- transition:background .18s,color .18s,transform .14s ease-out}
+ transition:background var(--t1) var(--e1),color var(--t1) var(--e1),transform var(--t1) var(--e1)}
 /* the pill looks 30px tall; the hit area grows invisibly past the capsule (30 + 14 = 44, the
    HIG floor). Vertical only; z-index:-1 keeps it behind real boxes. Under 360px clips. */
 .f::before{content:'';position:absolute;inset:-7px 0;z-index:-1}
 .f.on{background:var(--segon);color:var(--ac-pale);font-weight:600;box-shadow:0 1px 2px var(--shc3)}
 .fsort.on::after{content:"";display:inline-block;width:5px;height:5px;margin:0 1px 0 6px;
  border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:translateY(-3px) rotate(45deg);
- transition:transform .18s}
+ transition:transform var(--t1) var(--e1)}
 .fsort.on.rev::after{transform:translateY(0) rotate(-135deg)}
 /* Archived pressed borrows .fillbtn's grammar (--ac-fill + #fff), not the segment's --segon
    wash: it is a view switch, not a fourth sort. */
@@ -1218,7 +1221,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    shadow. Depth is glass chrome and card lift only; a card's inside is flat. */
 .card{background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  padding:18px 16px;margin:0 0 14px;box-shadow:0 4px 14px var(--shc3);
- transition:background .18s,opacity .18s,filter .18s}
+ transition:background var(--t1) var(--e1),opacity var(--t1) var(--e1),filter var(--t1) var(--e1)}
 .top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
 .hd{display:flex;gap:12px;align-items:flex-start;flex:1;min-width:0}
 /* the data rung: 17/650. Segoe/Roboto snap 650 to 600 or 700, both fine - it only has to
@@ -1256,9 +1259,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .stage b{color:var(--ac-pale);font-weight:650}
 .bar{height:4px;border-radius:2px;background:var(--track);overflow:hidden}
 /* the one considered moment: FX_JS runs each bar out from 0 on load. --bar, not --ac - the
-   fill is clamped server-side to 3:1 on the track. */
-.bar i{display:block;height:100%;border-radius:2px;background:var(--bar);
- transition:width .55s cubic-bezier(.23,1,.32,1)}
+   fill is clamped server-side to 3:1 on the track. Width is served inline and the run-out is
+   scaleX only, so it never lays out. */
+.bar i{display:block;height:100%;border-radius:2px;background:var(--bar);transform-origin:left;
+ transition:transform var(--t3) var(--e2)}
 /* a held sub is not advancing and an archived one is done, so neither earns the accent fill. */
 .card.arch .bar i,.card.hold .bar i{background:var(--barmuted)}
 /* the card's one link: a quiet capsule at the stage line's end, label --ac-hot (clamped 4.5:1
@@ -1278,11 +1282,11 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    so the resting layout is byte-identical. */
 .view{font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:12px 8px;margin:-12px -8px;-webkit-user-select:none;user-select:none;
- transition:color .15s,background-color .15s}
+ transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 .archbtn{font-size:14px;font-weight:500;color:var(--ac-pale);background:transparent;border:0;
  padding:12px 8px;cursor:pointer;width:auto;margin:-12px -8px;font-family:inherit;
  -webkit-user-select:none;user-select:none;
- transition:color .15s,background-color .15s,transform .14s ease-out}
+ transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1),transform var(--t1) var(--e1)}
 .archbtn:active{transform:scale(.97)}
 .empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.7;
  background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
@@ -1336,7 +1340,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .hint.attn{display:block;line-height:1.45}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
  color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
- transition:color .15s,background-color .15s}
+ transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* ---- scans: each tile is a well, image 6px, no shadow --------------------- */
 /* a grid of bare images on the card's own surface muddled together (the owner, 2026-09-16:
    "the page is a bit too flat, and cards get visually muddled"). Each tile gets an INSET
@@ -1412,7 +1416,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .svc{font-size:12px;color:var(--m1);margin-top:4px}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
- padding:10px 6px;margin:-4px -6px -10px;transition:color .15s,background-color .15s}
+ padding:10px 6px;margin:-4px -6px -10px;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* a real class, not "has any inline style": [style] repainted unrelated inline styles. */
 .sublink.sublink-static{color:var(--m1);font-weight:400;cursor:default}
 /* owner tag: plain text until you touch it - hairline on hover, accent on focus */
@@ -1420,7 +1424,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .ownrow{display:flex;align-items:center;margin-top:auto}
 .own{background:transparent;border:0;border-bottom:1px solid transparent;
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
- padding:11px 0 0;flex:1;min-width:0;transition:border-color .15s;touch-action:manipulation}
+ padding:11px 0 0;flex:1;min-width:0;transition:border-color var(--t1) var(--e1);touch-action:manipulation}
 /* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
 .ownedit{display:none;align-items:center;justify-content:center;width:40px;margin-right:-6px;
  align-self:stretch;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
@@ -1450,7 +1454,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
  color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
- transition:color .15s,background-color .15s}
+ transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 .undo.uerr{color:var(--err)}
 .footacts .undo{margin:-12px -6px}
 /* the owner chip sits in the row in the pencil's place, so saving never moves the grid (T136) */
@@ -1468,8 +1472,8 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
 .lb{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;flex-direction:column;
  gap:12px;align-items:center;justify-content:center;cursor:zoom-out;overscroll-behavior:contain;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
- transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
-  -webkit-backdrop-filter .2s ease-out,visibility 0s .2s}
+ transition:opacity var(--t2) var(--e1),backdrop-filter var(--t2) var(--e1),
+  -webkit-backdrop-filter var(--t2) var(--e1),visibility 0s var(--t2)}
 .lb.open{opacity:1;visibility:visible;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
  transition-delay:0s}
 /* one slab box for the small and the large scan, so the swap never jumps. .wait blurs the
@@ -1477,7 +1481,7 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
 /* the scan fills the field, short of the caption line and never wider than 92vw (T157) */
 .lb img{height:min(calc(92vh - 44px),900px,calc(92vw*635/380));width:auto;aspect-ratio:380/635;object-fit:contain;
  border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
- transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1),filter .2s ease-out;
+ transform:scale(.97);transition:transform var(--t2) var(--e2),filter var(--t2) var(--e1);
  cursor:default}
 .lb.open img{transform:none}
 .lb.wait img{filter:blur(6px)}
@@ -1486,7 +1490,7 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
 .lbx{position:fixed;top:18px;right:18px;width:44px;height:44px;border-radius:50%;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
  color:#fff;background:rgba(0,0,0,.35);border:0;cursor:pointer;
- transition:background .15s,transform .14s ease-out}
+ transition:background var(--t1) var(--e1),transform var(--t1) var(--e1)}
 @media(hover:hover){.lbx:hover{background:rgba(0,0,0,.55)}}
 /* one caption line under the scan: name, grade, cert, value and the "3 / 8" counter (T157) */
 .lbcap{max-width:92vw;margin:0;padding:0 12px;color:#fff;font-size:14px;line-height:20px;
@@ -1532,7 +1536,7 @@ html.navw body::after{content:'';position:fixed;top:0;left:0;right:0;height:3px;
  z-index:40;width:44px;height:44px;
  border-radius:50%;color:var(--m1);cursor:pointer;
  display:flex;align-items:center;justify-content:center;padding:0;margin:0;
- transition:color .15s,opacity .15s,transform .14s ease-out;text-decoration:none}
+ transition:color var(--t1) var(--e1),opacity var(--t1) var(--e1),transform var(--t1) var(--e1);text-decoration:none}
 #themeflip{right:20px}
 #gearbtn{right:72px}
 #gearbtn:active,#themeflip:active{transform:scale(.94)}
@@ -1562,7 +1566,7 @@ button{background:transparent;border:0;color:inherit;
 /* filled primary: form submits and modal saves. Carries the width:100% and margin-top:12px
    the element rule used to hand out. */
 .fillbtn{width:100%;margin-top:12px;background:var(--ac-fill);border-radius:999px;color:#fff;
- padding:12px;transition:background .18s,transform .14s ease-out}
+ padding:12px;transition:background var(--t1) var(--e1),transform var(--t1) var(--e1)}
 /* press-scale stays element-level: it sets no colour, so it cannot leak a fill. */
 button:active{transform:scale(.97)}
 button:disabled{opacity:.5;cursor:default}
@@ -1597,19 +1601,19 @@ button:disabled{opacity:.5;cursor:default}
 .smodal{position:fixed;inset:0;z-index:60;background:var(--scrim);display:flex;
  align-items:center;justify-content:center;padding:18px;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
- transition:opacity .14s ease-out,backdrop-filter .14s ease-out,
-  -webkit-backdrop-filter .14s ease-out,visibility 0s .14s}
+ transition:opacity var(--t1) var(--e1),backdrop-filter var(--t1) var(--e1),
+  -webkit-backdrop-filter var(--t1) var(--e1),visibility 0s var(--t1)}
 .smodal.on{opacity:1;visibility:visible;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
- transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
-  -webkit-backdrop-filter .2s ease-out,visibility 0s}
+ transition:opacity var(--t2) var(--e1),backdrop-filter var(--t2) var(--e1),
+  -webkit-backdrop-filter var(--t2) var(--e1),visibility 0s}
 .smodal .card{width:min(460px,94vw);margin:0;background:var(--surface);border:1px solid var(--hair);
  border-radius:14px;padding:24px 24px 26px;box-shadow:0 24px 60px var(--shc2);
  animation:none;transform:scale(.97);
- transition:background .18s,opacity .18s,filter .18s,transform .16s ease-out}
+ transition:background var(--t1) var(--e1),opacity var(--t1) var(--e1),filter var(--t1) var(--e1),transform var(--t1) var(--e1)}
 .smodal.on .card{transform:none;
- transition:background .18s,opacity .18s,filter .18s,transform .25s cubic-bezier(.23,1,.32,1)}
+ transition:background var(--t1) var(--e1),opacity var(--t1) var(--e1),filter var(--t1) var(--e1),transform var(--t2) var(--e2)}
 .sclose{float:right;background:transparent;border:0;color:var(--m1);font-size:15px;cursor:pointer;
- width:auto;margin:-10px -12px;padding:12px 18px;transition:color .15s,background-color .15s}
+ width:auto;margin:-10px -12px;padding:12px 18px;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 .dbtn{width:auto;margin:-1px -8px -11px;padding:11px 8px;background:transparent;color:var(--ac-pale);
  font-size:14px;font-weight:500}
 .dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
@@ -1622,17 +1626,17 @@ button:disabled{opacity:.5;cursor:default}
 /* an archived tile greys whole, like the row, so chip and value read past with the scan. Only
    the scan dims - .5 on the tile put real content near 1.9:1 (1.4.3). The no-scan placeholder
    is a label. Editing the owner tag lifts the grey so its focus accent stays true. (T141) */
-.gc.arch{filter:grayscale(.55);transition:filter .18s}
+.gc.arch{filter:grayscale(.55);transition:filter var(--t1) var(--e1)}
 .gc.arch:has(.own:focus){filter:none}
-.gc.arch a[href^="/img"]{opacity:.5;transition:opacity .18s}
+.gc.arch a[href^="/img"]{opacity:.5;transition:opacity var(--t1) var(--e1)}
 .card.tlcard{padding:16px;margin:14px 0}
 .tlink{color:var(--ac-pale);text-decoration:none;padding:12px 6px;margin:-12px -6px;
- white-space:nowrap;transition:color .15s,background-color .15s}
+ white-space:nowrap;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* a 22px line, so it takes the sort pills' invisible hit pseudo: 22 + 11 each way = 44.
    Vertical only, so it never reaches the pills across it. */
 .numlink{text-decoration:none;color:inherit;display:inline-block;position:relative}
 .numlink::before{content:'';position:absolute;inset:-11px 0}
-.numlink .num{transition:color .15s}
+.numlink .num{transition:color var(--t1) var(--e1)}
 .setupform{margin-top:18px}
 .setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.6}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
@@ -1681,11 +1685,8 @@ button:disabled{opacity:.5;cursor:default}
 #gearbtn:hover,#themeflip:hover{color:var(--txt)}}
 /* ---- motion: one settle on the rows, nothing decorative ------------------- */
 @media(prefers-reduced-motion:no-preference){
- .card{animation:rise .28s cubic-bezier(.2,.7,.3,1) both}
- .card:nth-child(2){animation-delay:.04s}
- .card:nth-child(3){animation-delay:.08s}
- .card:nth-child(n+4){animation-delay:.12s}
- .grid img.pend,.strip img.pend{opacity:0;transition:opacity .25s}
+ .card{animation:rise var(--t2) var(--e2) both;animation-delay:calc(var(--i,0)*.04s)}
+ .grid img.pend,.strip img.pend{opacity:0;transition:opacity var(--t2) var(--e1)}
  .grid img.pend.ld,.strip img.pend.ld{opacity:1}}
 @keyframes rise{from{opacity:0;transform:translateY(6px)}}
 /* registered so the mobile capsule cue can fade rather than pop; unsupported, the vars still
@@ -1730,7 +1731,7 @@ button:disabled{opacity:.5;cursor:default}
   background-position:left center,right center,0 0;
   background-size:22px 100%,22px 100%,auto;
   background-repeat:no-repeat,no-repeat,repeat;
-  transition:--cuel .18s ease-out,--cuer .18s ease-out}
+  transition:--cuel var(--t1) var(--e1),--cuer var(--t1) var(--e1)}
  .filters.sl{--cuel:var(--shc3)}
  .filters.sr{--cuer:var(--shc3)}
  /* the capsule hugs its pills - no flex:1, or empty glass track past the last pill reads as
@@ -1792,14 +1793,14 @@ button:disabled{opacity:.5;cursor:default}
  .f:active,.archbtn:active,button:active,#gearbtn:active,#themeflip:active{transform:none}
  .toolbar{transition:none}
  .filters{transition:none}
- .preview{transform:none;transition:opacity .12s ease-out,visibility 0s .12s}
- .preview.on{transform:none;transition:opacity .12s ease-out,visibility 0s}
+ .preview{transform:none;transition:opacity var(--t1) var(--e1),visibility 0s var(--t1)}
+ .preview.on{transform:none;transition:opacity var(--t1) var(--e1),visibility 0s}
  .lb,.smodal{backdrop-filter:none;-webkit-backdrop-filter:none;
-  transition:opacity .12s ease-out,visibility 0s .12s}
+  transition:opacity var(--t1) var(--e1),visibility 0s var(--t1)}
  .lb.open{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  transition:opacity .12s ease-out,visibility 0s}
+  transition:opacity var(--t1) var(--e1),visibility 0s}
  .smodal.on{backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
-  transition:opacity .12s ease-out,visibility 0s}
+  transition:opacity var(--t1) var(--e1),visibility 0s}
  .lb img,.lb.open img,.smodal .card,.smodal.on .card{transform:none;transition:none}
  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none}}
 /* High Contrast drops backgrounds, which would erase the stage bar's track and fill. */
@@ -2697,7 +2698,7 @@ def strip_html(s, fronts):
                      f'+{more}</a>')
     return f'<div class="strip">{"".join(tiles)}</div>'
 
-def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None, vmiss=False):
+def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None, vmiss=False, i=0):
     # The stepper already highlights the current stage, so the pill carries the
     # NEXT most useful fact instead: when the cards come back.
     # the pill carries the ETA (latest expected return date), so the footer no
@@ -2732,7 +2733,8 @@ def card_html(s, archived=False, value=None, vcur="CAD", fronts=None, price=None
         act = (f'<span class="footacts"><button class="archbtn" data-sub="{sub}" '
                f'data-on="{0 if archived else 1}" aria-label="{"Unarchive" if archived else "Archive"} submission #{sub}">'
                f'{"Unarchive" if archived else "Archive"}</button></span>')
-    archattr = ' data-arch="1" style="display:none"' if archived else ''
+    # --i staggers the row settle, capped at 12 so a long list never waits
+    archattr = ' data-arch="1" style="display:none"' if archived else f' style="--i:{min(i, 12)}"'
     # data-sub/svc/eta feed the client-side sort pills (SORT_JS)
     sortattr = (f' data-sub="{sub}" data-svc="{html.escape(s["service"])}"'
                 f' data-price="{"" if price is None else price}"'
@@ -3337,8 +3339,8 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
   },{rootMargin:'200px'});
   scans.forEach(function(a){io.observe(a);});
 })();
-/* the stage bar runs out: the bar is knocked back to 0, then released to the
-   width the server rendered, delayed onto the same .04s row-settle stagger so
+/* the stage bar runs out: the bar is scaled back to 0, then released to the
+   width the server rendered (scaleX, no layout), delayed onto the same .04s row-settle stagger so
    it lands with its row instead of after it.
    It runs ONLY for a sub whose stage actually CHANGED since this browser last
    saw it (psa_stage remembers sub -> stage index). Replaying it on every
@@ -3369,18 +3371,21 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
       if(b.dataset.seen)return;
       b.dataset.seen='1';
       var k=b.dataset.k;
-      if(seen[k]!==undefined&&seen[k]!==b.dataset.st&&!reduce&&b.style.width&&!b.dataset.fx){
-        b.dataset.fx='1'; run.push([b,b.style.width]);
+      if(seen[k]!==undefined&&seen[k]!==b.dataset.st&&!reduce&&!b.dataset.fx){
+        b.dataset.fx='1'; run.push([b]);
       }
       seen[k]=b.dataset.st;
     });
     if(run.length){
+      // the knock to 0 must not itself transition: releasing a running one reverses it
+      // at its own progress, which is instant, so nothing ran out (T178)
+      run.forEach(function(p){p[0].style.transition='none';p[0].style.transform='scaleX(0)';});
+      void getComputedStyle(run[0][0]).transform;  // commit the 0 so the release transitions
       run.forEach(function(p){
+        p[0].style.transition='';
         p[0].style.transitionDelay=Math.min(stagger++,3)*40+'ms';
-        p[0].style.width='0%';
+        p[0].style.transform='';
       });
-      void document.body.offsetWidth;    // commit the 0 so the width transition fires
-      run.forEach(function(p){p[0].style.width=p[1];});
     }
     if(store&&list.length){try{localStorage.setItem('psa_stage',JSON.stringify(seen));}catch(e){}}
   }
@@ -3917,7 +3922,8 @@ def dash_page(a, subs, sort=("sub", False)):
         body = "".join(card_html(s, value=tot.get(s["sub_number"]), vcur=vcur,
                                  vmiss=s["sub_number"] in vmiss,
                                  fronts=fronts.get(s["sub_number"]),
-                                 price=service_price(a, s["service"])) for s in active)
+                                 price=service_price(a, s["service"]), i=i)
+                       for i, s in enumerate(active))
     else:
         note = first_sync_note(a)
         body = ('<div class="empty">No submissions yet. Cards appear here once PSA receives them.'

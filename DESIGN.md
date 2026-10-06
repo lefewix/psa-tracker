@@ -369,12 +369,15 @@ carry no fill, no tint, no shadow of their own. The material story is glass floa
 refracts; cards sit raised on the ground; content inside them does not move.
 
 Character is delivered by motion and precision instead of ornament. Rows settle in on a
-short staggered rise (cards only, .28s, 6px, the first four staggered; scan tiles fade in as
+short staggered rise (cards only, `--t2`, 6px, 40ms per row off a served `--i` capped at 12; scan tiles fade in as
 their image lands instead); a stage bar is knocked to zero and released to its served width **only
 when that submission actually advanced since this browser last saw it**, so the one motion the
 product exists for means "your cards moved" rather than "a page loaded"; the toolbar earns its
 shadow only once content slides underneath it; overlays materialize by fading their scrim, ramping
-their blur, and landing from 97%. Nothing else moves. The build ships both a light and a
+their blur, and landing from 97%. Nothing else moves. Every transition names one of three
+durations (`--t1` .15s state, `--t2` .25s overlays and the settle, `--t3` .55s the bar) and one
+of two easings (`--e1` ease-out fades, `--e2` cubic-bezier(.23,1,.32,1) travel), set beside
+`--ac` in THEME_VARS; only the loading loops (`sweep`, `pulse`) keep their own curves. (T178) The build ships both a light and a
 dark palette on every page so the client toggle flips instantly, and the accent is validated
 *and measured* server-side — relative luminance is computed at boot and every derived mix
 clamped until it clears its WCAG target — so a store's brand color can never become a CSS
@@ -785,7 +788,7 @@ content — a panel, a sheet, an image, a row — it is not.
   width, `11px 18px`, 13px.
 - **Hover / Focus:** background deepens to `--ac-fill-hot` over 180ms; focus takes the global
   2px accent outline at 2px offset (inputs take it at zero offset).
-- **Press:** `scale(.97)` over 140ms `ease-out`, set element-level because it carries no
+- **Press:** `scale(.97)` over `--t1` `--e1`, set element-level because it carries no
   color and therefore cannot leak a fill. Orbs use `.94`.
 - **Text buttons:** accent-as-text on transparent — "Archive", "View cards", "Undo",
   disclosure links. They carry an invisible padded hit box (`12px 8px` padding cancelled by an
@@ -1032,7 +1035,8 @@ header columns, and the stage bar spans its group as on the dashboard.
 
 **The run-out is earned, not ambient.** Each bar carries `data-k` (its sub number) and
 `data-st` (its stage index); FX_JS keeps a `psa_stage` map in `localStorage` and knocks a bar
-back to 0% — releasing it on the same 40ms stagger — **only for a sub whose stage differs from
+back to `scaleX(0)` with its transition off (width stays served inline, origin left, so the
+run-out never lays out) — releasing it on the same 40ms stagger — **only for a sub whose stage differs from
 the one this browser last saw**. A stage is recorded as *seen* only once its bar has actually
 been on screen with the tab visible (IntersectionObserver, plus a `visibilitychange` gate):
 committing every bar at render burned the signal twice over — an hourly reload of a hidden tab
