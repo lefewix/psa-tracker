@@ -617,8 +617,16 @@ def main():
                    or b"im.onerror=function(){ if(want===big) close(); };" not in js):
             fails.append("GET /app.js: the lightbox opens on an empty scrim again (T200)")
         if css and (b".lb.wait img{filter:blur(6px)}" not in css
-                    or b".lb img{width:min(92vw,calc(92vh*380/635));aspect-ratio:380/635;object-fit:contain;" not in css):
-            fails.append("GET /app.css: the lightbox lost its blur or slab box (T200)")
+                    or b".lb img{height:min(calc(92vh - 44px),900px,calc(92vw*635/380));width:auto;aspect-ratio:380/635;" not in css):
+            fails.append("GET /app.css: the lightbox lost its blur or slab box (T200, T157)")
+        # the lightbox captions itself, pages within one grid, and makes main inert (T157)
+        if js and (b"function page(d){" not in js
+                   or b"if(e.key==='ArrowRight'){ e.preventDefault(); page(1); }" not in js
+                   or b"if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)) page(dx<0?1:-1);" not in js
+                   or b"a.closest('.grid,.strip')" not in js
+                   or b"'https://www.psacard.com/cert/'+encodeURIComponent(cert)" not in js
+                   or b"main.inert=true" not in js or b"main.inert=false" not in js):
+            fails.append("GET /app.js: the lightbox lost its caption, paging or inert main (T157)")
         # High Contrast keeps the stage bar's track and fill (T185)
         if css and (b"@media(forced-colors:active){" not in css
                     or b".bar i{background:Highlight;forced-color-adjust:none}" not in css):
@@ -1321,6 +1329,9 @@ def main():
             grid = re.findall(rb'<a [^>]*href="/img[^>]*>', body)
             if not grid or any(b'tabindex="-1"' in a for a in grid):
                 fails.append("GET /sub/14900001: grid tiles are not tab stops")
+            # the tile carries the lightbox caption: grade, cert, value (T157)
+            if not any(b'data-gr="PSA 10" data-cert="99000001" data-val="$' in a for a in grid):
+                fails.append("GET /sub/14900001: tiles lack the lightbox caption data (T157)")
             imgs = re.findall(rb'<img [^>]*src="/img[^>]*>', body)
             if not imgs or any(b'loading="lazy"' not in i or b'decoding="async"' not in i
                                for i in imgs):

@@ -975,11 +975,15 @@ Not a retrofit — a visible part of the system, and it has house styling.
   page. Saves, save failures, search result counts, and a sort pill's reversal are announced
   there. Two of the three pills keep their label when re-clicked, so the flip is speech only.
 - **Lightbox:** a real dialog — `role="dialog"`, `aria-modal`, focus moves in on open and back
-  to the opener on close, Escape closes, and Tab is held on the single close orb. The **scan
+  to the opener on close, Escape closes, and Tab is held inside the dialog. The **scan
   itself is inert**: tapping the image does nothing, because the reveal has to survive being
   touched. The scrim and the `.lbx` close orb (44px, fixed dark circle, white glyph, top-right)
   are what close it. While it is open the page is **locked**: `overflow:hidden` on `body`, given
   back on close, plus `overscroll-behavior:contain` on `.lb` so a drag never chains through.
+  `main` is `inert` while it is open. One `.lbcap` line under the scan carries name, grade, a
+  "Cert N" link to PSA's public cert page (none for a prelim), value and a "3 / 8" counter, read
+  from the tile's `data-gr` / `data-cert` / `data-val`; Tab cycles that link and the orb.
+  Arrow keys and a sideways swipe page within the same `.grid` or `.strip`, never across. (T157)
 - **Disclosures:** the person and customer pages' archived toggles are disclosures and carry
   `aria-expanded` / `aria-controls`; the dashboard's is a VIEW SWITCH (it swaps which rows the
   always-visible list shows) and carries `aria-pressed` instead. All three use the solo-pill

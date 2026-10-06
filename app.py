@@ -1450,8 +1450,8 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
 /* ---- lightbox ------------------------------------------------------------ */
 /* overscroll-behavior:contain stops a scrim drag chaining to the dashboard; LIGHTBOX_JS pins
    body overflow. */
-.lb{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;
- align-items:center;justify-content:center;cursor:zoom-out;overscroll-behavior:contain;
+.lb{position:fixed;inset:0;z-index:50;background:var(--scrim);display:flex;flex-direction:column;
+ gap:12px;align-items:center;justify-content:center;cursor:zoom-out;overscroll-behavior:contain;
  opacity:0;visibility:hidden;backdrop-filter:blur(0px);-webkit-backdrop-filter:blur(0px);
  transition:opacity .2s ease-out,backdrop-filter .2s ease-out,
   -webkit-backdrop-filter .2s ease-out,visibility 0s .2s}
@@ -1459,7 +1459,8 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
  transition-delay:0s}
 /* one slab box for the small and the large scan, so the swap never jumps. .wait blurs the
    small scan until the large one lands. (T200) */
-.lb img{width:min(92vw,calc(92vh*380/635));aspect-ratio:380/635;object-fit:contain;
+/* the scan fills the field, short of the caption line and never wider than 92vw (T157) */
+.lb img{height:min(calc(92vh - 44px),900px,calc(92vw*635/380));width:auto;aspect-ratio:380/635;object-fit:contain;
  border-radius:12px;box-shadow:0 24px 70px rgba(0,0,0,.45);
  transform:scale(.97);transition:transform .25s cubic-bezier(.23,1,.32,1),filter .2s ease-out;
  cursor:default}
@@ -1472,6 +1473,12 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
  color:#fff;background:rgba(0,0,0,.35);border:0;cursor:pointer;
  transition:background .15s,transform .14s ease-out}
 @media(hover:hover){.lbx:hover{background:rgba(0,0,0,.55)}}
+/* one caption line under the scan: name, grade, cert, value and the "3 / 8" counter (T157) */
+.lbcap{max-width:92vw;margin:0;padding:0 12px;color:#fff;font-size:14px;line-height:20px;
+ text-align:center;cursor:default;font-variant-numeric:tabular-nums;text-wrap:balance}
+.lbcap>:not(:first-child){white-space:nowrap}
+.lbcap a{color:#fff;text-decoration:underline;text-underline-offset:2px}
+.lbcap .lbn{opacity:.7}
 .grid a{cursor:zoom-in;position:relative;display:block}
 /* the loading sweep is one transform-moved overlay on the anchor, compositor only.
    [href^="/img"] is the lightbox's selector, so .sublink is spared; overflow clips it. */
@@ -2953,40 +2960,68 @@ LIGHTBOX_JS = """<script>
   var links=document.querySelectorAll('.grid a[href^="/img"],.strip a[href^="/img"]');
   if(!links.length) return;
   /* a real dialog: role/aria-modal, focus moves in on open and back out on
-     close, Tab is held on the close orb (the only tabbable inside), and the
+     close, Tab cycles the caption's cert link and the close orb, and the
      SCAN ITSELF IS INERT - the reveal must survive being touched. The scrim
-     and the orb close; Escape and Back close. */
+     and the orb close; Escape and Back close. Arrows and a sideways swipe page
+     through the same grid (T157). */
   var lb=document.createElement('div'); lb.className='lb';
   lb.setAttribute('role','dialog'); lb.setAttribute('aria-modal','true');
   lb.setAttribute('aria-label','Enlarged scan'); lb.tabIndex=-1;
-  lb.innerHTML='<img alt="">'
+  lb.innerHTML='<img alt=""><p class="lbcap" aria-live="polite"></p>'
     +'<button type="button" class="lbx" aria-label="Close">__XICON__</button>';
   document.body.appendChild(lb);
-  var im=lb.querySelector('img'), x=lb.querySelector('.lbx'), clr=null, opener=null, want=null;
+  var im=lb.querySelector('img'), cap=lb.querySelector('.lbcap'), x=lb.querySelector('.lbx'),
+      main=document.querySelector('main'), clr=null, opener=null, want=null;
+  function group(a){ var g=a.closest('.grid,.strip');
+    return g?Array.prototype.slice.call(g.querySelectorAll('a[href^="/img"]')):[a]; }
+  function caption(a){
+    var t=a.querySelector('img'), g=group(a), d=a.dataset, cert=d.cert;
+    cap.textContent='';
+    function bit(s){ if(cap.firstChild) cap.appendChild(document.createTextNode(' · '));
+      if(typeof s==='string'){ var e=document.createElement('span'); e.textContent=s; s=e; }
+      cap.appendChild(s); }
+    bit((t&&t.alt)?t.alt:'Card scan');
+    if(d.gr) bit(d.gr);
+    if(cert){ var l=document.createElement('a'); l.href='https://www.psacard.com/cert/'+encodeURIComponent(cert);
+      l.target='_blank'; l.rel='noopener'; l.textContent='Cert '+cert; bit(l); }
+    if(d.val) bit(d.val);
+    if(g.length>1){ var n=document.createElement('span'); n.className='lbn';
+      n.textContent=(g.indexOf(a)+1)+' / '+g.length; bit(n); }
+  }
+  function show(a){
+    var t=a.querySelector('img'), big=a.getAttribute('href');
+    im.alt=(t&&t.alt)?t.alt:'Card scan';
+    clearTimeout(clr);
+    want=big;   // a late load for another open, or after close, is dropped
+    if(t&&t.complete&&t.naturalWidth){
+      /* open on the small scan at once, blurred, and sharpen when the large one lands;
+         a dead large scan leaves the small one sharp. */
+      im.onerror=null;
+      im.src=t.currentSrc||t.src;
+      lb.classList.add('wait');
+      var p=new Image();
+      p.onload=function(){ if(want===big){ im.src=big; lb.classList.remove('wait'); } };
+      p.onerror=function(){ if(want===big) lb.classList.remove('wait'); };
+      p.src=big;
+    }else{
+      lb.classList.remove('wait');
+      im.onerror=function(){ if(want===big) close(); };  // never a broken icon on the scrim
+      im.src=big;
+    }
+    caption(a);
+    opener=a;
+  }
+  function page(d){
+    if(!opener) return;
+    var g=group(opener), i=g.indexOf(opener)+d;
+    if(i>=0&&i<g.length) show(g[i]);
+  }
   links.forEach(function(a){
     a.addEventListener('click', function(e){
       e.preventDefault();
-      var t=a.querySelector('img'), big=a.getAttribute('href');
-      im.alt=(t&&t.alt)?t.alt:'Card scan';
-      clearTimeout(clr);
-      want=big;   // a late load for another open, or after close, is dropped
-      if(t&&t.complete&&t.naturalWidth){
-        /* open on the small scan at once, blurred, and sharpen when the large one lands;
-           a dead large scan leaves the small one sharp. */
-        im.onerror=null;
-        im.src=t.currentSrc||t.src;
-        lb.classList.add('wait');
-        var p=new Image();
-        p.onload=function(){ if(want===big){ im.src=big; lb.classList.remove('wait'); } };
-        p.onerror=function(){ if(want===big) lb.classList.remove('wait'); };
-        p.src=big;
-      }else{
-        lb.classList.remove('wait');
-        im.onerror=function(){ if(want===big) close(); };  // never a broken icon on the scrim
-        im.src=big;
-      }
-      opener=a;
+      show(a);
       lb.classList.add('open');
+      if(main) main.inert=true;
       document.body.style.overflow='hidden';  // the page behind must not scroll
       history.pushState({ov:1},'');  // hardware back closes the scan, not the page
       lb.focus();
@@ -2996,6 +3031,7 @@ LIGHTBOX_JS = """<script>
     if(!lb.classList.contains('open'))return;
     want=null;
     lb.classList.remove('open');
+    if(main) main.inert=false;
     document.body.style.overflow='';
     if(history.state&&history.state.ov)history.back();
     clearTimeout(clr);
@@ -3003,10 +3039,23 @@ LIGHTBOX_JS = """<script>
     if(opener&&document.contains(opener))opener.focus();
     opener=null;
   }
-  lb.addEventListener('click', function(e){ if(e.target!==im) close(); });
+  lb.addEventListener('click', function(e){ if(e.target===lb) close(); });
   x.addEventListener('click', function(e){ e.stopPropagation(); close(); });
   lb.addEventListener('keydown', function(e){
-    if(e.key==='Tab'){ e.preventDefault(); x.focus(); }  // one tabbable: hold it
+    if(e.key==='ArrowRight'){ e.preventDefault(); page(1); }
+    else if(e.key==='ArrowLeft'){ e.preventDefault(); page(-1); }
+    else if(e.key==='Tab'){ e.preventDefault();  // hold Tab on the cert link and the orb
+      var f=[].slice.call(cap.querySelectorAll('a')).concat(x),
+          i=f.indexOf(document.activeElement);
+      f[(i<0?(e.shiftKey?f.length-1:0):(i+(e.shiftKey?f.length-1:1))%f.length)].focus(); }
+  });
+  var sx=null, sy=0;
+  lb.addEventListener('touchstart', function(e){
+    sx=e.touches.length===1?e.touches[0].clientX:null; sy=sx===null?0:e.touches[0].clientY; },{passive:true});
+  lb.addEventListener('touchend', function(e){
+    if(sx===null) return;
+    var dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null;
+    if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)) page(dx<0?1:-1);
   });
   document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
   addEventListener('popstate', close);
@@ -3651,7 +3700,12 @@ def card_tile(c, owners, show_sub=False, archived=False, service="", customer=Fa
     if c.get("front_thumb"):
         src = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "small"))
         big = "/img?u=" + urllib.parse.quote(img_url(c["front_thumb"], "large"))
-        img = f'<a href="{big}"><img loading="lazy" decoding="async" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
+        # the lightbox caption reads these, so it stands on its own without the tile
+        cap = (f' data-gr="{html.escape(gtx)}"'
+               + ("" if is_prelim else f' data-cert="{html.escape(c["cert_no"] or "")}"')
+               + (f' data-val="${value:,.0f} {html.escape(vcur)}"'
+                  if value is not None and not customer else ""))
+        img = f'<a href="{big}"{cap}><img loading="lazy" decoding="async" src="{src}" alt="{name or "Card scan"}"></a>'  # opens in the lightbox
     else:
         img = '<div class="ph">No image yet</div>'
     if customer:
