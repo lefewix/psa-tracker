@@ -633,8 +633,9 @@ def main():
                    or b"if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)) page(dx<0?1:-1);" not in js
                    or b"a.closest('.grid,.strip')" not in js
                    or b"'https://www.psacard.com/cert/'+encodeURIComponent(cert)" not in js
-                   or b"main.inert=true" not in js or b"main.inert=false" not in js):
-            fails.append("GET /app.js: the lightbox lost its caption, paging or inert main (T157)")
+                   or b"main.inert=true" not in js or b"main.inert=false" not in js
+                   or b"if(had) (cap.querySelector('a')||x).focus();" not in js):
+            fails.append("GET /app.js: the lightbox lost its caption, paging, focus or inert main (T157)")
         # High Contrast keeps the stage bar's track and fill (T185)
         if css and (b"@media(forced-colors:active){" not in css
                     or b".bar i{background:Highlight;forced-color-adjust:none}" not in css):

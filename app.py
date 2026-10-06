@@ -2988,7 +2988,8 @@ LIGHTBOX_JS = """<script>
   function group(a){ var g=a.closest('.grid,.strip');
     return g?Array.prototype.slice.call(g.querySelectorAll('a[href^="/img"]')):[a]; }
   function caption(a){
-    var t=a.querySelector('img'), g=group(a), d=a.dataset, cert=d.cert;
+    var t=a.querySelector('img'), g=group(a), d=a.dataset, cert=d.cert,
+        had=cap.contains(document.activeElement);
     cap.textContent='';
     function bit(s){ if(cap.firstChild) cap.appendChild(document.createTextNode(' · '));
       if(typeof s==='string'){ var e=document.createElement('span'); e.textContent=s; s=e; }
@@ -3000,6 +3001,7 @@ LIGHTBOX_JS = """<script>
     if(d.val) bit(d.val);
     if(g.length>1){ var n=document.createElement('span'); n.className='lbn';
       n.textContent=(g.indexOf(a)+1)+' / '+g.length; bit(n); }
+    if(had) (cap.querySelector('a')||x).focus();  // paging off the cert link keeps focus in
   }
   function show(a){
     var t=a.querySelector('img'), big=a.getAttribute('href');
