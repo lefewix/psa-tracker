@@ -806,9 +806,8 @@ content — a panel, a sheet, an image, a row — it is not.
   glass itself rather than riding in a wrapper, because a single pill inside a capsule prints
   a ring around nothing. It reads one rung quieter than the sort pills (12px/500 vs 13px) and
   lands at exactly 38px, the sort capsule's outer height at both breakpoints. It is the
-  archived disclosure on all three list pages, and the dashboard's "N need owners" worklist
-  link ("1 needs an owner" when a single card is untagged), which navigates away and so never
-  sits inside the sort capsule.
+  archived disclosure on all three list pages. The dashboard's untagged count lives in the
+  attention line (T150), not a pill.
   Under 640px the Archived label shortens to "Arch." and its side pad drops 14 -> 12px; the
   count always stays.
 - **Filter row (`.filterrow`):** sort capsule at one end, the solo pills paired in `.rowend` at

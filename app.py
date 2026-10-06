@@ -1164,8 +1164,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:20px 0 12px}
 /* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule cannot
-   park it off-screen, own glass (.f.fsolo). "N need owners" is a second solo pill; .rowend
-   wraps the pair as one flex item. */
+   park it off-screen, own glass (.f.fsolo), in .rowend. */
 .filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
 .rowend{display:flex;align-items:center;gap:10px}
 .filterrow .filters{margin:0}
@@ -3814,11 +3813,6 @@ def dash_page(a, subs):
     # layout weight.
     filters = (f'<div class="filters" role="group" aria-label="Sort submissions">'
                f'{"".join(pills)}</div>') if pills else ""
-    # the worklist link navigates away, so it is a row control beside Archived
-    # and not a fourth seat in a capsule labelled "Sort submissions" whose
-    # arithmetic assumes exactly three pills (see .filterrow).
-    needlink = (f'<a class="f fsolo" href="/cards?owner=unassigned">'
-                f'{untag} need{"s an owner" if untag == 1 else " owners"}</a>') if untag else ""
     # Archived is a BARE pill beside the sort segment, in the row's plain
     # .rowend box and in no capsule - .fsolo makes the button carry the glass
     # (see .filterrow). The id and classes are unchanged, so the toggle script
@@ -3848,8 +3842,7 @@ def dash_page(a, subs):
               if untag else "")]
     attn = " · ".join(x for x in parts if x)
     attn = f'<div class="hint attn" id="attn">{attn}</div>' if attn else ""
-    rowend = (f'<div class="rowend">{needlink}{archpill}</div>'
-              if (needlink or archpill) else "")
+    rowend = f'<div class="rowend">{archpill}</div>' if archpill else ""
     filterrow = (f'<div class="filterrow">{filters}{rowend}</div>'
                  if (filters or rowend) else "")
     # role=list only when the rows are really there: with no subs the one child

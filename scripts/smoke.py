@@ -940,16 +940,13 @@ def main():
                                for i in imgs):
                 fails.append("GET /: a strip scan lacks lazy loading or async decoding")
 
-            # --- the need-owners link is a row control, not a fourth sort pill:
-            # it sits outside the sort capsule so it cannot spill it (T15)
+            # --- the untagged count lives in the attention line, not a pill (T150)
             if body:
                 cap = re.search(rb'<div class="filters".*?</div>', body, re.S)
                 if not cap:
                     fails.append("GET /: no sort capsule")
-                elif b"need owners" in cap.group(0):
-                    fails.append("GET /: the need-owners link is inside the sort capsule")
-                if b'class="f fsolo" href="/cards?owner=unassigned"' not in body:
-                    fails.append("GET /: the need-owners link is missing from the filter row")
+                if b'class="f fsolo" href="/cards?owner=unassigned"' in body:
+                    fails.append("GET /: the need-owners pill is back beside the attention line")
 
                 # --- the per sub total is summed in sqlite over the cards this
                 # account holds: estimate wins, last_sale is the fallback, and a
@@ -1115,14 +1112,14 @@ def main():
 
             # --- counts pluralize. One card reads "1 card" on the dashboard
             # row, the sub header, the person header and the group heading, and
-            # the worklist link says needs an owner for a single card (T64)
+            # the attention line says 1 untagged for a single card (T64, T150)
             def arch(num, on):
                 return call(url, "/archive", cookie, {"sub": num, "on": on})[0]
 
             arch("14900001", "1")
             arch("14900003", "1")
             check("GET / (one card untagged)", "/", (200,), cookie,
-                  must_have="1 needs an owner")
+                  must_have='href="/cards?owner=unassigned">1 untagged</a>')
             # the Archived count survives every width: the phone pays in
             # characters ("Arch."), never by hiding the number (T146)
             check("GET / (Archived count)", "/", (200,), cookie,
