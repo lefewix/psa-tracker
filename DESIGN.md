@@ -232,7 +232,7 @@ components:
     rounded: "{rounded.capsule}"
     padding: "7px 14px"
   chip-archived-solo:
-    backgroundColor: "{colors.glass}"
+    backgroundColor: "{colors.segment-track}"
     textColor: "{colors.muted}"
     typography: "{typography.caption}"
     rounded: "{rounded.capsule}"
@@ -352,8 +352,8 @@ its restraint plus its Liquid Glass chrome and card rhythm. The direction is an 
 standing exit (2026-07-31): the assigned grounded direction was stood aside by the owner's
 call in favor of playing the category canon straight.
 
-Depth exists in one place only: the chrome. The sticky toolbar and the segmented filter
-capsule are translucent, blurred, saturated, and **lensed** —
+Depth exists in one place only: the chrome. The sticky toolbar and the settings segmented
+bar are translucent, blurred, saturated, and **lensed** —
 rimmed with a specular catch along the top edge and a falloff along the bottom, so they read
 as curved glass rather than as frosted rectangles. Under them, and only visible through them,
 sits an ambient ground: two very wide accent-derived radials pooled in the top corners that
@@ -506,7 +506,7 @@ reads "Grades ready" instead of "Completing" on the dashboard row and the detail
 pill, no badge, no colour, no sort control.
 Red is never a heading color, a hover state, an emphasis device, or an event announcement.
 The PSA outage banner (`.hint.warn`, T128) is that alert: a 9% `--holdtx` tint and a 45% border
-on the hint card, so it never reads as the 👋 tip. It says the cause in one plain sentence and links settings.
+on the hint card. It says the cause in one plain sentence and links settings.
 
 **The Ambient-Ground Rule.** The room tint is composed **only** from `--ac` and `--ac2` via
 `color-mix`, so a white-label swap re-tints it for free. Never hardcode an ambient hue, never
@@ -631,10 +631,13 @@ width an overflowing strip also carries a 28px `mask-image` fade on whichever ed
 tiles past it (`.sl` / `.sr`, set by the same FX_JS the filter capsule uses); a strip that
 fits is never faded. The strip snaps (`x proximity`), settling a tile on its left edge.
 
-The toolbar is sticky at `top: 10px` (`z-index: 20`), preceded by a 1px sentinel that drives
-its scroll-edge elevation; the filter capsule floats below it. A fixed 26px ground band
+The dashboard masthead is sticky with a negative `top` (FX_JS measures the brand row), so at
+every width the brand row scrolls away and only the search field stays pinned (T209). Its
+words carry the old 👋 tip: the placeholder is "Type your name to find your cards", and no
+hint card sits above the list. Other toolbars stick at `top: 10px` (`z-index: 20`); each is
+preceded by a 1px sentinel that drives its scroll-edge elevation. A fixed 26px ground band
 (`html:has(.toolbar.raised)::before`, `z-index: 19`, the ambient layers sized to the viewport) masks
-the gap and the corners above it once the bar is stuck, so no slice of a row shows over the glass; 10px under a
+the gap and the corners above it once the bar is stuck, so no slice of a row shows over the glass; 10px under the
 condensed masthead, whose glass already covers the top. The compact search bar on
 /cards and /search bleeds 9px each side (padding plus border) so its field lines up with the
 h1 and the groups; the glass hangs into the gutter. Scan grids are
@@ -681,8 +684,8 @@ enter the dashboard row.
 
 ## Elevation & Depth
 
-Hybrid, split strictly by role. **Chrome is lensed glass; content is flat.** The toolbar, the
-filter capsule and the settings segmented bar share one material:
+Hybrid, split strictly by role. **Chrome is lensed glass; content is flat.** The toolbar and
+the settings segmented bar share one material:
 translucent ground, `blur(16px) saturate(170%)`, a hairline border, an inset specular top rim,
 an inset bottom falloff rim, and one soft cast shadow. Beneath them the ambient ground
 (`body::before`, `position: fixed`, `z-index: -1`) lays two accent-derived radials in the top
@@ -713,8 +716,8 @@ shadow rather than glass. They materialize together — the scrim fades, its bac
   fixed-value shadow, because it always sits on a dimmed backdrop.
 
 ### Named Rules
-**The Glass-Is-Chrome Rule.** `backdrop-filter` appears on the toolbar, the filter/segment
-capsules, and overlay scrims. Never on a content row, a scan tile, or
+**The Glass-Is-Chrome Rule.** `backdrop-filter` appears on the toolbar, the settings segment
+bar, and overlay scrims. The sort segment and the solo pills are a plain quiet fill (T209). Never on a content row, a scan tile, or
 anything holding data.
 
 **The Dual-Rim Rule.** Every glass surface carries both rims — `--rim` on the top inset edge,
@@ -820,10 +823,10 @@ content — a panel, a sheet, an image, a row — it is not.
   settings saves demoted so one screen keeps one filled capsule (the verification code submit).
 
 ### Chips
-- **Style:** a floating glass capsule (999px) holds borderless segments; the track is a faint
-  tinted layer painted as a `background-image` inside the glass.
+- **Style:** a plain capsule (999px) holds borderless segments: the faint `--segtrack` fill,
+  a transparent 1px border, no glass, no rims (T209).
 - **Solo pill (`.fsolo`):** the standalone Archived toggle is its own capsule — it carries the
-  glass itself rather than riding in a wrapper, because a single pill inside a capsule prints
+  same quiet `--segtrack` fill itself rather than riding in a wrapper, because a single pill inside a capsule prints
   a ring around nothing. It reads one rung quieter than the sort pills (12px/500 vs 13px) and
   lands at exactly 38px, the sort capsule's outer height at both breakpoints. It is the
   archived disclosure on all three list pages. The dashboard's untagged count lives in the

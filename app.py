@@ -1125,7 +1125,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
    (--rimb). Both sub-threshold; the shadow carries elevation. */
 /* two classes on purpose: .f below zeroes background and border, and 0,2,0 lets the solo pill
    keep its glass. */
-.toolbar,.filters,.sbar,.f.fsolo{
+.toolbar,.sbar{
  background:var(--glass);
  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
  border:1px solid var(--hair);
@@ -1150,7 +1150,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0;height:26px;z-index:19;
  pointer-events:none;background-color:var(--bg);background-image:var(--amb);
  background-size:100% 100vh;background-repeat:no-repeat}
-@media(max-width:640px),(max-height:500px){html:has(header.toolbar.raised)::before{height:10px}}
+html:has(header.toolbar.raised)::before{height:10px}
 .tbsentinel{height:1px;pointer-events:none}
 .tbtop{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .tbend{display:flex;gap:12px;align-items:center}
@@ -1185,6 +1185,11 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .filters,.sbar{display:inline-flex;gap:2px;flex-wrap:wrap;padding:3px;border-radius:999px;
  background-image:linear-gradient(var(--segtrack),var(--segtrack))}
 .filters{margin:20px 0 12px}
+/* the sort segment and the solo pills are a plain quiet fill, no glass, no rim (T209). The
+   clear 1px border keeps the 38px height math; isolate keeps the pills' hit pseudo on top. */
+.filters,.f.fsolo{border:1px solid transparent}
+.filters{isolation:isolate}
+.f.fsolo{background-color:var(--segtrack)}
 /* Archived is a mode switch, not a sort: outside the segment so a scrolling capsule cannot
    park it off-screen, own glass (.f.fsolo), in .rowend. */
 .filterrow{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin:20px 0 12px}
@@ -1346,9 +1351,6 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .hint.warn{color:var(--txt);background:color-mix(in srgb,var(--holdtx) 9%,var(--surface));
  border-color:color-mix(in srgb,var(--holdtx) 45%,transparent);box-shadow:none}
 .hint.attn{display:block}
-.hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
- color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
- transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 /* ---- scans: each tile is a well, image 6px, no shadow --------------------- */
 /* a grid of bare images on the card's own surface muddled together (the owner, 2026-09-16:
    "the page is a bit too flat, and cards get visually muddled"). Each tile gets an INSET
@@ -1670,13 +1672,13 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 .f.farch.on:hover{color:#fff;background:var(--ac-fill-hot)}
 .pvrow:hover{background:var(--hovrow)}
 .own[readonly]:hover{border-bottom-color:var(--hairh)}
-.lgout:hover,.hintx:hover,.sclose:hover{color:var(--txt)}
+.lgout:hover,.sclose:hover{color:var(--txt)}
 .view:hover,.archbtn:hover,.sublink:not(.sublink-static):hover,.undo:hover,.tlink:hover,.dbtn:hover,.sbtn.squiet:hover{color:var(--ac-hot)}
 /* text actions keep the invisible hit box but hover never paints it - the slab hung over the
    stage bar. Hover is the colour deepen; View is the one visible capsule. */
 .stage .view:hover{color:var(--ac-hot);background:color-mix(in srgb,var(--txt) 6%,var(--surface3))}
 /* the glyph actions ARE square-ish targets, so theirs is a circle */
-.hintx:hover,.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
+.sclose:hover,.lgout:hover{background:var(--surface3);border-radius:999px}
 .numlink:hover .num{color:var(--ac-pale)}
 .fillbtn:hover{background:var(--ac-fill-hot)}
 .sbtn.sdel:hover{background:transparent;color:var(--err)}
@@ -1820,7 +1822,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 /* background-COLOR, never the shorthand, which would wipe the segtrack layer and the scroll
    cue. */
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
- .toolbar,.filters,.sbar,.f.fsolo{background-color:var(--glasssolid)}
+ .toolbar,.sbar{background-color:var(--glasssolid)}
  /* backdrop-filter made the capsule a stacking context; without it the pills' z-index:-1
     pseudo falls behind the opaque background. */
  .filters,.sbar{isolation:isolate}}
@@ -1828,7 +1830,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
 @supports not (background:color-mix(in srgb,red 5%,transparent)){
  body::before{background:none}}
 @media(prefers-reduced-transparency:reduce){
- .toolbar,.filters,.sbar,.f.fsolo{backdrop-filter:none;-webkit-backdrop-filter:none;
+ .toolbar,.sbar{backdrop-filter:none;-webkit-backdrop-filter:none;
   background-color:var(--glasssolid)}
  .filters,.sbar{isolation:isolate}
  .lb,.lb.open,.smodal,.smodal.on{backdrop-filter:none;-webkit-backdrop-filter:none;
@@ -3484,7 +3486,7 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
     tb.classList.toggle('raised',!e[0].isIntersecting);
   },{rootMargin:'6px 0px 0px 0px',threshold:0}).observe(s);
 })();
-/* the masthead CONDENSES on a phone: the sticky offset goes negative by exactly
+/* the masthead CONDENSES at every width (T209): the sticky offset goes negative by exactly
    the height of the brand row, so .tbtop scrolls away with the page and the
    search capsule alone stays pinned - the same compact bar every other page
    carries. Done with `top` and not by hiding .tbtop, because changing a sticky
@@ -3492,22 +3494,17 @@ function _raf(fn){var p=0;return function(){if(p)return;p=1;requestAnimationFram
    under your thumb. Measured rather than hardcoded: the brand row's height
    depends on the label wrapping. 10 = the bar's resting sticky offset. Only the
    dashboard has a <header class="toolbar">; the .tbq bars are divs and already
-   compact, so they're never touched. Short viewports condense too: a landscape
-   phone is WIDER than 640px and only ~390px tall, so the width test alone left
-   the masthead holding a third of the screen. */
+   compact, so they're never touched. */
 (function(){
   var tb=document.querySelector('header.toolbar'),tt=tb&&tb.querySelector('.tbtop');
-  if(!tb||!tt||!window.matchMedia)return;
-  var mq=matchMedia('(max-width:640px),(max-height:500px)');
+  if(!tb||!tt)return;
   function settop(){
-    if(!mq.matches){tb.style.top='';return;}
     var cs=getComputedStyle(tb),g=parseFloat(cs.rowGap);
     if(!(g>=0))g=parseFloat(cs.gap)||10;   // 'normal' parses to NaN in older engines
     tb.style.top=(10-(tt.offsetHeight+g+parseFloat(cs.paddingTop)))+'px';
   }
   settop();
   addEventListener('resize',_raf(settop));
-  if(mq.addEventListener)mq.addEventListener('change',settop);
 })();
 /* sheets are dialogs: while one is open, Tab must not walk out the back of it,
    closing must hand focus back to whatever opened it, the page behind is
@@ -3957,9 +3954,8 @@ def dash_page(a, subs, sort=("sub", False)):
                f'<div class="sub">{html.escape(a["label"])}</div></div></div>'
                f'<div class="tbend">{sync_dot(stale, bool(subs))}{gear_html()}{THEME_BTN}'
                f'<a class="lgout" href="/logout" title="Sign out" aria-label="Sign out">{ICON_OUT}</a>'
-               f'</div></div>{search_box()}</header>')
-    hint = (f'<div class="hint" id="hint">👋 New here? Type your name in the search to find just your cards.'
-            f'<button type="button" class="hintx" id="hintx" aria-label="Dismiss hint">{ICON_X}</button></div>')
+               f'</div></div>{search_box(ph="Type your name to find your cards")}</header>')
+    hint = ""
     # unlinked account: keep serving everything, say why it stopped moving
     if a.get("unlinked"):
         hint = ('<div class="hint" role="status">This account is unlinked, showing its last '
@@ -4029,12 +4025,6 @@ def dash_page(a, subs, sort=("sub", False)):
 <div class="vh" id="live" aria-live="polite"></div>
 </main>
 <script>
-(function(){{var h=document.getElementById('hint'),seen=null;
- try{{seen=localStorage.getItem('psa_hint_seen');}}catch(e){{}}
- if(h&&seen){{h.style.display='none';}}
- var x=document.getElementById('hintx');
- if(x)x.addEventListener('click',function(){{h.style.display='none';
-  try{{localStorage.setItem('psa_hint_seen','1');}}catch(e){{}}}});}})();
 var af=document.getElementById('archtoggle');
 function say(m){{var l=document.getElementById('live');
  if(l){{l.textContent='';clearTimeout(l.st);l.st=setTimeout(function(){{l.textContent=m;}},30);}}}}

@@ -1960,10 +1960,19 @@ def main():
             if css and b"cursor:zoom-out;overscroll-behavior:contain" not in css:
                 fails.append("GET /app.css: a drag on the lightbox scrim still chains")
 
-            # --- a landscape phone is wider than 640px and half as tall, so the
-            # masthead condenses on height as well as width (T58)
-            if js and b"matchMedia('(max-width:640px),(max-height:500px)')" not in js:
-                fails.append("GET /app.js: the masthead does not condense on a short viewport")
+            # --- the masthead scrolls away at every width, only the search field
+            # sticks; the sort segment and solo pills carry no glass; the hint card
+            # is gone, its words are the search placeholder (T209, was T58)
+            if js and (b"tb.style.top=(10-(tt.offsetHeight" not in js
+                       or b"if(!mq.matches){tb.style.top=''" in js):
+                fails.append("GET /app.js: the masthead does not scroll away at every width (T209)")
+            glass = re.findall(rb"([^{}]*)\{[^}]*backdrop-filter:blur\(16px\)", css or b"")
+            if any(b".filters" in g or b"fsolo" in g for g in glass):
+                fails.append("GET /app.css: the sort segment or a solo pill is still glass (T209)")
+            _, db, _ = call(url, "/", cookie)
+            if (b'id="hint"' in db or b"psa_hint_seen" in db
+                    or b'placeholder="Type your name to find your cards"' not in db):
+                fails.append("GET /: the hint card is back or the placeholder lost its words (T209)")
 
             # --- the sub number is a 22px line, so it needs the pills' hit
             # pseudo to reach the 44px floor, vertically only (T59)
