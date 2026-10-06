@@ -3742,7 +3742,7 @@ def split_name(name):
     return (" ".join(toks[i + 1:]), f"{' '.join(toks[:i])} · {toks[i]}")
 
 def card_tile(c, owners, show_sub=False, archived=False, customer=False, statline="",
-              value=None, vcur="CAD", tot="", page_owner=""):
+              value=None, vcur="CAD", tot=""):
     cid = html.escape(str(c["cert_id"]))
     is_prelim = str(c["cert_id"]).startswith("spec:")
     subject, setline = split_name(smart_title(c["name"] or ""))
@@ -3779,8 +3779,7 @@ def card_tile(c, owners, show_sub=False, archived=False, customer=False, statlin
     # reader users were being told two different things about the same control
     ownlbl = (f"Owner: {owner}. Click or press Enter to open their cards, "
               "click again or type to rename.") if owner else ""
-    # T207: no owner line on that owner's own page, every tile there is theirs
-    own_input = ("" if customer or (owner and owner.lower() == page_owner.lower()) else
+    own_input = ("" if customer else
                  f'<div class="ownrow"><input class="own" data-cert="{cid}" value="{owner}" readonly'
                  + (f' title="{ownlbl}" aria-label="{ownlbl}"'
                     if owner else ' aria-label="Add owner name"')
@@ -4270,8 +4269,7 @@ def people_page(a, owner, sort=("sub", False)):
             return (f' data-v="{"" if v is None else v}" data-g="{1 if c.get("grade") else ""}"'
                     f' data-dv="{"" if dv is None else dv}" data-p="{"" if p is None else p}"')
         tiles_h = "".join(card_tile(c, owners, archived=(n in arch),
-                                    value=vals.get(c["cert_no"] or ""), vcur=vcur, tot=tot(c),
-                                    page_owner="" if unassigned else owner.strip())
+                                    value=vals.get(c["cert_no"] or ""), vcur=vcur, tot=tot(c))
                           for c in cs)
         note = status_note(s) if s else ""
         note = f'<div class="meta">{html.escape(note)}</div>' if note else ""
@@ -4405,7 +4403,7 @@ def people_csv(a, owner):
     for c in sorted(cards, key=lambda c: c["sub_number"] in arch):
         s = subs_by.get(c["sub_number"])
         v = vals.get(c["cert_no"] or "")
-        # a card PSA has not graded has no cert number yet, and the tile says so
+        # a card PSA has not graded has no cert number yet: the cell stays empty
         cert = "" if str(c["cert_id"]).startswith("spec:") else (c["cert_no"] or c["cert_id"])
         w.writerow([c["sub_number"], cert, smart_title(c["name"] or ""),
                     c["grade"] or "", s["service"] if s else "", s["status"] if s else "",

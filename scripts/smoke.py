@@ -1294,11 +1294,9 @@ def main():
                 fails.append("POST /owner: tagging one card was refused")
             sbody = check("GET /cards?owner=Solo", "/cards?owner=Solo", (200,), cookie,
                           must_have="1 card with")
-            # no owner line on that owner's own page; the worklist keeps its field (T207)
-            if b'class="own"' in sbody or b'data-cert="99000002" value="Solo"' in sbody:
-                fails.append("GET /cards?owner=Solo: tiles still carry the page owner's name (T207)")
-            if b'class="own"' not in (call(url, "/cards?owner=unassigned", cookie)[1] or b""):
-                fails.append("GET /cards?owner=unassigned: the worklist lost its owner fields (T207)")
+            # the person page keeps its owner field: retagging off it is T168/T217 (T207 ruling)
+            if b'class="own" data-cert="99000002" value="Solo"' not in sbody:
+                fails.append("GET /cards?owner=Solo: tiles lost the owner field, no retag here (T207)")
             # one money format in the person page value block: every figure
             # carries the currency, the fee total prints no cents (T71)
             for want in (b"Est. grading cost<b>$109 CAD</b>", b"<b>$120 CAD</b>",
@@ -1474,7 +1472,7 @@ def main():
                     (call(url, "/cards?owner=Solo", cookie)[1] or b""):
                 fails.append("GET /cards?owner=Solo: Home is back beside Back (T206)")
             # every owner field offers the names in use from one datalist (T135)
-            for p in ("/sub/14900003", "/search?q=Charizard"):
+            for p in ("/sub/14900003", "/cards?owner=Solo", "/search?q=Charizard"):
                 b = call(url, p, cookie)[1] or b""
                 if (b.count(b"<datalist") != 1 or b'<option value="Duo">' not in b
                         or b'<option value="Solo">' not in b

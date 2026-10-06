@@ -126,12 +126,8 @@ typography:
     fontWeight: 500
     lineHeight: 1
     letterSpacing: "normal"
-  cert:
+  mono:
     fontFamily: "ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace"
-    fontSize: "11px"
-    fontWeight: 400
-    lineHeight: 1.4
-    letterSpacing: "normal"
 rounded:
   none: "0"
   bar: "2px"
@@ -510,7 +506,7 @@ name where it stops, it is too strong.
 
 **Display Font:** system UI stack (`-apple-system`, `BlinkMacSystemFont`, `Segoe UI`, `Roboto`, `Helvetica`, `Arial`)
 **Body Font:** the same stack — there is no second family
-**Label/Mono Font:** `ui-monospace` / `SF Mono` / `Menlo` / `Consolas`, for cert numbers only
+**Label/Mono Font:** `ui-monospace` / `SF Mono` / `Menlo` / `Consolas`, for the one shell command in the first-sync note only (no tile shows a cert since T207)
 
 **Character:** One family, three rungs, tracking scaled to size. The type does no expressive
 work at all; hierarchy is weight + size + leading as a *set*, never size alone. The masthead
@@ -550,8 +546,6 @@ on Segoe and Roboto.
   tier is now a single 12px rung.
 - **Tag** (500, 11px, 1.0): the search-preview category chip. `line-height: 1` keeps its 3px
   of vertical padding from growing the row.
-- **Cert** (monospace, 11px, 1.4): certification numbers on scan tiles. A prelim card falls back
-  to the inherited face at 12px because there is no number to align.
 
 ### Named Rules
 **The Three-Rung Rule.** There are exactly three hierarchy rungs: 26/700 masthead, 17/650
@@ -579,7 +573,7 @@ wanted, the fix is a rem migration of the whole ramp, not a per-rule patch.
 **The Accepted Small Text Rule.** These sit under 14px by decision and are not audit findings:
 the 13px sort pills, filter chips and settings buttons, the 12px `.estnote` header notes
 ("PSA estimates · as of"), the "CAD · estimated" sub-figure line, captions, Prelim and
-person-page labels, the 11px cert monospace, and the 12.5px phone sync line.
+person-page labels, and the 12.5px phone sync line.
 
 **The Incomplete Total Rule.** Every money total (dashboard row value, sub page value, person
 page cost, coverage and value) gets a trailing "+" iff at least one card that should count has
@@ -1121,8 +1115,8 @@ by intent: 8px above the chip, 4px above the cert and the value. the owner, 2026
 first pass: "better, but within each card pill it's still a bit much."
 **Five things a tile (T207):** scan, grade chip, name, value, owner. The cert number lives in
 the lightbox caption (name, grade, cert, value); "Not graded yet" is said once in the sub
-header (detail meta, person group meta), never per tile; the owner line is gone on that
-owner's own person page; a search tile is the detail tile plus one "Open sub #N" link, no
+header (detail meta, person group meta), never per tile; the owner line stays on every tile,
+the person page included, because retagging off that page is T168/T217; a search tile is the detail tile plus one "Open sub #N" link, no
 service line. Tiles
 carry **no `content-visibility`** — its paint containment clipped everything that reaches past
 the tile box (focus rings, the hover pill's negative-margin bleed), so it was removed; the
@@ -1215,7 +1209,7 @@ standing in for icons, no raster icons.
 - **Do** make a single-line control a 999px capsule and leave panels, sheets, and rows square-ish.
 - **Do** scale tracking to size (−0.021em at 26px down to 0 at 13px) and reset it when a caption
   sits inside a tracked value.
-- **Do** set monospace on cert numbers and keep tabular numerals everywhere else.
+- **Do** keep monospace for shell commands only and keep tabular numerals everywhere else.
 - **Do** name only the current stage under 640px.
 - **Do** write in sentence case, in the system face.
 - **Do** press-scale interactive elements (`.97`) — it is the system's tactility.
