@@ -584,6 +584,12 @@ def main():
                     or (css and (b".own.saving{border-bottom-color:var(--m1)}" not in css
                                  or b".ownrow:has(.undo) .ownedit{display:none}" not in css))):
                 fails.append("GET /app.js: an owner save can move the grid (T201)")
+            # on the unassigned worklist Enter hands focus straight to the next
+            # untagged field, never via body, so nine tags are one pass (T190)
+            if (b"if(_pg===''&&i.value.trim()&&!coarse){" not in js
+                    or b"if(nx){ nx.readOnly=false; nx.focus(); } else { i.blur(); refocus(); }"
+                    not in js):
+                fails.append("GET /app.js: Enter on the worklist does not open the next untagged tag (T190)")
         if css:
             if (b".morechip.dead{background:var(--sk)}" not in css
                     or b'.strip a[href^="/img"].ldg::after' not in css
@@ -1626,7 +1632,7 @@ def main():
                 fails.append("GET /app.js: a retagged tile leaving drops focus to the body (T168)")
             # Enter and Escape hand focus back to the tag, and the chip sits in
             # the row in the pencil's place so a save never moves the grid (T136)
-            if js and (b"if(e.key==='Enter'){ i.blur(); refocus(); }" not in js
+            if js and (b"} else { i.blur(); refocus(); }" not in js
                        or b"i.value=prev; i.blur(); refocus(); }" not in js
                        or b"row.appendChild(u);" not in js):
                 fails.append("GET /app.js: an owner save drops focus or moves the grid (T136)")

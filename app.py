@@ -3288,7 +3288,16 @@ document.querySelectorAll('.own').forEach(function(i){
       }
       return;
     }
-    if(e.key==='Enter'){ i.blur(); refocus(); }
+    if(e.key==='Enter'){
+      // the unassigned worklist: Enter saves and opens the next untagged field,
+      // so a run of tags is one typing pass. Not on touch (zoom). (T190)
+      var nx=null;
+      if(_pg===''&&i.value.trim()&&!coarse){
+        var all=[].slice.call(document.querySelectorAll('#list .own')), k=all.indexOf(i);
+        nx=all.slice(k+1).concat(all.slice(0,k)).filter(function(o){ return !o.value; })[0];
+      }
+      if(nx){ nx.readOnly=false; nx.focus(); } else { i.blur(); refocus(); }
+    }
     else if(e.key==='Escape'){ i.value=prev; i.blur(); refocus(); }  // revert before saving
   });
 });

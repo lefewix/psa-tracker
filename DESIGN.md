@@ -1072,6 +1072,8 @@ baseline, so a save never changes the tile's height; Enter and Escape hand keybo
 back to the tag, not the body (T136).
 A save still in flight after 300 ms turns the underline `--m1` (`.saving`) until it
 lands; no spinner, no extra row (T201).
+On the unassigned worklist, Enter on a filled tag saves and opens the next untagged field for
+typing (focus never passes through body), so a run of tags is one keyboard pass; not on touch (T190).
 Every tag shares one page-level `<datalist id="owners">` of the names in use, so typing
 offers existing people; the picker arrow is hidden in Chrome and Safari (T135).
 
