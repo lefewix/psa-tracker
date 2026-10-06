@@ -851,6 +851,10 @@ content — a panel, a sheet, an image, a row — it is not.
 - **Attention dot (`.schip.att`):** a 6px accent circle after the label on the settings
   account chip PSA is asking to verify; that chip also sorts to the head of its capsule. The
   dot is decorative, the words ride in a `.vh` span, and it stays accent, never red.
+- **Moved dot (`.card.moved .num`, T191):** the same 6px accent dot after a row's sub number
+  when its stage differs from this browser's `psa_stage` map. FX_JS keeps it in localStorage
+  (`psa_new`) across reloads until that sub's page is opened; a first-seen sub never gets it,
+  reduced motion sees it too. "moved since your last look" rides a `.vh` span. Not a pill.
 - **Press:** `scale(.97)`.
 
 ### Status Pills

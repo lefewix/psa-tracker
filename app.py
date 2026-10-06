@@ -1581,7 +1581,7 @@ button:disabled{opacity:.5;cursor:default}
 .sbar .f{padding:7px 15px 9px}  /* same -1/+1 optical shift as the base pill */
 /* attention dot: the account PSA wants verified. Accent, not red - red is grades and the
    hold pill. The label rides in a .vh span. */
-.schip.att::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
+.schip.att::after,.card.moved .num::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
  border-radius:50%;background:var(--ac);vertical-align:1px}
 .spane{margin-top:16px}
 /* sheets materialize like the lightbox: scrim fades up with blur(8px), sheet lands from .97,
@@ -2635,6 +2635,9 @@ def timeline_html(s, dates=None, aside="", key=""):
     line, no bar, and nothing at all with `dates` (the detail meta says it).
     A status STAGES does not know prints "Status unknown" and no bar at all."""
     status = s["status"]
+    idx = stage_index(status)
+    k = (f' data-k="{html.escape(str(key))}" data-st="{"u" if idx is None else idx}"'
+         if key else "")
     if status == "Shipped":
         if dates is not None:
             return ""
@@ -2643,13 +2646,12 @@ def timeline_html(s, dates=None, aside="", key=""):
             line += f' · {html.escape(fmt_mdy(s["shipped"]))}'
             if s["carrier"] and s["tracking"]:
                 line += f' · {tracking_html(s["carrier"], s["tracking"])}'
-        return f'<div class="stage nobar"><span>{line}</span>{aside}</div>'
-    idx = stage_index(status)
+        return f'<div class="stage nobar"{k}><span>{line}</span>{aside}</div>'
     if idx is None:
         # PSA sent a step this build has never seen. It used to fall through to
         # stage 1 of 8, which read as "Arrived" for a sub that could be anywhere.
         tail = "" if dates is not None else f" · {eta_phrase(s)}"
-        return f'<div class="stage nobar"><span>Status unknown{tail}</span>{aside}</div>'
+        return f'<div class="stage nobar"{k}><span>Status unknown{tail}</span>{aside}</div>'
     pct = 100.0 * (idx + 1) / len(STAGES)
     word = "Grades ready" if (s["grades_ready"] and idx == 6) else STAGES[idx]
     line = f'<b>{html.escape(word)}</b>'
@@ -2662,7 +2664,6 @@ def timeline_html(s, dates=None, aside="", key=""):
     elif since:
         days = f', {n} day{"s" if n != 1 else ""}' if n > 0 else ""
         line += f' · <span>since {html.escape(since)}{days}</span>'
-    k = f' data-k="{html.escape(str(key))}" data-st="{idx}"' if key else ""
     # aside rides the far end of the stage line, worn as a quiet capsule pill
     # (owner calls 2026-08-08: a bar-row placement was tried and reverted same
     # day - "i like where it was before, but i also like that its a pill").
@@ -3367,6 +3368,32 @@ document.querySelectorAll('.grid img,.strip img').forEach(function(m){
     });
   },{rootMargin:'200px'});
   scans.forEach(function(a){io.observe(a);});
+})();
+/* what moved since the last look (T191): a row whose stage differs from the
+   psa_stage map keeps an accent dot by its number (psa_new) across reloads until
+   that sub's page is opened. Runs before the run-out reads the map; it writes
+   only the no-bar lines (shipped, unknown), which the run-out never sees. */
+(function(){
+  var seen,nw;
+  try{seen=JSON.parse(localStorage.getItem('psa_stage')||'{}')||{};
+      nw=JSON.parse(localStorage.getItem('psa_new')||'{}')||{};}catch(e){return;}
+  var pth=location.pathname, m=pth.indexOf('/sub/')===0;
+  if(m){delete nw[decodeURIComponent(pth.slice(5))];}
+  else document.querySelectorAll('[data-k]').forEach(function(e){
+    var k=e.dataset.k, st=e.dataset.st;
+    if(seen[k]!==undefined&&seen[k]!==st)nw[k]=1;
+    if(!e.classList.contains('stage'))return;
+    seen[k]=st;
+  });
+  if(!m)document.querySelectorAll('[data-k]').forEach(function(e){
+    var row=e.closest('.card'), h=row&&row.querySelector('.num');
+    if(!nw[e.dataset.k]||!h||row.classList.contains('moved'))return;
+    row.classList.add('moved');
+    var v=document.createElement('span'); v.className='vh'; v.textContent=' · moved since your last look';
+    h.appendChild(v);
+  });
+  try{localStorage.setItem('psa_stage',JSON.stringify(seen));
+      localStorage.setItem('psa_new',JSON.stringify(nw));}catch(e){}
 })();
 /* the stage bar runs out: the bar is scaled back to 0, then released to the
    width the server rendered (scaleX, no layout), delayed onto the same .04s row-settle stagger so

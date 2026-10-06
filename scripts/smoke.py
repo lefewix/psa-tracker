@@ -1625,8 +1625,15 @@ def main():
                 fails.append("GET /: a row still states its status twice (T205)")
             ship = row(b"14900004")
             if (b'<div class="bar">' in ship or ship.count(b"Sep 6") != 1
-                    or b'<div class="stage nobar"><span><b>Shipped</b> \xc2\xb7 Sep 6' not in ship):
+                    or not re.search(rb'<div class="stage nobar"[^>]*><span><b>Shipped</b> \xc2\xb7 Sep 6', ship)):
                 fails.append("GET /: the shipped row is not one ship line without a bar (T205)")
+            # what moved since the last look keys every row, no-bar lines too, and
+            # the dot is the attention dot grammar, no new colour (T191)
+            if (b'class="stage nobar" data-k="14900004" data-st="7"' not in ship
+                    or b'data-k="14900003" data-st="u"' not in late
+                    or b"psa_new" not in (js or b"")
+                    or b".card.moved .num::after" not in (css or b"")):
+                fails.append("GET /: rows are not keyed for the since-last-look marker (T191)")
             if b'class="pill hold"' in row(b"14900001") or b"pill hold" in late:
                 fails.append("GET /: a pill shows on a row that is not held (T205)")
 
