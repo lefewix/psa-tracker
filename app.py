@@ -1076,14 +1076,14 @@ body{background:transparent;min-height:100vh;color:var(--txt);
 /* skip link: first tab stop, visible only on focus. */
 .skip{position:fixed;left:-9999px;top:14px;z-index:100;padding:10px 16px;border-radius:999px;
  background:var(--glasssolid);color:var(--ac-pale);font-size:13px;font-weight:500;
- text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
+ text-decoration:none;border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc);line-height:1.4}
 .skip:focus{left:14px}
 /* ---- type: system stack, sentence case, tracking scaled to size ----------- */
 /* Three rungs: 26/700 title, 17/650 data + section titles, 14/400 body; 13 on control labels
    only. Tracking scales with size (26=-.021em, 24=-.020, 22=-.017, 17=-.012, <=14 = 0) and is
    never positive. */
 h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
-.sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px}
+.sub{font-size:12px;font-weight:400;color:var(--m1);margin-top:2px;line-height:1.4}
 .sub.mt6{margin-top:6px}
 .wrap>h1{margin-top:14px}
 .mt28{margin-top:28px}
@@ -1096,11 +1096,11 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 .brand{display:flex;align-items:center;gap:12px}
 .gbox .logo{height:72px;margin:0 auto 18px}
 .hrow{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-top:14px}
-.synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.5}
+.synced{text-align:right;flex-shrink:0;font-size:12px;color:var(--m1);line-height:1.4}
 .synced b{display:block;font-size:13px;font-weight:600;color:var(--txt)}
 /* a header figure is a data value: 17/650, the .num rung. 13 stays where .synced is chrome. */
 .hrow>.synced:not(.custrow) b{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3}
-.synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.5}
+.synced .estnote{display:block;font-size:12px;font-weight:400;color:var(--m1);margin-top:3px;line-height:1.4}
 .synced b.holdb{color:var(--holdtx)}
 .synced .estnote{max-width:34ch;margin-left:auto}
 .synced .lbl2{display:block;margin-top:8px}
@@ -1113,7 +1113,7 @@ h1{font-size:26px;font-weight:700;letter-spacing:-.021em;line-height:1.15}
 /* sync state: one dot and one phrase (T162) that names the clock time in plain sight (T169),
    .ss the phone form. The dot is 6px of non-text, so --ok's 3:1 check covers it. */
 .sync{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:12.5px;
- font-weight:500;color:var(--m1);line-height:1.5;white-space:nowrap}
+ font-weight:500;color:var(--m1);line-height:1.4;white-space:nowrap}
 .sync i{width:6px;height:6px;border-radius:50%;background:var(--m1);flex-shrink:0}
 .sync.live i{background:var(--ok)}
 .sync.stale i{background:var(--holdtx)}
@@ -1167,10 +1167,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  opacity:0;visibility:hidden;transform:scale(.985) translateY(-4px);transform-origin:top center;
  transition:opacity var(--t1) var(--e1),transform var(--t1) var(--e2),visibility 0s var(--t1)}
 .preview.on{opacity:1;visibility:visible;transform:none;transition-delay:0s}
-.pvsec{font-size:12px;font-weight:400;color:var(--m1);padding:9px 10px 5px}
+.pvsec{font-size:12px;font-weight:400;color:var(--m1);padding:9px 10px 5px;line-height:1.4}
 .pvrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;
  text-decoration:none;color:var(--txt);font-size:14px;font-weight:500}
-.pvrow small{display:block;color:var(--m1);font-size:12px;font-weight:400;margin-top:1px}
+.pvrow small{display:block;color:var(--m1);font-size:12px;font-weight:400;margin-top:1px;line-height:1.4}
 /* keyboard travel through the preview reads exactly like the pointer does */
 .pvrow.act{background:var(--hovrow)}
 /* the tag is a category, not a sentence, so a quiet capsule demotes it. Fill mixes from
@@ -1216,7 +1216,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 /* the solo Archived pill is its own capsule, one rung quieter (12/500). The 20px vertical pad
    is arithmetic: 16 + (9+11) + 1*2 = 38px, the sort capsule's height at both widths.
    inline-block, NOT inline-flex, or the count reads "Archived· 18". */
-.fsolo{font-size:12px;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
+.fsolo{font-size:12px;line-height:1.4;padding:9px 14px 11px;border-radius:999px;flex-shrink:0;white-space:nowrap}
 .archs{display:none}
 /* pressed it must read as one solid lozenge: the hairline goes transparent, not to 0, so the
    height match is untouched. Rims go, shadow stays. */
@@ -1247,10 +1247,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .pill.shipped svg{color:var(--m1)}
 /* past due outranks an on-time date by weight and ink, not by a new colour */
 .pill.late{font-weight:650;color:var(--txt)}
-.ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt);white-space:nowrap}
+.ledval{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt);white-space:nowrap}
 /* the caption drops to the small rung, so it must drop the value's tracking too - tracking
    inherits, size does not. */
-.ledval span{display:block;font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
+.ledval span{display:block;font-size:12px;font-weight:400;letter-spacing:normal;line-height:1.4;color:var(--m1)}
 /* ---- stage: one text line above a 4px capsule bar ------------------------- */
 /* 16/10, not 15/8: the 30px View pill hangs about 6px below the line, so 8px read as
    pill-touching-bar. */
@@ -1295,10 +1295,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  -webkit-user-select:none;user-select:none;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1),transform var(--t1) var(--e1)}
 .archbtn:active{transform:scale(.97)}
-.empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.7;
+.empty{color:var(--m1);font-size:14px;padding:48px 20px;margin-top:14px;text-align:center;line-height:1.5;
  background:var(--surface);border:1px solid var(--hair2);border-radius:16px;
  box-shadow:0 4px 14px var(--shc3)}
-.empty span{font-size:12px}
+.empty span{font-size:12px;line-height:1.4}
 /* ---- filmstrip: the row's own contact sheet ------------------------------ */
 /* up to 8 tiles, the 8th a "+N" chip when the sub has more imaged cards than fit. */
 /* the strip scrolls at every width: 8 tiles = 742px, so a sheet under ~782px would scroll the
@@ -1345,7 +1345,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  box-shadow:0 4px 14px var(--shc3)}
 .hint.warn{color:var(--txt);background:color-mix(in srgb,var(--holdtx) 9%,var(--surface));
  border-color:color-mix(in srgb,var(--holdtx) 45%,transparent);box-shadow:none}
-.hint.attn{display:block;line-height:1.45}
+.hint.attn{display:block}
 .hintx{width:auto;margin:-12px -12px -12px auto;padding:12px 14px;background:transparent;border:0;
  color:var(--m1);font-size:14px;cursor:pointer;-webkit-user-select:none;user-select:none;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
@@ -1381,7 +1381,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    quieter than a scan still on its way instead of brighter. (T197) */
 .gc .ph{width:100%;aspect-ratio:380/635;border-radius:6px;
  background:var(--sk);display:flex;align-items:center;justify-content:center;
- color:var(--m1);font-size:12px}
+ color:var(--m1);font-size:12px;line-height:1.4}
 /* chip, always emitted, empty when ungraded or rows stagger. 17+1+1+1+1 = 21. Red = a 10. */
 /* -8px = 7px pad + 1px rim: the rim hangs into the gutter, the label sits on the name's edge. (T174) */
 /* 500, not 600, and a tighter 1px 7px: the chip still reads as the news, it just stops
@@ -1405,8 +1405,8 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  font-family:ui-monospace,'SF Mono',SFMono-Regular,Menlo,Consolas,monospace}
 .cn.pre{font-family:inherit;font-size:12px}
 /* the name is the subject only (split_name demotes the set). Two lines reserved so a grid row
-   shares a baseline: 2 x 14 x 1.4 = 39.2 -> 40. min-height, not height (1.4.4). */
-.gc .nm{font-size:14px;font-weight:400;color:var(--txt);line-height:1.4;margin-top:4px;min-height:40px;
+   shares a baseline: 2 x 14 x 1.5 = 42. min-height, not height (1.4.4). */
+.gc .nm{font-size:14px;font-weight:400;color:var(--txt);margin-top:4px;min-height:42px;
  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 /* the set line is off the tile: the well already frames six things and the name carries the
    subject, so the set stays on the detail header where it is read, not scanned. (T112) */
@@ -1419,10 +1419,10 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
    second reveal after the grade, so it takes --ac-pale, the Accent-as-Text token .sublink
    and .tlink already use - measured on the well at the default accent it is 4.84:1 light and
    7.16:1 dark, both past 4.5. The "CAD" caption stays --m1. (T112) */
-.gc .cval{display:block;width:fit-content;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-.012em;color:var(--ac-pale);margin-top:4px}
-.gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;color:var(--m1)}
+.gc .cval{display:block;width:fit-content;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-.012em;line-height:1.3;color:var(--ac-pale);margin-top:4px}
+.gc .cval span{font-size:12px;font-weight:400;letter-spacing:normal;line-height:1.4;color:var(--m1)}
 .gc .cval:hover{text-decoration:underline;text-underline-offset:3px}
-.svc{font-size:12px;color:var(--m1);margin-top:4px}
+.svc{font-size:12px;color:var(--m1);margin-top:4px;line-height:1.4}
 /* -4/+10 top nets the original 6px gap; -10/+10 bottom nets 0 (see .view) */
 .sublink{display:block;font-size:14px;font-weight:500;color:var(--ac-pale);text-decoration:none;
  padding:10px 6px;margin:-4px -6px -10px;transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
@@ -1464,7 +1464,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 .own.saved{border-bottom-color:var(--ok)}
 .own.errsave{border-bottom-color:var(--err)}
 .undo{width:auto;margin:-6px -6px -12px;padding:12px 6px;background:transparent;border:0;
- color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;cursor:pointer;
+ color:var(--ac-pale);font-size:12px;font-weight:500;font-family:inherit;line-height:1.4;cursor:pointer;
  transition:color var(--t1) var(--e1),background-color var(--t1) var(--e1)}
 .undo.uerr{color:var(--err)}
 .footacts .undo{margin:-12px -6px}
@@ -1473,7 +1473,7 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
 /* touch: ARCH_JS lifts the archive chip into body, a 44px detached chip in the thumb zone on
    the orbs' baseline, clear of them (T144) */
 body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;
- margin:0;min-height:44px;padding:0 18px;border-radius:999px;font-size:13px;white-space:nowrap;
+ margin:0;min-height:44px;padding:0 18px;border-radius:999px;font-size:13px;line-height:1.4;white-space:nowrap;
  background:var(--glasssolid);border:1px solid var(--hair);box-shadow:0 10px 26px var(--shc)}
 .ownrow:has(.undo){align-items:baseline}
 .ownrow:has(.undo) .ownedit{display:none}
@@ -1504,7 +1504,7 @@ body>.undo{position:fixed;left:20px;bottom:calc(20px + env(safe-area-inset-botto
  transition:background var(--t1) var(--e1),transform var(--t1) var(--e1)}
 @media(hover:hover){.lbx:hover{background:rgba(0,0,0,.55)}}
 /* one caption line under the scan: name, grade, cert, value and the "3 / 8" counter (T157) */
-.lbcap{max-width:92vw;margin:0;padding:0 12px;color:#fff;font-size:14px;line-height:20px;
+.lbcap{max-width:92vw;margin:0;padding:0 12px;color:#fff;font-size:14px;line-height:1.5;
  text-align:center;cursor:default;font-variant-numeric:tabular-nums;text-wrap:balance}
 .lbcap>:not(:first-child){white-space:nowrap}
 .lbcap a{color:#fff;text-decoration:underline;text-underline-offset:2px}
@@ -1570,14 +1570,14 @@ body:has(.preview.on) #gearbtn,body:has(.preview.on) #themeflip{opacity:0;pointe
 /* every single-line control is a capsule; 3px extra side padding buys the curve back.
    Content-side radii stay square-ish. */
 input{width:100%;margin-top:12px;background:var(--inp);border:0;border-radius:999px;
- color:var(--txt);font-size:15px;font-weight:400;text-align:left;padding:11px 16px;
+ color:var(--txt);font-size:15px;font-weight:400;line-height:1.5;text-align:left;padding:11px 16px;
  font-family:inherit;outline:none}
 input:focus,input:focus-visible{outline:2px solid var(--ring);outline-offset:0}
 input::placeholder{color:var(--m1)}
 /* BUTTONS ARE NOT FILLED BY DEFAULT: fill is opt-in via .fillbtn, the element rule keeps
    neutral resets only. Typography stays - a reset, not an identity. */
 button{background:transparent;border:0;color:inherit;
- font-family:inherit;font-size:15px;font-weight:600;cursor:pointer}
+ font-family:inherit;font-size:15px;font-weight:600;line-height:1.5;cursor:pointer}
 /* filled primary: form submits and modal saves. Carries the width:100% and margin-top:12px
    the element rule used to hand out. */
 .fillbtn{width:100%;margin-top:12px;background:var(--ac-fill);border-radius:999px;color:#fff;
@@ -1585,7 +1585,7 @@ button{background:transparent;border:0;color:inherit;
 /* press-scale stays element-level: it sets no colour, so it cannot leak a fill. */
 button:active{transform:scale(.97)}
 button:disabled{opacity:.5;cursor:default}
-.err{color:var(--err);font-size:12px;font-weight:500;margin-top:12px;min-height:18px}
+.err{color:var(--err);font-size:12px;font-weight:500;line-height:1.4;margin-top:12px;min-height:18px}
 /* ---- settings ------------------------------------------------------------ */
 .card.sblock{margin:0 0 14px;padding:22px 20px 24px}
 .card.sblock.mt22{margin-top:22px}
@@ -1594,7 +1594,7 @@ button:disabled{opacity:.5;cursor:default}
 .srow{display:flex;gap:10px;margin-top:14px;max-width:520px;flex-wrap:wrap;align-items:center}
 .srow.mt16{margin-top:16px}
 .srow input{flex:1;min-width:150px;margin-top:0}
-.sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;flex-shrink:0}
+.sbtn{width:auto;margin-top:0;padding:11px 18px;font-size:13px;line-height:1.4;flex-shrink:0}
 /* a destructive text action is not a primary, so .sdel never takes .fillbtn; the radius is
    restated because the element rule hands none out. .squiet: same, in accent. */
 .sbtn.sdel,.sbtn.squiet{background:transparent;padding:11px 0;margin-top:10px;
@@ -1602,7 +1602,7 @@ button:disabled{opacity:.5;cursor:default}
 .sbtn.sdel{color:var(--err)}
 .sbtn.squiet{color:var(--ac-pale)}
 .srow .sbtn.sdel,.srow .sbtn.squiet{margin-top:0}
-.stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;color:var(--txt)}
+.stitle{font-size:17px;font-weight:650;letter-spacing:-.012em;line-height:1.3;color:var(--txt)}
 .sblock .meta{margin-top:3px}
 .sdanger{margin-top:20px;padding-top:16px;border-top:1px solid var(--hair2)}
 .snote{display:inline-block;font-size:14px;font-weight:500;color:var(--ac-pale);margin-top:16px}
@@ -1635,7 +1635,7 @@ button:disabled{opacity:.5;cursor:default}
  font-size:14px;font-weight:500}
 .dbtn::before{content:none}  /* .dbtn carries .f: it pads its own hit box now */
 .dstate{font-size:14px;font-weight:500;color:var(--txt);flex:1}
-.dhint{font-size:12px;color:var(--m1);line-height:1.6;margin-top:12px}
+.dhint{font-size:12px;color:var(--m1);line-height:1.4;margin-top:12px}
 /* ---- misc ---------------------------------------------------------------- */
 /* no wash on an archived card: the .5 dim put its text at 2.0 to 3.4 on white (1.4.3). "Past"
    is grayscale alone; the ink keeps its 4.5. */
@@ -1655,7 +1655,7 @@ button:disabled{opacity:.5;cursor:default}
 .numlink::before{content:'';position:absolute;inset:-11px 0}
 .numlink .num{transition:color var(--t1) var(--e1)}
 .setupform{margin-top:18px}
-.setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.6}
+.setupnote{font-size:12px;color:var(--m1);margin-top:16px;line-height:1.4}
 .gate{min-height:calc(100vh - 124px);min-height:calc(100dvh - 124px);
  display:flex;align-items:center;justify-content:center}
 /* the gate is a card too: on the grouped ground a bare stack floats anchorless and the quiet

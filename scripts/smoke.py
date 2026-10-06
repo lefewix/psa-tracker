@@ -371,6 +371,23 @@ def tracking_checks(fails):
                          f"want {want!r}")
 
 
+def leading_checks(fails):
+    """No rule leaves leading to the UA's normal, and every 14px rule that states a
+    leading states the body rung's 1.5 (T179)."""
+    src = open(os.path.join(ROOT, "app.py")).read()
+    if "line-height:normal" in src:
+        fails.append("app.py: line-height:normal is back (T179)")
+    for rule in re.findall(r"[^{}]*\{[^{}]*font-size:14px[^{}]*\}", src):
+        lh = re.search(r"line-height:([^;}]+)", rule)
+        if lh and lh.group(1).strip() != "1.5":
+            fails.append(f"app.py: a 14px rule leads at {lh.group(1)}, not 1.5 (T179): "
+                         f"{rule.strip()[:60]!r}")
+    for sel in ("input{", "button{"):
+        rule = src[src.index("\n" + sel):].split("}", 1)[0]
+        if "line-height:1.5" not in rule:
+            fails.append(f"app.py: {sel[:-1]} leaves leading to the UA's normal (T179)")
+
+
 def comment_checks(fails):
     """Comments name what sits beside them: the reading rung is 14px, the gate
     card and the settings panel count are not pinned to a stale number, and
@@ -869,6 +886,7 @@ def main():
         scrim_checks(fails)
         common_checks(fails)
         tracking_checks(fails)
+        leading_checks(fails)
         comment_checks(fails)
         shot_checks(fails)
 
