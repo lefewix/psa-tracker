@@ -1432,8 +1432,9 @@ html:has(.toolbar.raised)::before{content:'';position:fixed;top:0;left:0;right:0
  border-radius:0;color:var(--txt);font:inherit;font-size:14px;font-weight:400;
  padding:11px 0 0;flex:1;min-width:0;transition:border-color var(--t1) var(--e1);touch-action:manipulation}
 /* touch: tap navigates, the pencil edits (double-tap-to-edit races it). Hidden while editing. */
+/* 22px top = the input's 12px margin + 11px pad less its 1px rule: the pencil centres on the name. */
 .ownedit{display:none;align-items:center;justify-content:center;width:40px;margin-right:-6px;
- align-self:stretch;border:0;background:transparent;color:var(--m1);padding:0;cursor:pointer}
+ align-self:stretch;border:0;background:transparent;color:var(--m1);padding:22px 0 0;cursor:pointer}
 /* mouse: a click visits, so the pencil shows on the tile's hover or focus; a filled tag keeps
    it faint at rest so the control is findable. Hidden while editing. (T134) */
 @media not all and (pointer:coarse){
@@ -1787,6 +1788,7 @@ a.fillbtn{display:block;text-decoration:none;font-size:15px;font-weight:600}
  .gc>:first-child{float:left;width:56px;margin-left:-68px}
  .gc>.gr{margin:0}
  .gc .own{margin-top:0;padding:6px 0 5px}
+ .gc .ownedit{padding:0}
  .gc .gr:empty,.gc .cn:not(.pre){display:none}
  .gc .ph{font-size:0}}
 /* iOS focus-zoom fires on any sub-16px input on a coarse pointer, not on a narrow viewport -
