@@ -61,6 +61,17 @@ def has_tokens(ctx):
     return "accessToken" in names and "refreshToken" in names
 
 
+def tokens(ctx):
+    return {c["value"] for c in ctx.cookies() if c["name"] == "accessToken"}
+
+
+# Names alone lie when the profile still holds an expired pair: on 2026-10-09
+# branavan's Oct 6 tokens made mfa_flow call the code "accepted" 2.5s after
+# typing it, skip the submit, and harvest a dead cookie (401, SMS wasted).
+def fresh(ctx, old):
+    return has_tokens(ctx) and bool(tokens(ctx) - old)
+
+
 def mfa_flow(page, ctx):
     """PSA's 'Let's make sure it's you' screen (SMS code). Returns True once
     signed in, False to give up this run. Only sends the SMS when armed from
@@ -111,18 +122,19 @@ def mfa_flow(page, ctx):
                        "input[type='tel'], input[type='text']").first
     box.wait_for(timeout=15000)
     box.click()
+    old = tokens(ctx)
     page.keyboard.type(code, delay=80)
     page.wait_for_timeout(2500)
-    if not has_tokens(ctx):
+    if not fresh(ctx, old):
         for label in ("Continue", "Verify", "Submit"):
             try:
                 page.get_by_role("button", name=label).first.click(timeout=2000); break
             except Exception:
                 pass
     deadline = time.time() + 45
-    while time.time() < deadline and not has_tokens(ctx):
+    while time.time() < deadline and not fresh(ctx, old):
         page.wait_for_timeout(1500)
-    if not has_tokens(ctx):
+    if not fresh(ctx, old):
         page.screenshot(path=os.path.join(DEBUG_DIR, f"mfa_fail_{ACCT}.png"))
         log("code entered but no session - wrong/expired code? (see login_debug/mfa_fail)")
         return False
@@ -218,6 +230,7 @@ def do_login():
                 page.wait_for_selector(pw_sel, timeout=30000)
                 page.fill(pw_sel, PASSWORD)
                 log("password entered")
+                old = tokens(ctx)  # stale tokens in the profile are not a login
                 # The password page's submit is a textless icon button, so submit via Enter,
                 # with a type=submit / labeled-button fallback if we're still on the sign-in page.
                 page.press(pw_sel, "Enter")
@@ -248,7 +261,7 @@ def do_login():
                 # --- wait for authenticated session (accessToken cookie appears) ---
                 deadline = time.time() + 75
                 while not got and time.time() < deadline:
-                    got = has_tokens(ctx)
+                    got = fresh(ctx, old)
                     page.wait_for_timeout(1500)
                 if not got:
                     # nudge: navigate to the orders page once more
@@ -257,8 +270,7 @@ def do_login():
                         page.wait_for_timeout(3000)
                     except Exception:
                         pass
-                    names = {c["name"] for c in ctx.cookies()}
-                    got = "accessToken" in names and "refreshToken" in names
+                    got = fresh(ctx, old)
 
                 if not got:
                     page.screenshot(path=os.path.join(DEBUG_DIR, f"login_fail_{ACCT}.png"))
