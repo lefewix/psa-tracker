@@ -61,15 +61,17 @@ def has_tokens(ctx):
     return "accessToken" in names and "refreshToken" in names
 
 
-def tokens(ctx):
-    return {c["value"] for c in ctx.cookies() if c["name"] == "accessToken"}
+# psacard.com's own accessToken is the one the harvest keeps and orders.list
+# needs; on 2026-10-09 the SMS code minted tokens on app.collectors.com only.
+def tokens(ctx, dom="psacard.com"):
+    return {c["value"] for c in ctx.cookies() if c["name"] == "accessToken" and dom in c["domain"]}
 
 
 # Names alone lie when the profile still holds an expired pair: on 2026-10-09
 # branavan's Oct 6 tokens made mfa_flow call the code "accepted" 2.5s after
 # typing it, skip the submit, and harvest a dead cookie (401, SMS wasted).
-def fresh(ctx, old):
-    return has_tokens(ctx) and bool(tokens(ctx) - old)
+def fresh(ctx, old, dom="psacard.com"):
+    return has_tokens(ctx) and bool(tokens(ctx, dom) - old)
 
 
 def mfa_flow(page, ctx):
@@ -122,21 +124,35 @@ def mfa_flow(page, ctx):
                        "input[type='tel'], input[type='text']").first
     box.wait_for(timeout=15000)
     box.click()
-    old = tokens(ctx)
+    old, old_any = tokens(ctx), tokens(ctx, "")
     page.keyboard.type(code, delay=80)
     page.wait_for_timeout(2500)
-    if not fresh(ctx, old):
+    if not fresh(ctx, old_any, ""):
         for label in ("Continue", "Verify", "Submit"):
             try:
                 page.get_by_role("button", name=label).first.click(timeout=2000); break
             except Exception:
                 pass
     deadline = time.time() + 45
-    while time.time() < deadline and not fresh(ctx, old):
+    while time.time() < deadline and not fresh(ctx, old_any, ""):
         page.wait_for_timeout(1500)
-    if not fresh(ctx, old):
+    if not fresh(ctx, old_any, ""):
         page.screenshot(path=os.path.join(DEBUG_DIR, f"mfa_fail_{ACCT}.png"))
         log("code entered but no session - wrong/expired code? (see login_debug/mfa_fail)")
+        return False
+    # 2026-10-09: a fresh collectors.com token proves the code; psacard.com
+    # mints its own only once START_URL loads on that session.
+    if not fresh(ctx, old):
+        try:
+            page.goto(START_URL, wait_until="domcontentloaded", timeout=45000)
+        except Exception:
+            pass
+        deadline = time.time() + 30
+        while time.time() < deadline and not fresh(ctx, old):
+            page.wait_for_timeout(1500)
+    if not fresh(ctx, old):
+        page.screenshot(path=os.path.join(DEBUG_DIR, f"mfa_fail_{ACCT}.png"))
+        log("code accepted but psacard.com never issued a token (see login_debug/mfa_fail)")
         return False
     return True
 
