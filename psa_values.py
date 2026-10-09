@@ -5,11 +5,12 @@ For each graded card (cert_no + grade known, which psa_watch fills as soon as
 the submission's grades are ready, plus spec_id, PSA's id for the card itself)
 we ask the logged-in psacard.com API what that card sold for AT THAT GRADE:
 researchJourney.getSalesBySpecId, the call behind the "Sales History" tab on
-psacard.com/spec/psa/<spec_id>. Newest sale first; the latest price is the value.
+psacard.com/spec/psa/<spec_id>. Newest sale first; the value is the average of
+the newest N_SALES prices (T221), stored in `estimate`.
 
 The public cert page (and its "PSA ESTIMATE") sits behind an interactive
 Cloudflare challenge from the server since late Sep 2026, so there is no estimate any
-more: `estimate` stays NULL and `last_sale` carries the value (T215). The call
+more (T215); `estimate` now holds our own average of the last sales (T221). The call
 needs the scanner's PSA_COOKIE; run_scan.sh only runs this after a clean scan.
 
 Cards sharing (spec_id, grade) share a value, so ONE call per unique pair writes
@@ -146,17 +147,21 @@ def pick_groups(conn, new_only=False):
     return [(key, name, certs) for _, _, key, name, certs in todo]
 
 
+def avg(sales):
+    return round(sum(p for p, _ in sales) / len(sales), 2) if sales else None
+
+
 def upsert(conn, certs, last, last_date, n, sales):
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     for cn in certs:
         conn.execute("""INSERT INTO card_values
             (cert_no, estimate, last_sale, last_sale_date, n_sales, sales_json, fetched_at, error)
-            VALUES (?,NULL,?,?,?,?,?,?)
-            ON CONFLICT(cert_no) DO UPDATE SET estimate=NULL,
+            VALUES (?,?,?,?,?,?,?,?)
+            ON CONFLICT(cert_no) DO UPDATE SET estimate=excluded.estimate,
               last_sale=excluded.last_sale, last_sale_date=excluded.last_sale_date,
               n_sales=excluded.n_sales, sales_json=excluded.sales_json,
               fetched_at=excluded.fetched_at, error=excluded.error""",
-            (cn, last, last_date, n, json.dumps(sales), now, "" if sales else "no-data"))
+            (cn, avg(sales), last, last_date, n, json.dumps(sales), now, "" if sales else "no-data"))
     conn.commit()
 
 
@@ -165,6 +170,11 @@ def main():
     conn = sqlite3.connect(DB_PATH)
     conn.execute("PRAGMA busy_timeout=10000")
     conn.executescript(SCHEMA)
+    if "--recompute" in sys.argv:  # one-off T221 backfill from stored sales, no network
+        for cn, sj in conn.execute("SELECT cert_no, sales_json FROM card_values").fetchall():
+            conn.execute("UPDATE card_values SET estimate=? WHERE cert_no=?", (avg(json.loads(sj or "[]")), cn))
+        conn.commit()
+        return 0
     new_only = "--new-only" in sys.argv
     if not new_only:
         fetch_fx(conn)

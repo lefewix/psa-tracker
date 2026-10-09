@@ -799,7 +799,7 @@ def sub_fronts(a):
 VALUES_ON = os.environ.get("PSA_VALUES", "0") == "1"
 
 def load_values(a):
-    """cert_no -> display value (PSA's estimate, else latest comp sale) converted
+    """cert_no -> display value (average of the last 5 PSA sales, else latest sale) converted
     to CAD via the stored USDCAD rate (psa_values.py keeps it fresh; raw USD only
     if no rate was ever fetched), plus freshest fetch date and currency label."""
     if not VALUES_ON:
@@ -3797,7 +3797,7 @@ def card_tile(c, owners, show_sub=False, archived=False, customer=False, statlin
                    '<path d="M11.1 2.2a1.6 1.6 0 0 1 2.3 0l.4.4a1.6 1.6 0 0 1 0 2.3L6.4 12.3l-3.1.8.8-3.1z" '
                    'fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>'
                    '</button></div>')
-    # the value opens PSA's public cert page: its estimate and the similar-sales comps it came from
+    # the value opens PSA's public cert page: its estimate and recent sales
     val = (f'<a class="cval" href="https://www.psacard.com/cert/{html.escape(c["cert_no"] or "")}/psa" '
            f'target="_blank" rel="noopener" title="See PSA\'s estimate and recent sales">'
            f'${value:,.0f} <span>{vcur} · estimated</span></a>'
@@ -4360,7 +4360,7 @@ def people_page(a, owner, sort=("sub", False)):
         vmiss = vtot and sum(1 for c in act_cards if c.get("grade") and (c["cert_no"] or "") not in vals)
         vline = (f'<span>Est. value · graded<b>${vtot:,.0f}{plus(vmiss)} {vcur}</b></span>'
                  if vtot else "")
-        vnote = f'<br>values = PSA estimate or last sale · as of {html.escape(vas_of)}' if vline else ""
+        vnote = f'<br>values = average of the last 5 PSA sales · as of {html.escape(vas_of)}' if vline else ""
         # the hidden text names the unpriced tier, so the missing price can
         # be added to PSA_PRICES without guessing
         cplus = plus(unpriced, "no price for " + ", ".join(sorted(unpriced)))
