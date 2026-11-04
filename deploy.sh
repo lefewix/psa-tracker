@@ -1,16 +1,15 @@
 #!/bin/bash
 # Deploy tracker files to the box: compile-check -> smoke test -> scp to a
 # staging dir -> sha256 verify -> move into place -> restart psa-web when
-# app.py shipped -> curl the box. The HANDOFF ritual, without the typos.
+# app.py shipped -> curl the box.
 # A build that fails any of those never replaces the live app.py.
 #
-#   ./deploy.sh                    # app.py + psa_common.py + FLX brand assets to the server
-#   ./deploy.sh app.py run_scan.sh # specific files only
-#   PSA_HOST=root@192.0.2.10 ./deploy.sh app.py   # a demo box instead
-#     (demo boxes: always name files - the no-arg default includes logo.svg
-#      and the favicon PNGs, which are the server's FLX branding)
+#   PSA_HOST=root@your-server ./deploy.sh                    # app.py + psa_common.py + brand assets
+#   PSA_HOST=root@your-server ./deploy.sh app.py run_scan.sh # specific files only
+#     (the no-arg default includes logo.svg and the favicon PNGs: name files
+#      explicitly if the box should keep its own branding)
 set -euo pipefail
-HOST="${PSA_HOST:-root@192.0.2.10}"
+HOST="${PSA_HOST:?set PSA_HOST, e.g. PSA_HOST=root@your-server ./deploy.sh}"
 DEST=/opt/psa-tracker
 WEB_PORT="${PSA_WEB_PORT:-8080}"
 if [ $# -gt 0 ]; then

@@ -1,180 +1,156 @@
+<div align="center">
+
+<img src="logo.svg" width="88" alt="psa-tracker logo">
+
 # psa-tracker
 
-A tiny self-hosted website that tracks PSA card-grading submissions so the
-friends you grade for can watch their cards move through PSA's pipeline -
-Arrived → Order Prep → Research & ID → Grading → Assembly → QA Check →
-Completing → Shipped.
+**A self-hosted dashboard that lets your friends or customers watch their cards move through PSA grading.**
 
-- **Password gate, zero user accounts.** You hand each group of friends one
-  password. Whichever password someone types routes them to the matching PSA
-  account's dashboard - the account chooser is invisible by design.
-- **Multi-account.** One instance can track any number of PSA accounts
-  (`accounts/<id>/`), each with its own data, its own friends password, its own
-  owner tags.
-- **Fully automatic.** Scans run hourly reusing the stored session; twice a
-  day (and whenever the cookie dies) a real Chromium (headful under `xvfb`)
-  re-logs into PSA for a fresh one. No manual cookie copying, ever.
-- **Card galleries with images** - including *before* PSA assigns cert numbers
-  (pulled from the submission's spec images), duplicate-aware (a line with
-  qty 34 renders 34 tiles), with owner tagging, per-person pages, estimated
-  grading cost, live search, and per-submission archiving.
-- **Card values** (optional, `PSA_VALUES=1`) - `psa_values.py` reads each graded
-  card's recent sales at its grade from PSA's own sales data (the psacard.com
-  spec page API, on the scanner's session) and shows the latest in CAD.
-- **No frameworks.** Python stdlib web server + SQLite + one scraper. The only
-  deps are `curl_cffi` (TLS fingerprint impersonation) and `playwright`
-  (the twice-daily login).
+![Linux](https://img.shields.io/badge/Linux-Debian_12-A81D33?style=flat-square&logo=debian&logoColor=white)
+![Python](https://img.shields.io/badge/Python-stdlib-3776AB?style=flat-square&logo=python&logoColor=white)
+![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat-square&logo=sqlite&logoColor=white)
+![License](https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square)
 
-## Architecture
+</div>
 
-```
-psa-scan.timer (systemd, hourly)
-  └─ run_scan.sh                 for each accounts/<id>/:
-       ├─ psa_login.py           real Chromium (xvfb) logs into PSA → fresh cookie → account.env
-       ├─ psa_watch.py --once    scrape orders + card images → accounts/<id>/psa.db
-       └─ psa_values.py          PSA_VALUES=1: sales values (new certs every scan, refresh + USDCAD on login hours) → psa.db
+If you submit cards to PSA for other people, they keep asking "where are my cards?". psa-tracker signs into
+your PSA account, follows every submission through PSA's stages (Arrived → Order Prep → Research & ID →
+Grading → Assembly → QA Check → Completing → Shipped) and shows it on a simple password-protected website.
 
-psa-backup.timer (systemd, nightly 04:15)
-  └─ backup.sh                   accounts/ + global env + units → backups/auto-*.tar.gz
+## Features
 
-psa-web.service
-  └─ app.py                      reads psa.db, writes owners.db (tags/archive)
-                                 password-routed sessions, image proxy+cache
-```
+- **No user accounts**: give each group one password; the password decides which dashboard they see
+- **Multi-account**: one install can track any number of PSA accounts
+- **Fully automatic**: hourly scans, with a real browser re-login twice a day when the session expires
+- **Card galleries**: images even before cert numbers exist, owner tags, per-person pages and live search
+- **Card values** (optional): recent sales at each card's grade, shown in CAD
+- **Discord alerts**: per-account webhooks and @-mentions when someone's cards move
+- **Your branding**: one accent colour, light/dark theme, your own logo and favicon
+- **No frameworks**: Python standard library web server + SQLite
 
-Per-account files (`/opt/psa-tracker/accounts/<id>/`):
+## Install
 
-| file | what |
-|---|---|
-| `account.env` | LABEL, SITE_PASSWORD, PSA login creds, current cookie (chmod 600) |
-| `psa.db` | scraper-owned: subs, cards, status history |
-| `owners.db` | app-owned: owner tags, archived subs |
-
-## Install (Debian 12, ~1 GB RAM incl. swap)
+Needs a small Debian 12 box (~1 GB RAM including swap).
 
 ```bash
 # 1. code
 mkdir -p /opt/psa-tracker && cp app.py psa_common.py psa_watch.py psa_login.py psa_values.py \
   run_scan.sh add_account.sh backup.sh /opt/psa-tracker/
-chmod +x /opt/psa-tracker/run_scan.sh /opt/psa-tracker/add_account.sh /opt/psa-tracker/backup.sh
+chmod +x /opt/psa-tracker/{run_scan,add_account,backup}.sh
 
-# 2. deps
+# 2. dependencies
 pip install --break-system-packages curl_cffi playwright
 export PLAYWRIGHT_BROWSERS_PATH=/opt/psa-tracker/.pw-browsers
 playwright install-deps chromium && playwright install chromium
 apt-get install -y xvfb xauth
 
-# 3. global config
-cp deploy/example.env /etc/psa-tracker.env   # then EDIT it (PSA_SECRET etc.)
-chmod 600 /etc/psa-tracker.env
+# 3. config: copy, then edit (at least PSA_SECRET)
+cp deploy/example.env /etc/psa-tracker.env && chmod 600 /etc/psa-tracker.env
 
-# 4. first account - EITHER of:
-#    a) skip this step: with no accounts yet, the site serves a one-time
-#       setup page at / (site password + PSA login) and kicks the first
-#       scan itself once you submit it. The page disappears for good after
-#       the first successful PSA sign-in.
-#    b) the CLI way:
-/opt/psa-tracker/add_account.sh
-
-# 5. services
-cp deploy/psa-web.service deploy/psa-scan.service deploy/psa-scan.timer \
-   deploy/psa-backup.service deploy/psa-backup.timer /etc/systemd/system/
+# 4. services
+cp deploy/psa-*.service deploy/psa-*.timer /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now psa-web.service psa-scan.timer psa-backup.timer
-systemctl start psa-scan.service   # first scan now instead of waiting for the timer
-# The timer fires hourly; a real browser login only happens at 1am/1pm
-# (PSA_LOGIN_HOURS) or when the stored cookie dies - other runs reuse it.
-# Optional: PSA_SETTINGS_PW_HASH (sha256 of a settings password) in the global
-# env enables /settings - web UI for updating PSA credentials (write-only),
-# per-account Discord webhooks and adding accounts. Anyone's person page can
-# link a Discord user ID to get @-mentioned on updates to their subs.
 ```
 
-Put a TLS reverse proxy (Caddy, nginx, Cloudflare tunnel…) in front of
-`:8080`. If you really must serve plain HTTP, set `PSA_COOKIE_SECURE=0`.
+Put a TLS reverse proxy (Caddy, nginx, Cloudflare Tunnel…) in front of port `8080`.
 
-## Adding another PSA account
+## Usage
+
+1. Open the site. With no accounts yet, it shows a one-time setup page: pick a site password and enter your
+   PSA login. The first scan starts right away.
+2. Share the site password with the people you grade for
+3. Add more PSA accounts any time with `/opt/psa-tracker/add_account.sh`. Each one gets its own password.
+
+## How it works
+
+```
+psa-scan.timer (hourly)
+  └─ run_scan.sh                 for each accounts/<id>/:
+       ├─ psa_login.py           real Chromium (xvfb) signs into PSA → fresh cookie
+       ├─ psa_watch.py --once    orders + card images → accounts/<id>/psa.db
+       └─ psa_values.py          optional: recent sales values → psa.db
+
+psa-backup.timer (nightly)
+  └─ backup.sh                   accounts + config + units → backups/auto-*.tar.gz
+
+psa-web.service
+  └─ app.py                      reads psa.db, writes owners.db (tags, archive)
+                                 password-routed sessions, image proxy + cache
+```
+
+Each account lives in `accounts/<id>/`: `account.env` (label, site password, PSA login and cookie, chmod
+600), `psa.db` (written by the scanner) and `owners.db` (written by the web app).
+
+<details>
+<summary><b>Configuration and branding</b></summary>
+
+Every setting the code reads is listed with its default in [`deploy/example.env`](deploy/example.env).
+Global settings go in `/etc/psa-tracker.env`; per-account ones in `accounts/<id>/account.env`.
+
+- **Settings page**: set `PSA_SETTINGS_PW_HASH` (sha256 of a password) to enable `/settings`, for updating
+  PSA credentials, Discord webhooks and adding accounts from the browser.
+- **Colours**: `PSA_ACCENT` (one hex colour drives the whole palette) and `PSA_THEME=light|dark`.
+- **Logo**: drop `logo.svg` (or `.png`/`.jpg`) next to the app. `PSA_LOGO_CHIP=1` puts it on a white backing
+  in dark mode; `PSA_LOGO_DARK=silhouette` turns it white.
+- **Favicon**: an accent-coloured SVG is built in. For Safari and iOS, add `favicon.png` (64 px) and
+  `apple-touch-icon.png` (180 px) next to the app and restart `psa-web`.
+- **Plain HTTP** (not recommended): `PSA_COOKIE_SECURE=0`.
+
+The included `logo.svg` and favicons are example branding; replace them with your own.
+
+</details>
+
+<details>
+<summary><b>Operations</b></summary>
 
 ```bash
-/opt/psa-tracker/add_account.sh
+journalctl -u psa-scan -f            # login + scan logs
+journalctl -u psa-web -f             # site logs
+systemctl start psa-scan.service     # scan all accounts now
+python3 psa_watch.py --once --full   # force a full refresh (with the account env loaded)
+PSA_HOST=root@your-server ./deploy.sh app.py   # checked, staged deploy from your machine
 ```
 
-Pick a unique site password - that password *is* the account selector. The
-account works for web login immediately; its first scan runs at the next timer
-tick (or `systemctl start psa-scan.service`).
+- Shipped and fully imaged submissions are skipped on later scans (`--full` overrides).
+- If PSA's login page changes, screenshots land in `login_debug/` and the scan keeps using the previous
+  cookie. You can paste a fresh browser cookie into `account.env` (`PSA_COOKIE=`) as a stopgap.
+- If PSA asks for an SMS code, the login waits and Discord pings you: open **Settings → Verification code**,
+  press **Send code** and type in the code.
+- Backups run nightly and keep the newest 3 (the image cache is skipped; it refetches itself).
 
-## Configuration
+</details>
 
-Every key the code reads, global and per-account, is listed with its default and
-a one-line note in [`deploy/example.env`](deploy/example.env). Copy it to
-`/etc/psa-tracker.env` and edit; per-account keys go in
-`accounts/<id>/account.env`, which `add_account.sh` writes.
+<details>
+<summary><b>Security</b></summary>
 
-Each person's page also shows **INSURED COVERAGE** - the sum of the real
-per-card declared values PSA has on file (captured automatically from the
-submission data; no configuration needed).
+- PSA credentials and cookies live only in chmod-600 files on the server.
+- Session cookies are HMAC-signed (`PSA_SECRET`), HttpOnly, SameSite=Lax and Secure. Login is throttled per
+  IP (8 failures per 15 minutes).
+- The image proxy only fetches from PSA's image host, is size-capped and caches atomically.
+- PSA's completed-submissions data includes payment and address details; the scanner keeps only the card
+  lines and never stores the rest.
 
-## Branding
+</details>
 
-One accent color drives the whole palette: `PSA_ACCENT`
-(validated hex, global env) plus `PSA_THEME=light|dark` for the default theme
-(visitors can flip it per-browser with the corner toggle).
+<details>
+<summary><b>Notes on PSA's API</b></summary>
 
-**Logo**: drop a file at `/opt/psa-tracker/logo.svg` (or `.png`/`.jpg`; path
-override `PSA_LOGO`) and it appears on the gate and beside the dashboard title,
-served at `/logo` - no restart needed. For marks that assume a light
-background: `PSA_LOGO_CHIP=1` renders it on a white rounded backing in dark
-mode, or `PSA_LOGO_DARK=silhouette` recolors it as a white mark.
+PSA's site is cookie-authenticated and sits behind Cloudflare, which checks the TLS fingerprint, so requests
+use `curl_cffi` with Chrome impersonation. Tokens can't be refreshed directly, so a real browser signs in
+through the normal login page when the cookie expires. `psa_watch.py` has the full field maps. This only
+reads your own account's data.
 
-**Favicon**: an accent-colored SVG favicon is built in and needs no files -
-but Safari and iOS ignore SVG favicons and show a domain-letter tile instead.
-Fix: pre-render two PNGs of your mark and drop them next to the app -
-`favicon.png` (~64px, shown in tabs) and `apple-touch-icon.png` (180px,
-square corners; iOS rounds them itself). When present they're linked and
-served automatically at `/favicon.png`, `/favicon.ico` and
-`/apple-touch-icon.png` (path overrides `PSA_FAVICON` / `PSA_TOUCH_ICON`);
-restart `psa-web` after adding them. Any SVG-to-PNG renderer works
-(macOS: `qlmanage -t -s 64 -o . icon.svg`).
+</details>
 
-## Operations
+## Development
 
 ```bash
-journalctl -u psa-scan -f        # login + scan logs
-journalctl -u psa-web -f         # site logs
-systemctl start psa-scan.service # scan all accounts now
-python3 psa_watch.py --once --full  # force full refresh (with account env loaded)
+python3 scripts/smoke.py    # boots app.py on a throwaway fixture and checks every route; no network
 ```
 
-- Scans skip detail-fetching submissions that were already Shipped and fully
-  imaged (they can't change). `--full` overrides.
-- If the PSA login page changes and auto-login breaks, screenshots land in
-  `login_debug/` and the scan falls back to the previous cookie. You can always
-  paste a fresh browser cookie into the account's `account.env` (`PSA_COOKIE=`)
-  as a stopgap.
-- If PSA asks for an SMS verification code the login parks and Discord pings:
-  open **Settings → Verification code**, press **Send code**, then type the code
-  it texts into the same panel. The waiting login finishes the sign-in.
-- Backups: `deploy/psa-backup.timer` + `backup.sh` snapshot accounts/ (DBs +
-  env), the global env and the unit files nightly at 04:15, keeping the newest
-  3 under `backups/auto-*` (imgcache is excluded - it refetches itself). For
-  bigger one-off snapshots, tar `/opt/psa-tracker` (minus `.pw-browsers`) +
-  `/etc/psa-tracker.env` + the systemd units by hand.
+[`DESIGN.md`](DESIGN.md) is the design record: layout, colour and typography decisions and why they were made.
 
-## Security notes
+## License
 
-- PSA credentials + cookies live only in chmod-600 files on the box.
-- Session cookies are HMAC-signed (`PSA_SECRET`), HttpOnly, SameSite=Lax,
-  Secure (unless disabled). Login has a per-IP throttle (8 fails / 15 min).
-- The image proxy is locked to PSA's CloudFront host, size-capped, and caches
-  atomically. PSA accounts with SMS 2FA work: auto-login hands the code screen
-  off to the **Verification code** panel in /settings (see Operations).
-- The `submissions.completed` PSA endpoint returns payment/address PII - the
-  scraper extracts only the card lines and never stores the rest.
-
-## Notes on PSA scraping
-
-Auth is cookie-only (Bearer silently returns nothing) and Cloudflare gates on
-TLS fingerprint, hence `curl_cffi ... impersonate="chrome"`. The OAuth client
-is confidential (secret is server-side), so tokens can't be minted from the
-refresh token - that's why cookie refresh drives a real browser through the
-sign-in page instead. See `psa_watch.py` for the full API field maps.
+[MIT](LICENSE) © Felix Wang
